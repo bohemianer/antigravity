@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Antigravity 笔记本</title>
+  <style>
+    :root {
+      --bg-warm: #FAF9F5;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #F5F3ED;
+      --border-warm: #E6E4DD;
+      --border-light: #EFECE6;
+      --text-main: #1F1E1D;
+      --text-body: #383532;
+      --text-muted: #8C827A;
+      --claude-terracotta: #CC785C;
+      --claude-terracotta-hover: #BF684D;
+      --claude-amber: #D97706;
+      --claude-green: #059669;
+      --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-warm);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    header {
+      background: rgba(250, 249, 245, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-warm);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+    }
+    .logo-area { display: flex; align-items: center; gap: 14px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #CC785C, #D97706);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 900; color: #fff;
+      box-shadow: 0 2px 6px rgba(204, 120, 92, 0.3);
+    }
+    .logo-title {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text-main);
+    }
+    
+    .view-switcher {
+      display: flex;
+      background: #EFECE6;
+      padding: 3px;
+      border-radius: 9px;
+      gap: 2px;
+    }
+    .view-tab {
+      background: transparent;
+      border: none;
+      padding: 5px 14px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+    .view-tab.active {
+      background: #FFFFFF;
+      color: var(--text-main);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-weight: 600;
+    }
+
+    .sync-status-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: #F5F3ED; border: 1px solid var(--border-warm);
+      padding: 4px 12px 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-muted);
+      cursor: pointer; transition: all 0.2s;
+      user-select: none;
+    }
+    .sync-status-badge:hover { background: #EFECE6; color: var(--text-main); }
+
+    /* 结合了状态指示与循环刷新的融合图标 (Merged Sync Icon) */
+    .sync-icon-dot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #A8A29E;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .sync-icon-dot.active {
+      color: var(--claude-green);
+      filter: drop-shadow(0 0 3px rgba(5, 150, 105, 0.4));
+    }
+    .sync-icon-dot.rotating svg, .sync-icon-dot:hover svg {
+      animation: syncRotate 0.8s linear infinite;
+    }
+    .sync-icon-dot:hover {
+      color: var(--claude-terracotta);
+    }
+    @keyframes syncRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .controls { display: flex; align-items: center; gap: 10px; }
+    
+    /* 苹果风格自定义下拉菜单 (Apple Custom Dropdown) */
+    .dropdown-container {
+      position: relative;
+    }
+    .dropdown-btn {
+      height: 35px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      color: var(--text-body);
+      padding: 0 11px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 122px;
+      transition: all 0.18s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      font-family: var(--font-sans);
+      box-sizing: border-box;
+    }
+    .dropdown-btn:hover {
+      background: #F5F3ED;
+      border-color: #D6D3CD;
+      color: var(--text-main);
+    }
+    .dropdown-btn-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 140px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(45, 35, 25, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+      padding: 5px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      z-index: 1000;
+      animation: dropIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dropdown-item {
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.12s;
+      user-select: none;
+    }
+    .dropdown-item:hover { background: #F5F3ED; color: var(--text-main); }
+    .dropdown-item.selected {
+      background: #FAF8F5;
+      color: var(--claude-terracotta);
+      font-weight: 600;
+    }
+    .dropdown-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 7px;
+    }
+    .dot-all { background: #A8A29E; }
+    .dot-0 { background: #DC2626; }
+    .dot-1 { background: #D97706; }
+    .dot-2 { background: #2563EB; }
+    .dot-3 { background: #059669; }
+    .check-mark {
+      font-size: 11px;
+      color: var(--claude-terracotta);
+      font-weight: bold;
+    }
+
+    .search-input {
+      height: 35px;
+      width: 210px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      color: var(--text-main);
+      padding: 0 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      outline: none;
+      transition: all 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      font-family: var(--font-sans);
+      box-sizing: border-box;
+    }
+    .search-input:focus { border-color: var(--claude-terracotta); box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.12); }
+    
+    .btn {
+      height: 35px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      color: var(--text-body);
+      padding: 0 13px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      font-family: var(--font-sans);
+      box-sizing: border-box;
+      user-select: none;
+    }
+    .btn:hover { background: #F5F3ED; border-color: #D6D3CD; color: var(--text-main); }
+    .btn-primary {
+      background: var(--claude-terracotta); border-color: #B8654A; color: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(204, 120, 92, 0.25);
+    }
+    .btn-primary:hover { background: var(--claude-terracotta-hover); color: #FFFFFF; }
+
+    main {
+      flex: 1;
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 视图 1: 经典表格视图 */
+    #viewTableContainer {
+      width: 100%;
+    }
+    .table-container {
+      width: 100%;
+      background: #FFFFFF; border: 1px solid var(--border-warm);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 4px 16px rgba(45, 40, 35, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    thead tr { background: #FAF9F5; border-bottom: 1px solid var(--border-warm); }
+    th {
+      padding: 14px 20px;
+      font-size: 12.5px;
+      color: #8C827A;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      font-family: var(--font-sans);
+      text-align: center !important;
+      vertical-align: middle !important;
+    }
+    tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    td {
+      padding: 16px 20px;
+      font-size: 13.5px;
+      color: var(--text-body);
+      vertical-align: middle !important;
+    }
+    
+    .word-cell-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .word-title {
+      font-family: var(--font-serif);
+      font-size: 16.5px;
+      font-weight: 700;
+      color: #1A1918;
+      line-height: 1.2;
+    }
+    
+    /* 纯净交互式音标：无图标，直接点击音标本身朗读发音 */
+    .word-phonetic {
+      color: #8C827A;
+      font-size: 12.5px;
+      font-family: "Charis SIL", "Doulos SIL", "Lucida Sans Unicode", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-weight: 400;
+      cursor: pointer;
+      padding: 1px 5px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .word-phonetic:hover {
+      color: var(--claude-terracotta);
+      background: rgba(204, 120, 92, 0.08);
+    }
+
+    .srs-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #F5F3ED;
+      border: 1px solid var(--border-warm);
+      color: #78716C;
+      user-select: none;
+      font-family: var(--font-sans);
+    }
+    .srs-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #A8A29E;
+    }
+    .srs-level-0, .srs-level-1, .srs-level-2, .srs-level-3 {
+      background: #F5F3ED;
+      color: #78716C;
+      border: 1px solid var(--border-warm);
+    }
+    .srs-level-0 .srs-dot, .srs-level-1 .srs-dot, .srs-level-2 .srs-dot, .srs-level-3 .srs-dot {
+      background: #A8A29E;
+    }
+
+    .salad-context-box { display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
+    .salad-sentence {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 500;
+      color: #141413;
+      line-height: 1.6;
+    }
+    .salad-sentence .highlight {
+      background: #FDE68A;
+      color: #78350F;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .salad-divider { height: 1px; background: var(--border-light); width: 100%; }
+    .salad-source {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+    }
+    .salad-favicon {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .salad-source-text {
+      color: #78716C;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .salad-source-text:hover {
+      color: var(--claude-terracotta);
+    }
+    
+    .trans-text {
+      color: #141413;
+      font-weight: 550;
+      font-size: 13.5px;
+      line-height: 1.7;
+      letter-spacing: 0.15px;
+      white-space: pre-line;
+      word-break: break-word;
+    }
+
+    .note-box {
+      font-size: 13px;
+      font-weight: 450;
+      color: #383532;
+      background: #F7F5F0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--claude-terracotta);
+      white-space: pre-line;
+      word-break: break-word;
+      line-height: 1.55;
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: center;
+    }
+    
+    /* 熟练度发光状态圆点按钮与悬浮糖果微胶囊 */
+    .mastery-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mastery-dot-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .mastery-dot-btn:hover {
+      background: #EFECE6;
+      border-color: #E6E4DD;
+      transform: scale(1.18);
+    }
+    .mastery-dot-btn:active {
+      transform: scale(0.88);
+    }
+    .mastery-dot-glow {
+      width: 7.5px;
+      height: 7.5px;
+      border-radius: 50%;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    /* 未标记：极淡极简空心虚线环，低调不抢眼 */
+    .mastery-dot-unmarked {
+      width: 8px;
+      height: 8px;
+      background: transparent;
+      border: 1.5px dashed #D6D3D1;
+      opacity: 0.55;
+    }
+    tbody tr:hover .mastery-dot-unmarked {
+      opacity: 0.95;
+      border-color: #A8A29E;
+    }
+
+    .mastery-dot-red {
+      background: #EF4444;
+      box-shadow: 0 0 7px rgba(239, 68, 68, 0.6);
+    }
+    .mastery-dot-orange {
+      background: #F59E0B;
+      box-shadow: 0 0 7px rgba(245, 158, 11, 0.6);
+    }
+    .mastery-dot-green {
+      background: #10B981;
+      box-shadow: 0 0 7px rgba(16, 185, 129, 0.6);
+    }
+    .mastery-dot-purple {
+      background: #6366F1;
+      box-shadow: 0 0 7px rgba(99, 102, 241, 0.6);
+    }
+
+    /* 悬浮微胶囊快捷选择器 (Apple Floating Candy Picker) */
+    .mastery-picker-popup {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      right: -24px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(220, 218, 210, 0.95);
+      border-radius: 20px;
+      padding: 5px 8px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 28px rgba(40, 30, 20, 0.16), 0 2px 6px rgba(0, 0, 0, 0.05);
+      z-index: 100;
+      animation: candyPop 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      white-space: nowrap;
+    }
+    /* 鼠标安全桥接区域：防止鼠标从圆点滑向浮窗时丢失判定 */
+    .mastery-picker-popup::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background: transparent;
+    }
+    .mastery-wrap:hover .mastery-picker-popup,
+    .mastery-picker-popup.open {
+      display: flex;
+    }
+    @keyframes candyPop {
+      from { opacity: 0; transform: translateY(5px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .candy-option {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+    .candy-option:hover {
+      transform: scale(1.35);
+      background: rgba(0, 0, 0, 0.04);
+    }
+    .candy-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .apple-icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: #78716C;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .apple-icon-btn:hover {
+      background: #EFECE6;
+      border-color: #E6E4DD;
+      color: #1F1E1D;
+      transform: scale(1.08);
+    }
+    .apple-icon-btn-del:hover {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: #DC2626;
+    }
+
+    /* 视图 2: 苹果美学级艾宾浩斯闪卡自测卡片 */
+    #viewFlashcardContainer {
+      display: none;
+      width: 100%;
+      max-width: 660px;
+      margin: 16px auto;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    /* 闪卡顶部定量控制与进度栏 */
+    .flashcard-header-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 16px;
+    }
+    .flashcard-batch-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .batch-label {
+      font-size: 11.5px;
+      color: #8C827A;
+      font-weight: 500;
+      user-select: none;
+    }
+    .batch-tabs {
+      display: flex;
+      background: #EFECE6;
+      padding: 2px;
+      border-radius: 7px;
+      gap: 2px;
+    }
+    .batch-tab {
+      background: transparent;
+      border: none;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #78716C;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .batch-tab:hover {
+      color: var(--text-main);
+    }
+    .batch-tab.active {
+      background: #FFFFFF;
+      color: var(--text-main);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .flashcard-progress-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .flashcard-progress-bar {
+      width: 110px;
+      height: 4px;
+      background: #EAE7E0;
+      border-radius: 2px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .flashcard-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #CC785C, #D97706);
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .kbd-hint {
+      font-size: 11.5px;
+      color: #8C827A;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+    .kbd-hint kbd {
+      background: #EFECE6;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      color: #57534E;
+    }
+    
+    .flashcard-card-box {
+      width: 100%;
+      min-height: 420px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(45, 35, 25, 0.05), 0 1px 3px rgba(0,0,0,0.02);
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start; /* 单词与例句位置绝对锁定，翻面 0 位移！ */
+      cursor: pointer;
+      position: relative;
+      user-select: none;
+      transition: box-shadow 0.18s ease;
+    }
+    .flashcard-card-box:hover {
+      box-shadow: 0 12px 36px rgba(45, 35, 25, 0.08);
+    }
+    .flashcard-top-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .flashcard-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .flashcard-word {
+      font-family: var(--font-serif);
+      font-size: 34px;
+      font-weight: 700;
+      color: #1A1918;
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .flashcard-phonetic-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .flashcard-phonetic {
+      font-size: 14.5px;
+      color: #78716C;
+      font-family: "Charis SIL", "Doulos SIL", "Lucida Sans Unicode", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .flashcard-phonetic:hover {
+      color: var(--claude-terracotta);
+      background: rgba(204, 120, 92, 0.08);
+    }
+    .flashcard-context {
+      font-family: var(--font-serif);
+      font-size: 15.5px;
+      color: #2D2825;
+      line-height: 1.6;
+      text-align: center;
+      margin-bottom: 16px;
+      padding: 14px 18px;
+      background: #FAF8F5;
+      border-radius: 10px;
+      border: 1px dashed #E6E4DD;
+    }
+    .flashcard-context .highlight {
+      background: #FDE68A;
+      color: #78350F;
+      font-weight: 600;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    
+    .flashcard-answer-box {
+      border-top: 1px solid var(--border-light);
+      padding-top: 18px;
+      margin-top: 6px;
+      animation: fadeIn 0.18s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .flashcard-trans {
+      font-size: 16px;
+      font-weight: 550;
+      color: #141413;
+      text-align: center;
+      line-height: 1.7;
+      margin-bottom: 14px;
+      white-space: pre-line;
+      word-break: break-word;
+      letter-spacing: 0.15px;
+    }
+    .flashcard-notes {
+      font-size: 12.5px;
+      color: #57534E;
+      background: #F7F5F0;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border-left: 3px solid var(--claude-terracotta);
+      white-space: pre-line;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    
+    /* 艾宾浩斯一体化智能动态底栏 (Smart Unified Bottom Bar) */
+    .flashcard-smart-bar {
+      width: 100%;
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: fadeIn 0.16s ease;
+    }
+    
+    .btn-nav {
+      height: 38px;
+      padding: 0 16px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-body);
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+      user-select: none;
+      cursor: pointer;
+    }
+    .btn-nav:hover {
+      background: #F5F3ED;
+      border-color: #D6D3CD;
+      color: var(--text-main);
+    }
+    .btn-nav-center {
+      flex: 1;
+      max-width: 200px;
+    }
+
+    /* 揭晓后的 3 大纯净自测反馈按键 (已去除 1 2 3 数字徽标) */
+    .btn-srs-action {
+      flex: 1;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .srs-btn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .srs-btn-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .btn-srs-again {
+      background: #FEF2F2;
+      border-color: rgba(239, 68, 68, 0.25);
+      color: #DC2626;
+    }
+    .btn-srs-again:hover {
+      background: #FEE2E2;
+      border-color: rgba(239, 68, 68, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+    }
+
+    .btn-srs-hard {
+      background: #FFFBEB;
+      border-color: rgba(245, 158, 11, 0.25);
+      color: #D97706;
+    }
+    .btn-srs-hard:hover {
+      background: #FEF3C7;
+      border-color: rgba(245, 158, 11, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
+    }
+
+    .btn-srs-good {
+      background: #ECFDF5;
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #059669;
+    }
+    .btn-srs-good:hover {
+      background: #D1FAE5;
+      border-color: rgba(16, 185, 129, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+    }
+
+    /* 闪卡完成小结卡片 (Batch Completion Summary) */
+    .flashcard-summary-card {
+      width: 100%;
+      min-height: 340px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(45, 35, 25, 0.06);
+      padding: 36px 32px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      animation: modalIn 0.2s ease-out;
+    }
+    .summary-trophy {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+    .summary-title {
+      font-family: var(--font-sans);
+      font-size: 20px;
+      font-weight: 700;
+      color: #1A1918;
+      margin-bottom: 6px;
+    }
+    .summary-subtitle {
+      font-size: 13px;
+      color: #78716C;
+      margin-bottom: 24px;
+    }
+    .summary-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      max-width: 380px;
+      margin-bottom: 28px;
+    }
+    .stat-pill {
+      background: #FAF8F5;
+      border: 1px solid var(--border-warm);
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-num {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1A1918;
+      font-family: var(--font-sans);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: #8C827A;
+    }
+    .summary-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* 模态弹窗 */
+    .modal-backdrop {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(30, 25, 20, 0.4);
+      backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-card {
+      width: 480px; background: #FFFFFF; border: 1px solid var(--border-warm);
+      border-radius: 14px; box-shadow: 0 20px 50px rgba(45, 35, 25, 0.16); padding: 24px;
+      animation: modalIn 0.18s ease-out;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
+    }
+    .modal-title { font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: #1A1918; }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+    .form-input, .form-textarea {
+      width: 100%; background: #FAF9F5; border: 1px solid var(--border-warm);
+      color: var(--text-main); padding: 9px 12px; border-radius: 8px; font-size: 13.5px; outline: none;
+      font-family: var(--font-sans); transition: all 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus {
+      background: #FFFFFF; border-color: var(--claude-terracotta);
+      box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.12);
+    }
+    .form-textarea { resize: vertical; min-height: 65px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">A</div>
+      <div class="logo-title">Antigravity Notebook</div>
+      <div class="view-switcher">
+        <button class="view-tab active" id="tabTableView">📋 笔记本</button>
+        <button class="view-tab" id="tabFlashcardView">🎴 闪卡自测</button>
+      </div>
+      <div class="sync-status-badge" id="btnSyncStatus" title="点击配置坚果云与欧路词典同步 (点击图标立即刷新)">
+        <span class="sync-icon-dot" id="syncDot" title="点击立即同步">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </span>
+        <span id="syncText">未同步</span>
+      </div>
+    </div>
+    <div class="controls">
+      <!-- 苹果风格自定义下拉浮层菜单 -->
+      <div class="dropdown-container">
+        <button class="dropdown-btn" id="srsDropdownBtn">
+          <div class="dropdown-btn-left">
+            <span class="dropdown-dot dot-all" id="currentSrsDot"></span>
+            <span id="currentSrsLabel">全部熟练度</span>
+          </div>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dropdown-menu" id="srsDropdownMenu">
+          <div class="dropdown-item selected" data-value="all">
+            <span><span class="dropdown-dot dot-all"></span>全部熟练度</span>
+            <span class="check-mark">✓</span>
+          </div>
+          <div class="dropdown-item" data-value="0">
+            <span><span class="dropdown-dot dot-0"></span>生疏待背</span>
+          </div>
+          <div class="dropdown-item" data-value="1">
+            <span><span class="dropdown-dot dot-1"></span>初识阶段</span>
+          </div>
+          <div class="dropdown-item" data-value="2">
+            <span><span class="dropdown-dot dot-2"></span>巩固阶段</span>
+          </div>
+          <div class="dropdown-item" data-value="3">
+            <span><span class="dropdown-dot dot-3"></span>熟练掌握</span>
+          </div>
+        </div>
+      </div>
+
+      <input type="text" id="searchInput" class="search-input" placeholder="搜索单词、原汁例句、笔记...">
+      <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
+      <button class="btn" id="btnExportJson">📥 导出</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 视图 1: 笔记本列表 -->
+    <div id="viewTableContainer">
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 18%;">单词</th>
+              <th style="width: 38%;">语境例句</th>
+              <th style="width: 20%;">释义</th>
+              <th style="width: 16%;">笔记</th>
+              <th style="width: 8%; text-align: center;"></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 视图 2: 苹果美学级艾宾浩斯交互式闪卡自测模式 -->
+    <div id="viewFlashcardContainer">
+      <!-- 闪卡顶栏：定量自测选择器 + 进度条 -->
+      <div class="flashcard-header-bar">
+        <div class="flashcard-batch-group">
+          <span class="batch-label">每组定量:</span>
+          <div class="batch-tabs" id="batchSizeTabs">
+            <button class="batch-tab" data-size="10">10 词</button>
+            <button class="batch-tab active" data-size="20">20 词</button>
+            <button class="batch-tab" data-size="50">50 词</button>
+            <button class="batch-tab" data-size="all">全部</button>
+          </div>
+        </div>
+
+        <div class="flashcard-progress-box">
+          <span>当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
+          <div class="flashcard-progress-bar">
+            <div class="flashcard-progress-fill" id="cardProgressFill"></div>
+          </div>
+          <span class="kbd-hint">按 <kbd>空格</kbd> 揭晓</span>
+        </div>
+      </div>
+
+      <!-- 闪卡主卡片 -->
+      <div class="flashcard-card-box" id="flashcardBox">
+        <div class="flashcard-top-meta">
+          <span class="srs-badge srs-level-0" id="fcSrsBadge">
+            <span class="srs-dot"></span>
+            <span id="fcSrsText">生疏待背</span>
+          </span>
+          <div class="flashcard-hint">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+            <span id="cardHintText">点击卡片翻转揭晓释义</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="flashcard-word" id="fcWord">magnitude</div>
+          <div class="flashcard-phonetic-wrap">
+            <span class="flashcard-phonetic" id="fcPhonetic" title="点击朗读发音">/ˈmæɡnɪtuːd/</span>
+          </div>
+          <div class="flashcard-context" id="fcContext">
+            The <span class="highlight">magnitude</span> of the economic shift was unprecedented.
+          </div>
+        </div>
+
+        <div class="flashcard-answer-box" id="fcAnswerBox" style="display: none;">
+          <div class="flashcard-trans" id="fcTrans">n. 巨大；重要性；震级</div>
+          <div class="flashcard-notes" id="fcNotes" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- 智能底栏 1: 未揭晓状态 (正面思考期：纯粹、对称、轻盈) -->
+      <div class="flashcard-smart-bar" id="smartBarUnrevealed">
+        <button class="btn-nav" id="btnCardPrev" title="上一个 (← / A)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span>上一个</span>
+        </button>
+        <button class="btn-nav btn-nav-center" id="btnCardShuffle" title="随机打乱本组顺序">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+          <span>随机乱序</span>
+        </button>
+        <button class="btn-nav" id="btnCardNext" title="下一个 (→ / D)">
+          <span>下一个</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <!-- 智能底栏 2: 已揭晓状态 (反面 3 大纯净评分按钮) -->
+      <div class="flashcard-smart-bar" id="smartBarRevealed" style="display: none;">
+        <button class="btn-srs-action btn-srs-again" id="btnSrsAgain">
+          <span class="srs-btn-dot dot-0"></span>
+          <span class="srs-btn-title">忘了</span>
+        </button>
+        <button class="btn-srs-action btn-srs-hard" id="btnSrsHard">
+          <span class="srs-btn-dot dot-1"></span>
+          <span class="srs-btn-title">模糊</span>
+        </button>
+        <button class="btn-srs-action btn-srs-good" id="btnSrsGood">
+          <span class="srs-btn-dot dot-3"></span>
+          <span class="srs-btn-title">熟练</span>
+        </button>
+      </div>
+
+      <!-- 闪卡完成小结卡片 -->
+      <div class="flashcard-summary-card" id="flashcardSummaryCard">
+        <div class="summary-trophy">🎉</div>
+        <div class="summary-title">太棒了！已完成本组自测</div>
+        <div class="summary-subtitle" id="summarySubtitle">您已完成本组 20 个单词的艾宾浩斯强化复习</div>
+        <div class="summary-stats-grid">
+          <div class="stat-pill" style="border-color: rgba(239, 68, 68, 0.25);">
+            <span class="stat-num" id="statForgotCount" style="color: #DC2626;">0</span>
+            <span class="stat-label">忘了待强化</span>
+          </div>
+          <div class="stat-pill" style="border-color: rgba(245, 158, 11, 0.25);">
+            <span class="stat-num" id="statHardCount" style="color: #D97706;">0</span>
+            <span class="stat-label">模糊待巩固</span>
+          </div>
+          <div class="stat-pill" style="border-color: rgba(16, 185, 129, 0.25);">
+            <span class="stat-num" id="statGoodCount" style="color: #059669;">0</span>
+            <span class="stat-label">熟练掌握</span>
+          </div>
+        </div>
+        <div class="summary-actions">
+          <button class="btn btn-primary" id="btnRestartBatch">🔄 再来一组</button>
+          <button class="btn" id="btnBackToTable">📋 返回生词列表</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 云端与欧路词典同步设置模态弹窗 -->
+  <div class="modal-backdrop" id="webdavModal">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span class="modal-title">☁️ 多端云同步与欧路词典设置</span>
+        <button class="modal-close" id="davModalClose">✕</button>
+      </div>
+      
+      <!-- 模块 1: 坚果云 WebDAV 同步 -->
+      <div style="background: #FAF8F5; border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+          <span>坚果云 WebDAV 实时云同步</span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">多设备双向实时漫游</span>
+        </div>
+        <form id="davForm">
+          <div class="form-group">
+            <label class="form-label">服务器地址</label>
+            <input type="url" id="davServer" class="form-input" required value="https://dav.jianguoyun.com/dav/">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">账户邮箱</label>
+              <input type="text" id="davUsername" class="form-input" required placeholder="如: your_name@qq.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">应用授权密码</label>
+              <input type="password" id="davPassword" class="form-input" required placeholder="坚果云第三方应用密码">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">云端同步文件路径</label>
+            <input type="text" id="davPath" class="form-input" required value="antigravity/antigravity.json">
+          </div>
+          <div style="margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="davEnable" checked style="width: 15px; height: 15px; accent-color: var(--claude-terracotta);">
+            <label for="davEnable" style="font-size: 12px; color: var(--text-body); cursor: pointer;">开启划词与自测自动双向同步</label>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn" id="davTestBtn" style="font-size: 12px; height: 32px;">⚡ 测试并同步坚果云</button>
+            <button type="submit" class="btn btn-primary" style="font-size: 12px; height: 32px;">保存配置</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 模块 2: 欧路词典 (Eudic) 生词本双向拉取合并 -->
+      <div style="background: #FAF8F5; border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+          <span>📚 欧路词典 (Eudic) 生词本拉取合并</span>
+          <a href="https://my.eudic.net/OpenAPI/Authorization" target="_blank" style="font-size: 11.5px; color: var(--claude-terracotta); text-decoration: none; font-weight: 500;">👉 获取授权 Token</a>
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+          拉取欧路词典生词本，智能比对当前云笔记本，将未收录的生词按标准格式自动入库并同步至坚果云。
+        </div>
+        <div class="form-group">
+          <label class="form-label">欧路词典 OpenAPI Token (Authorization)</label>
+          <input type="password" id="eudicTokenInput" class="form-input" placeholder="粘贴从 my.eudic.net 获取的个人授权 Token">
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+          <span id="eudicSyncStatus" style="font-size: 11.5px; color: var(--text-muted);"></span>
+          <button type="button" class="btn btn-primary" id="btnEudicSync" style="font-size: 12px; height: 32px; background: #059669; border-color: #047857;">
+            📥 立即从欧路词典拉取合并
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 增/改 模态弹窗 -->
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">添加新词条</span>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <form id="vocabForm">
+        <input type="hidden" id="editIndex" value="-1">
+        <div class="form-group">
+          <label class="form-label">单词 / 短语 *</label>
+          <input type="text" id="inputWord" class="form-input" required placeholder="输入单词或短语" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">国际标准音标</label>
+          <input type="text" id="inputPhonetic" class="form-input" placeholder="如: /ˈæbstrækt/">
+        </div>
+        <div class="form-group">
+          <label class="form-label">权威释义 *</label>
+          <input type="text" id="inputTrans" class="form-input" required placeholder="如: adj. 抽象的；n. 摘要">
+        </div>
+        <div class="form-group">
+          <label class="form-label">上下文例句 (Context)</label>
+          <textarea id="inputContext" class="form-textarea" placeholder="包含该词的原汁原味上下文例句"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">来源标题 / 站点 (Source Title)</label>
+          <input type="text" id="inputSource" class="form-input" placeholder="如: Let the Bond Market Speak - WSJ">
+        </div>
+        <div class="form-group">
+          <label class="form-label">专属心得笔记 (Notes)</label>
+          <textarea id="inputNotes" class="form-textarea" placeholder="写下你的记忆法、深度词根拆解或例句体会..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="modalCancel">取消</button>
+          <button type="submit" class="btn btn-primary" id="modalSubmitBtn">保存入库</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Apple 风格五彩礼花微动效画布 -->
+  <canvas id="confettiCanvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:99999; display:none;"></canvas>
+
+  <script src="webdav.js"></script>
+  <script src="notebook.js"></script>
+</body>
+</html>

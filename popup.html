@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Antigravity Vocab</title>
+  <style>
+    :root {
+      --bg-warm: #FAF9F5;
+      --bg-card: #FFFFFF;
+      --border-warm: #E6E4DD;
+      --text-main: #1F1E1D;
+      --text-body: #383532;
+      --text-muted: #8C827A;
+      --claude-terracotta: #CC785C;
+      --claude-terracotta-hover: #BF684D;
+      --claude-green: #059669;
+      --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 290px;
+      padding: 16px;
+      background-color: var(--bg-warm);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* 顶部导航 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #CC785C, #D97706);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 900;
+      color: #FFFFFF;
+      box-shadow: 0 2px 5px rgba(204, 120, 92, 0.25);
+    }
+    .title {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: #1A1918;
+    }
+    .sync-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: #EFECE6;
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+    .sync-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #A8A29E;
+    }
+    .sync-dot.active {
+      background: var(--claude-green);
+      box-shadow: 0 0 5px rgba(5, 150, 105, 0.5);
+    }
+
+    /* 统计看板网格 (Apple Metrics Grid) */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      box-shadow: 0 1px 3px rgba(45, 35, 25, 0.03);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .stat-num {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.2;
+    }
+    .stat-num.highlight {
+      color: var(--claude-terracotta);
+    }
+
+    /* 快捷操作区 */
+    .action-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .btn-main {
+      width: 100%;
+      height: 38px;
+      background: var(--claude-terracotta);
+      border: 1px solid #B8654A;
+      color: #FFFFFF;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 3px rgba(204, 120, 92, 0.25);
+    }
+    .btn-main:hover {
+      background: var(--claude-terracotta-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(204, 120, 92, 0.3);
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-sub {
+      flex: 1;
+      height: 32px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      color: var(--text-body);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .btn-sub:hover {
+      background: #F5F3ED;
+      border-color: #D6D3CD;
+      color: var(--text-main);
+    }
+
+    /* 底部极简提示 */
+    .footer-tip {
+      font-size: 11px;
+      color: #A8A29E;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-group">
+      <div class="logo-icon">A</div>
+      <span class="title">Antigravity</span>
+    </div>
+    <div class="sync-status" id="syncBadge">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncText">未同步</span>
+    </div>
+  </div>
+
+  <!-- 概览数据看板 -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">词库总量</span>
+      <span class="stat-num" id="totalWordsCount">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">待复习 / 生疏</span>
+      <span class="stat-num highlight" id="reviewWordsCount">0</span>
+    </div>
+  </div>
+
+  <!-- 快捷操作入口 -->
+  <div class="action-stack">
+    <button class="btn-main" id="btnOpenNotebook">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>打开生词笔记本</span>
+    </button>
+    <div class="btn-row">
+      <button class="btn-sub" id="btnOpenFlashcard">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        <span>闪卡自测</span>
+      </button>
+      <button class="btn-sub" id="btnOpenSettings">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>WebDAV 设置</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer-tip">
+    <span>💡 选中文本即可即时查词与收藏</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

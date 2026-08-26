@@ -1,0 +1,1332 @@
+// Antigravity Vocab - notebook.js (艾宾浩斯 SM-2 记忆算法 + 交互闪卡 + WebDAV 增量云同步 + 智能查词补全 + 真人原声发音)
+
+let currentWords = [];
+let filteredWords = [];
+let webdavConfig = null;
+
+// 闪卡与艾宾浩斯状态
+let cardIndex = 0;
+let cardList = [];
+let cardRevealed = false;
+let currentView = 'table';
+let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
+
+// 真人母语者高清原声发音引擎 (优先美音真人录音 MP3，离线自动降级 + 灵动声波微动效)
+let currentAudio = null;
+function speakWord(text, triggerEl = null) {
+  if (!text) return;
+  const clean = text.trim();
+
+  // 触发灵动声波跳动波形
+  const pills = triggerEl ? [triggerEl] : document.querySelectorAll(`.audio-pill-trigger[data-word="${clean}"]`);
+  pills.forEach(p => p.classList.add('playing'));
+  const fcAudioPill = document.getElementById('fcAudioPill');
+  if (fcAudioPill && (!triggerEl || triggerEl === fcAudioPill)) {
+    fcAudioPill.classList.add('playing');
+  }
+
+  const stopWave = () => {
+    pills.forEach(p => p.classList.remove('playing'));
+    if (fcAudioPill) fcAudioPill.classList.remove('playing');
+  };
+
+  try {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=2`;
+    currentAudio = new Audio(audioUrl);
+    currentAudio.onended = stopWave;
+    currentAudio.onerror = () => {
+      fallbackTTS(clean);
+      setTimeout(stopWave, 1200);
+    };
+    currentAudio.play().catch(() => {
+      fallbackTTS(clean);
+      setTimeout(stopWave, 1200);
+    });
+  } catch (e) {
+    fallbackTTS(clean);
+    setTimeout(stopWave, 1200);
+  }
+}
+
+function fallbackTTS(text) {
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+
+function cleanIPA(s) {
+  if (!s) return "";
+  let str = s.trim().replace(/^[\/\[]+|[\/\]]+$/g, '').trim();
+  
+  // 1. 移除结合变音符及多余符号
+  str = str.replace(/[\u0300-\u036f]/g, '');
+  str = str.replace(/[\x00-\x1f\x7f-\x9f\ufffd]/g, '');
+  str = str.replace(/[()]/g, '');
+  
+  // 2. 将美式 Webster/拼音音标转换为现代国际标准 IPA
+  str = str.replace(/ô[r]?|ôr/g, "ɔːr")
+           .replace(/ô/g, "ɔː")
+           .replace(/yo͞o|yo͝o|yoō|yoo/g, "juː")
+           .replace(/o͞o|o͝o|oō|oo/g, "uː")
+           .replace(/ō|oʊ/g, "oʊ")
+           .replace(/ā/g, "eɪ")
+           .replace(/ē/g, "iː")
+           .replace(/ī/g, "aɪ")
+           .replace(/ä/g, "ɑː");
+  
+  // 3. 规范化长音符号与重音符号
+  str = str.replace(/:/g, "ː")
+           .replace(/['`]/g, "ˈ")
+           .replace(/ˌ/g, "ˌ")
+           .replace(/ədiː|ədi/g, "əti");
+  
+  // 4. 优化开头闭音节与常见辅音组合
+  str = str.replace(/^inˈ/g, "ɪnˈ")
+           .replace(/^in/g, "ɪn")
+           .replace(/^rəˈ/g, "rɪˈ");
+  
+  str = str.trim();
+  return str ? `/${str}/` : "";
+}
+
+function extractPhoneticFromItem(item) {
+  if (item.phonetic) return cleanIPA(item.phonetic);
+  if (item.notes && item.notes.includes("音标:")) {
+    const m = item.notes.match(/音标:\s*(\/[^\n\/]+\/)/);
+    if (m) return cleanIPA(m[1]);
+  }
+  return "";
+}
+
+function cleanNotes(notes) {
+  if (!notes) return "";
+  const s = notes.trim();
+  if (s.includes("记忆：") || s.includes("sub（在下面）") || s.includes("外刊核心高阶词汇") || s.includes("结合上下文例句加深意群语感")) {
+    return "";
+  }
+  return s.replace(/音标:\s*\/[^\n\/]+\/\s*/g, "").trim();
+}
+
+function getSourceFavicon(item) {
+  const title = (item.title || "").toLowerCase();
+  const url = (item.url || "").toLowerCase();
+
+  if (title.includes("wsj") || url.includes("wsj.com")) return "https://www.wsj.com/favicon.ico";
+  if (title.includes("bloomberg") || url.includes("bloomberg.com")) return "https://www.bloomberg.com/favicon.ico";
+  if (title.includes("ft") || title.includes("financial times") || url.includes("ft.com")) return "https://www.ft.com/favicon.ico";
+  if (title.includes("economist") || url.includes("economist.com")) return "https://www.economist.com/favicon.ico";
+  if (title.includes("reuters") || url.includes("reuters.com")) return "https://www.reuters.com/favicon.ico";
+  if (title.includes("nytimes") || url.includes("nytimes.com")) return "https://www.nytimes.com/favicon.ico";
+  if (item.url && item.url.startsWith("http")) {
+    try {
+      const u = new URL(item.url);
+      return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
+    } catch (e) {}
+  }
+  return "https://www.wsj.com/favicon.ico";
+}
+
+function highlightWordInSentence(sentence, word) {
+  if (!sentence || !word) return sentence || '';
+  try {
+    const regex = new RegExp(`(\\b${word}\\b|${word})`, 'gi');
+    return sentence.replace(regex, `<span class="highlight">$1</span>`);
+  } catch (e) {
+    return sentence;
+  }
+}
+
+// 艾宾浩斯记忆等级标签
+function getSrsInfo(level = 0) {
+  const lv = parseInt(level) || 0;
+  switch (lv) {
+    case 3:
+      return { class: "srs-level-3", label: "熟练掌握", days: 7 };
+    case 2:
+      return { class: "srs-level-2", label: "巩固阶段", days: 3 };
+    case 1:
+      return { class: "srs-level-1", label: "初识阶段", days: 1 };
+    default:
+      return { class: "srs-level-0", label: "生疏待背", days: 0 };
+  }
+}
+
+function getStandardJsonList() {
+  return currentWords.map(item => ({
+    text: item.text || item.word,
+    trans: item.trans || item.definition || '',
+    phonetic: extractPhoneticFromItem(item),
+    context: item.context || item.sentence || '',
+    title: item.title || item.sourceTitle || 'Web Article',
+    url: item.url || item.sourceUrl || '',
+    date: item.date ? (typeof item.date === 'number' ? item.date : new Date(item.date).getTime()) : Date.now(),
+    notes: cleanNotes(item.notes),
+    srsLevel: item.srsLevel || 0,
+    srsNextReview: item.srsNextReview || 0,
+    srsReviews: item.srsReviews || 0
+  }));
+}
+
+function updateSyncBadge(status, text) {
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncText');
+  if (!dot || !txt) return;
+
+  if (status === 'connected') {
+    dot.className = "sync-icon-dot active";
+    txt.innerText = text || "已同步";
+  } else if (status === 'syncing') {
+    dot.className = "sync-icon-dot active rotating";
+    txt.innerText = "正在同步中...";
+  } else {
+    dot.className = "sync-icon-dot";
+    txt.innerText = text || "未同步";
+  }
+}
+
+// 全量多端融合同步引擎：欧路词典 OpenAPI 增量拉取 + 坚果云 WebDAV 双向合并
+async function doFullSync(showToast = false) {
+  updateSyncBadge('syncing', '正在同步中...');
+
+  let eudicNewCount = 0;
+  let eudicTotalScanned = 0;
+  let eudicError = null;
+
+  // 1. 若配置了欧路 Token，自动拉取欧路全部分类生词
+  const storageData = await new Promise(resolve => {
+    chrome.storage.sync.get({ eudicToken: '' }, resolve);
+  });
+
+  const token = (storageData.eudicToken || "").trim();
+  if (token) {
+    try {
+      const engine = new EudicSyncEngine(token);
+      const eudicWords = await engine.fetchAllCategoriesAndWords();
+      eudicTotalScanned = eudicWords.length;
+      
+      const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords);
+      eudicNewCount = newAddedCount;
+      if (newAddedCount > 0) {
+        currentWords = mergedList;
+        await new Promise(resolve => {
+          chrome.storage.local.set({ savedWords: currentWords }, resolve);
+        });
+        if (currentView !== 'flashcard') {
+          applyFilter();
+        }
+      }
+    } catch (err) {
+      console.warn("欧路词典自动拉取失败:", err);
+      eudicError = err.message;
+    }
+  }
+
+  // 2. 紧接着执行坚果云 WebDAV 双向同步
+  if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
+    chrome.runtime.sendMessage({
+      action: "MANUAL_WEBDAV_SYNC",
+      config: webdavConfig
+    }, (res) => {
+      if (res && res.success) {
+        updateSyncBadge('connected', `已同步 (${res.count} 词)`);
+        chrome.storage.local.get({ savedWords: [] }, (r) => {
+          currentWords = r.savedWords || [];
+          if (currentView !== 'flashcard') {
+            applyFilter();
+          }
+        });
+        if (showToast) {
+          let msg = `🎉 同步完成！当前生词库共 ${res.count} 词。`;
+          if (token && eudicNewCount > 0) {
+            msg += `\n\n• 成功从欧路词典新增入库: ${eudicNewCount} 个生词`;
+          } else if (token) {
+            msg += `\n\n• 欧路词典已扫描 (${eudicTotalScanned} 词)，暂无未收录新词`;
+          }
+          if (eudicError) {
+            msg += `\n\n⚠️ 欧路词典同步提示: ${eudicError}`;
+          }
+          alert(msg);
+        }
+      } else {
+        updateSyncBadge('disconnected', "同步失败 (请检查密码)");
+        if (showToast) alert(`❌ WebDAV 同步失败: ${res ? res.error : '网络超时或密码错误'}`);
+      }
+    });
+  } else {
+    // 仅欧路模式
+    if (token) {
+      updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
+      if (showToast) {
+        if (eudicError) {
+          alert(`❌ 欧路同步失败: ${eudicError}`);
+        } else {
+          alert(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 个未收录单词。`);
+        }
+      }
+    } else {
+      updateSyncBadge('disconnected', '未配置同步');
+      if (showToast) alert("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！");
+    }
+  }
+}
+
+async function doWebDAVSync(showToast = false) {
+  return doFullSync(showToast);
+}
+
+function doWebDAVOverwrite() {
+  if (!webdavConfig || !webdavConfig.enabled || !webdavConfig.username || !webdavConfig.password) {
+    return;
+  }
+  updateSyncBadge('syncing');
+  chrome.runtime.sendMessage({
+    action: "OVERWRITE_WEBDAV_SYNC",
+    config: webdavConfig
+  }, (res) => {
+    if (res && res.success) {
+      updateSyncBadge('connected', `坚果云已同步 (${res.count} 词)`);
+    }
+  });
+}
+
+// 辅助函数：根据 SRS 等级与复习历史获取熟练度圆点颜色、描述及下一档状态
+function getMasteryInfo(level, reviews = 0) {
+  const lvl = parseInt(level);
+  const rev = parseInt(reviews) || 0;
+
+  // 未标记：未设过或未复习过
+  if (isNaN(lvl) || (lvl === 0 && rev === 0)) {
+    return { class: 'mastery-dot-unmarked', title: '熟练度: ⚪ 未标记 (点击开始标记)', nextLevel: 1 };
+  }
+  if (lvl === 0) {
+    return { class: 'mastery-dot-red', title: '熟练度: 🔴 陌生 (点击切换为学习中)', nextLevel: 1 };
+  } else if (lvl >= 1 && lvl <= 2) {
+    return { class: 'mastery-dot-orange', title: '熟练度: 🟠 学习中 (点击切换为已掌握)', nextLevel: 3 };
+  } else if (lvl >= 3 && lvl <= 4) {
+    return { class: 'mastery-dot-green', title: '熟练度: 🟢 已掌握 (点击切换为已精通)', nextLevel: 5 };
+  } else {
+    return { class: 'mastery-dot-purple', title: '熟练度: 🔵 已精通 (点击重置为未标记)', nextLevel: -1 };
+  }
+}
+
+// 快速设置某个单词的熟练度
+function setWordMastery(targetWord, targetLevel) {
+  const item = currentWords.find(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+  if (!item) return;
+
+  if (targetLevel === -1) {
+    item.srsLevel = 0;
+    item.srsReviews = 0;
+    item.srsNextReview = 0;
+  } else {
+    item.srsLevel = targetLevel;
+    item.srsReviews = Math.max(1, (parseInt(item.srsReviews) || 0) + 1);
+    item.srsNextReview = targetLevel === 0 ? 0 : Date.now() + (targetLevel * 24 * 3600 * 1000);
+  }
+
+  chrome.storage.local.set({ savedWords: currentWords }, () => {
+    applyFilter();
+    updateStats();
+    doWebDAVSync(false);
+  });
+}
+
+// 渲染主表格列表
+function renderList(list) {
+  filteredWords = list;
+  const tbody = document.getElementById('tableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
+    return;
+  }
+  
+  list.forEach((item) => {
+    const wordText = item.text || item.word || "";
+    const phonetic = extractPhoneticFromItem(item);
+    const transText = formatTrans(item.trans || item.definition || "");
+    const notesText = cleanNotes(item.notes);
+    const contextSentence = highlightWordInSentence(item.context || item.sentence || "暂无上下文例句", wordText);
+    const sourceTitle = item.title || "Web Article";
+    const faviconUrl = getSourceFavicon(item);
+    const masteryInfo = getMasteryInfo(item.srsLevel, item.srsReviews);
+    
+    const realIndex = currentWords.findIndex(w => (w.text || w.word) === wordText);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="vertical-align: middle !important; text-align: center;">
+        <div class="word-cell-wrap">
+          <span class="word-title">${wordText}</span>
+          ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic}</span>` : ''}
+        </div>
+      </td>
+      <td style="vertical-align: middle !important;">
+        <div class="salad-context-box">
+          <div class="salad-sentence">${contextSentence}</div>
+          <div class="salad-divider"></div>
+          <div class="salad-source">
+            <img src="${faviconUrl}" class="salad-favicon" onerror="this.style.display='none'">
+            ${item.url ? `<a href="${item.url}" target="_blank" class="salad-source-text">${sourceTitle}</a>` : `<span class="salad-source-text">${sourceTitle}</span>`}
+          </div>
+        </div>
+      </td>
+      <td style="vertical-align: middle !important;">
+        <div class="trans-text">${transText}</div>
+      </td>
+      <td style="vertical-align: middle !important;">
+        ${notesText ? `<div class="note-box">${notesText}</div>` : ''}
+      </td>
+      <td style="vertical-align: middle !important;">
+        <div class="action-group">
+          <div class="mastery-wrap">
+            <button class="mastery-dot-btn btn-mastery-toggle" data-word="${wordText}" title="${masteryInfo.title}">
+              <span class="mastery-dot-glow ${masteryInfo.class}"></span>
+            </button>
+            <div class="mastery-picker-popup">
+              <button class="candy-option btn-candy" data-word="${wordText}" data-level="-1" title="⚪ 设为未标记">
+                <span class="candy-dot" style="border: 1.5px dashed #A8A29E; background: transparent;"></span>
+              </button>
+              <button class="candy-option btn-candy" data-word="${wordText}" data-level="0" title="🔴 陌生 (Lv 0)">
+                <span class="candy-dot" style="background: #EF4444; box-shadow: 0 0 5px rgba(239, 68, 68, 0.6);"></span>
+              </button>
+              <button class="candy-option btn-candy" data-word="${wordText}" data-level="1" title="🟠 学习中 (Lv 1)">
+                <span class="candy-dot" style="background: #F59E0B; box-shadow: 0 0 5px rgba(245, 158, 11, 0.6);"></span>
+              </button>
+              <button class="candy-option btn-candy" data-word="${wordText}" data-level="3" title="🟢 已掌握 (Lv 3)">
+                <span class="candy-dot" style="background: #10B981; box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);"></span>
+              </button>
+              <button class="candy-option btn-candy" data-word="${wordText}" data-level="5" title="🔵 已精通 (Lv 5)">
+                <span class="candy-dot" style="background: #6366F1; box-shadow: 0 0 5px rgba(99, 102, 241, 0.6);"></span>
+              </button>
+            </div>
+          </div>
+          <button class="apple-icon-btn btn-edit" data-word="${wordText}" title="编辑词条与笔记">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </button>
+          <button class="apple-icon-btn apple-icon-btn-del btn-del" data-word="${wordText}" title="删除词条">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // 点击熟练度圆点：直接展开并锁定微胶囊选择器，方便用户选色
+  tbody.querySelectorAll('.btn-mastery-toggle').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const wrap = btn.closest('.mastery-wrap');
+      const popup = wrap ? wrap.querySelector('.mastery-picker-popup') : null;
+      if (!popup) return;
+
+      const isOpen = popup.classList.contains('open');
+      // 先关闭所有其他打开的弹窗
+      document.querySelectorAll('.mastery-picker-popup.open').forEach(p => p.classList.remove('open'));
+      
+      if (!isOpen) {
+        popup.classList.add('open');
+      }
+    };
+  });
+
+  // 悬浮糖果胶囊选择器：一键直达选定并自动收起
+  tbody.querySelectorAll('.btn-candy').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const targetWord = btn.getAttribute('data-word');
+      const targetLevel = parseInt(btn.getAttribute('data-level'));
+      document.querySelectorAll('.mastery-picker-popup.open').forEach(p => p.classList.remove('open'));
+      setWordMastery(targetWord, targetLevel);
+    };
+  });
+
+  tbody.querySelectorAll('.audio-phonetic-trigger').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      speakWord(btn.getAttribute('data-word'));
+    };
+  });
+
+  tbody.querySelectorAll('.btn-edit').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const targetWord = btn.getAttribute('data-word');
+      const idx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+      if (idx !== -1) {
+        openEditModal(idx);
+      }
+    };
+  });
+
+  tbody.querySelectorAll('.btn-del').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const targetWord = btn.getAttribute('data-word');
+      if (!targetWord) return;
+      
+      if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
+        currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
+        chrome.storage.local.set({ savedWords: currentWords }, () => {
+          doWebDAVOverwrite(); // 关键：立即用删除后的纯净数据覆盖坚果云端，彻底抹除云端该词！
+          
+          // 关键：同时从欧路词典生词本中同步删除该词
+          chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+            if (r.eudicToken) {
+              const engine = new EudicSyncEngine(r.eudicToken);
+              engine.deleteWord(targetWord).catch(err => {
+                console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
+              });
+            }
+          });
+
+          applyFilter();
+        });
+      }
+    };
+  });
+}
+
+// ---------------- 艾宾浩斯交互闪卡系统 (SM-2 SRS + 定量组自测) ----------------
+let currentBatchSize = '20'; // 10, 20, 50, all
+let batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
+let batchTotalTarget = 20;
+
+// 智能释义格式化引擎：多词性 (n./v./adj./adv.) 与形态衍生 (时态/名词/复数) 自动分行排版
+function formatTrans(s) {
+  if (!s) return "";
+  let str = String(s).replace(/<[^>]+>/g, '').trim();
+
+  // 1. 标准化分号与逗号
+  str = str.replace(/;/g, '；')
+           .replace(/；\s*/g, '；')
+           .replace(/,\s*/g, '，')
+           .replace(/，\s*/g, '，');
+
+  // 2. 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. prep. conj. pron. art. num. interj. aux. v.)
+  const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|prep|conj|pron|art|num|int|interj|aux)\.)\s*/gi;
+  str = str.replace(posRegex, '\n$1 ');
+
+  // 3. 识别中文时态与衍生词标记并自动换行 (如 时 态: 名 词: 形 容 词: 副 词: 复 数: 比较级: 最高级: 过去式: 过去分词: 等)
+  const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词)\s*[:：])\s*/gi;
+  str = str.replace(metaRegex, '\n$1 ');
+
+  // 4. 清理每行首尾多余标点与空格
+  return str.split('\n')
+            .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, '').trim())
+            .filter(Boolean)
+            .join('\n');
+}
+
+function updateFlashcardList(resetIndex = false) {
+  // 重置完成小结卡片
+  const summaryCard = document.getElementById('flashcardSummaryCard');
+  const cardBox = document.getElementById('flashcardBox');
+  const barUnrevealed = document.getElementById('smartBarUnrevealed');
+  const barRevealed = document.getElementById('smartBarRevealed');
+
+  if (summaryCard) summaryCard.style.display = 'none';
+  if (cardBox) cardBox.style.display = 'flex';
+  if (barUnrevealed) barUnrevealed.style.display = 'flex';
+  if (barRevealed) barRevealed.style.display = 'none';
+
+  // 重置统计数据
+  batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
+
+  let pool = [...filteredWords];
+  
+  // 优先按定量抽取生词 (生疏与到期复习优先)
+  if (currentBatchSize !== 'all') {
+    const targetN = parseInt(currentBatchSize) || 20;
+    const unmastered = pool.filter(w => (parseInt(w.srsLevel) || 0) === 0);
+    const reviewing = pool.filter(w => (parseInt(w.srsLevel) || 0) > 0);
+    pool = [...unmastered, ...reviewing].slice(0, targetN);
+  }
+
+  cardList = pool;
+  batchTotalTarget = cardList.length;
+
+  if (resetIndex || cardIndex >= cardList.length) {
+    cardIndex = 0;
+  }
+  renderFlashcard();
+}
+
+function triggerConfetti() {
+  const canvas = document.getElementById('confettiCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+
+  const colors = ['#CC785C', '#059669', '#2563EB', '#D97706', '#8B5CF6', '#EC4899'];
+  const particles = [];
+  for (let i = 0; i < 70; i++) {
+    particles.push({
+      x: canvas.width / 2 + (Math.random() * 240 - 120),
+      y: canvas.height / 2 + 60,
+      vx: (Math.random() - 0.5) * 14,
+      vy: (Math.random() * -13) - 5,
+      size: Math.random() * 7 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 8,
+      gravity: 0.36,
+      opacity: 1
+    });
+  }
+
+  let frame = 0;
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.rotation += p.rotSpeed;
+      p.opacity -= 0.009;
+
+      if (p.opacity > 0) {
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = p.opacity;
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+    });
+
+    frame++;
+    if (alive && frame < 180) {
+      requestAnimationFrame(render);
+    } else {
+      canvas.style.display = 'none';
+    }
+  }
+  requestAnimationFrame(render);
+}
+
+function renderFlashcard() {
+  const barUnrevealed = document.getElementById('smartBarUnrevealed');
+  const barRevealed = document.getElementById('smartBarRevealed');
+
+  if (cardList.length === 0) {
+    document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
+    document.getElementById('fcPhonetic').innerText = "";
+    document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "生词本为空，快去外刊划词加入吧！" : "恭喜！所选分组下暂无待复习词汇。";
+    document.getElementById('fcAnswerBox').style.display = 'none';
+    document.getElementById('cardCurrentIndex').innerText = "0";
+    document.getElementById('cardTotalCount').innerText = "0";
+    document.getElementById('cardProgressFill').style.width = '0%';
+    if (barUnrevealed) barUnrevealed.style.display = 'none';
+    if (barRevealed) barRevealed.style.display = 'none';
+    return;
+  }
+
+  if (barUnrevealed) barUnrevealed.style.display = 'flex';
+  if (barRevealed) barRevealed.style.display = 'none';
+
+  if (cardIndex >= cardList.length) cardIndex = 0;
+  if (cardIndex < 0) cardIndex = cardList.length - 1;
+
+  const item = cardList[cardIndex];
+  const word = item.text || item.word || "";
+  const phonetic = extractPhoneticFromItem(item);
+  const trans = formatTrans(item.trans || item.definition || "");
+  const notes = cleanNotes(item.notes);
+  const context = highlightWordInSentence(item.context || item.sentence || "暂无上下文例句", word);
+  const srs = getSrsInfo(item.srsLevel || 0);
+
+  document.getElementById('fcWord').innerText = word;
+  document.getElementById('fcPhonetic').innerText = phonetic;
+  document.getElementById('fcContext').innerHTML = context;
+  document.getElementById('fcTrans').innerText = trans;
+
+  const badgeEl = document.getElementById('fcSrsBadge');
+  badgeEl.className = `srs-badge ${srs.class}`;
+  document.getElementById('fcSrsText').innerText = srs.label;
+
+  const notesEl = document.getElementById('fcNotes');
+  if (notes) {
+    notesEl.innerText = notes;
+    notesEl.style.display = 'block';
+  } else {
+    notesEl.style.display = 'none';
+  }
+
+  // 重置揭晓状态
+  cardRevealed = false;
+  document.getElementById('fcAnswerBox').style.display = 'none';
+  document.getElementById('cardHintText').innerText = "点击卡片翻转揭晓释义";
+
+  // 进度指示
+  document.getElementById('cardCurrentIndex').innerText = (cardIndex + 1).toString();
+  document.getElementById('cardTotalCount').innerText = batchTotalTarget.toString();
+  const pct = Math.min(100, ((cardIndex + 1) / batchTotalTarget) * 100);
+  document.getElementById('cardProgressFill').style.width = `${pct}%`;
+}
+
+function showBatchSummary() {
+  const summaryCard = document.getElementById('flashcardSummaryCard');
+  const cardBox = document.getElementById('flashcardBox');
+  const barUnrevealed = document.getElementById('smartBarUnrevealed');
+  const barRevealed = document.getElementById('smartBarRevealed');
+
+  if (summaryCard && cardBox) {
+    cardBox.style.display = 'none';
+    if (barUnrevealed) barUnrevealed.style.display = 'none';
+    if (barRevealed) barRevealed.style.display = 'none';
+    summaryCard.style.display = 'flex';
+
+    document.getElementById('statForgotCount').innerText = batchStats.forgot.toString();
+    document.getElementById('statHardCount').innerText = batchStats.hard.toString();
+    document.getElementById('statGoodCount').innerText = batchStats.good.toString();
+    document.getElementById('summarySubtitle').innerText = `您已完成本组 ${batchTotalTarget} 个单词的艾宾浩斯强化自测！`;
+
+    // 绽放 Apple 级五彩礼花微动效
+    triggerConfetti();
+  }
+}
+
+function toggleCardReveal() {
+  cardRevealed = !cardRevealed;
+  const ansBox = document.getElementById('fcAnswerBox');
+  const hint = document.getElementById('cardHintText');
+  const barUnrevealed = document.getElementById('smartBarUnrevealed');
+  const barRevealed = document.getElementById('smartBarRevealed');
+
+  if (cardRevealed) {
+    ansBox.style.display = 'block';
+    hint.innerText = "请根据记忆情况进行反馈";
+    if (barUnrevealed) barUnrevealed.style.display = 'none';
+    if (barRevealed) barRevealed.style.display = 'flex';
+  } else {
+    ansBox.style.display = 'none';
+    hint.innerText = "点击卡片翻转揭晓释义";
+    if (barUnrevealed) barUnrevealed.style.display = 'flex';
+    if (barRevealed) barRevealed.style.display = 'none';
+  }
+}
+
+// 艾宾浩斯记忆反馈处理 (1: 忘了, 2: 模糊, 3: 熟练)
+function handleSRSFeedback(rating) {
+  if (cardList.length === 0) return;
+  const item = cardList[cardIndex];
+  if (!item) return;
+
+  const currentLevel = parseInt(item.srsLevel) || 0;
+  let newLevel = currentLevel;
+  let intervalDays = 1;
+
+  if (rating === 1) { // 忘了
+    newLevel = 0;
+    intervalDays = 0.5;
+    batchStats.forgot++;
+  } else if (rating === 2) { // 模糊
+    newLevel = Math.max(1, currentLevel);
+    intervalDays = 1;
+    batchStats.hard++;
+  } else if (rating === 3) { // 熟练
+    newLevel = Math.min(3, currentLevel + 1);
+    intervalDays = newLevel === 3 ? 7 : (newLevel === 2 ? 3 : 1);
+    batchStats.good++;
+  }
+
+  batchStats.completedCount++;
+
+  item.srsLevel = newLevel;
+  item.srsNextReview = Date.now() + intervalDays * 24 * 3600 * 1000;
+  item.srsReviews = (item.srsReviews || 0) + 1;
+
+  // 同步更新主词库中的该词
+  const realIdx = currentWords.findIndex(w => (w.text || w.word) === (item.text || item.word));
+  if (realIdx !== -1) {
+    currentWords[realIdx] = Object.assign(currentWords[realIdx], item);
+    isInternalSrsUpdate = true;
+    chrome.storage.local.set({ savedWords: currentWords }, () => {
+      isInternalSrsUpdate = false;
+      doWebDAVSync(false);
+    });
+  }
+
+  // 判断是否已完成本组自测
+  if (batchStats.completedCount >= batchTotalTarget) {
+    showBatchSummary();
+    return;
+  }
+
+  // 平滑切换到下一张
+  cardIndex = (cardIndex + 1) % cardList.length;
+  renderFlashcard();
+}
+
+function nextCard() {
+  if (cardList.length === 0) return;
+  cardIndex = (cardIndex + 1) % cardList.length;
+  renderFlashcard();
+}
+
+function prevCard() {
+  if (cardList.length === 0) return;
+  cardIndex = (cardIndex - 1 + cardList.length) % cardList.length;
+  renderFlashcard();
+}
+
+function shuffleCards() {
+  if (cardList.length <= 1) return;
+  for (let i = cardList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cardList[i], cardList[j]] = [cardList[j], cardList[i]];
+  }
+  cardIndex = 0;
+  renderFlashcard();
+  const current = cardList[0];
+  if (current) speakWord(current.text || current.word);
+}
+
+// 视图切换控制
+function switchView(viewName) {
+  currentView = viewName;
+  const tableContainer = document.getElementById('viewTableContainer');
+  const flashcardContainer = document.getElementById('viewFlashcardContainer');
+  const tabTable = document.getElementById('tabTableView');
+  const tabCard = document.getElementById('tabFlashcardView');
+
+  if (viewName === 'table') {
+    tableContainer.style.display = 'block';
+    flashcardContainer.style.display = 'none';
+    tabTable.classList.add('active');
+    tabCard.classList.remove('active');
+    applyFilter();
+  } else {
+    tableContainer.style.display = 'none';
+    flashcardContainer.style.display = 'flex';
+    tabCard.classList.add('active');
+    tabTable.classList.remove('active');
+    updateFlashcardList(true);
+  }
+}
+
+let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
+
+function applyFilter() {
+  const q = (document.getElementById('searchInput') ? document.getElementById('searchInput').value : "").toLowerCase().trim();
+
+  const filtered = currentWords.filter(item => {
+    // 文本匹配
+    const matchText = !q || (
+      (item.text || item.word || '').toLowerCase().includes(q) ||
+      (item.trans || item.definition || '').toLowerCase().includes(q) ||
+      (item.context || item.sentence || '').toLowerCase().includes(q) ||
+      (item.notes || '').toLowerCase().includes(q)
+    );
+
+    // 熟练度多选匹配
+    let matchSrs = true;
+    if (!selectedSrsSet.has('all')) {
+      const itemLv = (parseInt(item.srsLevel) || 0).toString();
+      matchSrs = selectedSrsSet.has(itemLv);
+    }
+
+    return matchText && matchSrs;
+  });
+
+  filteredWords = filtered;
+  renderList(filtered);
+  if (currentView !== 'flashcard') {
+    updateFlashcardList(false);
+  }
+}
+
+function saveAndRefresh() {
+  chrome.storage.local.set({ savedWords: currentWords }, () => {
+    doWebDAVSync(false);
+    applyFilter();
+  });
+}
+
+// 模态弹窗管理
+const modal = document.getElementById('editModal');
+const vocabForm = document.getElementById('vocabForm');
+const modalTitle = document.getElementById('modalTitle');
+const editIndexInput = document.getElementById('editIndex');
+const autoFillStatus = document.getElementById('wordAutoFillStatus');
+const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+
+const davModal = document.getElementById('webdavModal');
+const davForm = document.getElementById('davForm');
+
+function openAddModal() {
+  modalTitle.innerText = "添加新词条";
+  if (modalSubmitBtn) modalSubmitBtn.innerText = "保存入库";
+  editIndexInput.value = "-1";
+  vocabForm.reset();
+  modal.style.display = "flex";
+  document.getElementById('inputWord').focus();
+}
+
+function openEditModal(idx) {
+  modalTitle.innerText = "编辑生词与笔记";
+  if (modalSubmitBtn) modalSubmitBtn.innerText = "保存修改";
+  editIndexInput.value = idx.toString();
+  const item = currentWords[idx];
+  if (!item) return;
+
+  document.getElementById('inputWord').value = item.text || item.word || "";
+  document.getElementById('inputPhonetic').value = extractPhoneticFromItem(item);
+  document.getElementById('inputTrans').value = item.trans || item.definition || "";
+  document.getElementById('inputContext').value = item.context || item.sentence || "";
+  document.getElementById('inputSource').value = item.title || "";
+  document.getElementById('inputNotes').value = cleanNotes(item.notes);
+
+  modal.style.display = "flex";
+}
+
+function closeModal() {
+  modal.style.display = "none";
+}
+
+function openDavModal() {
+  if (webdavConfig) {
+    document.getElementById('davServer').value = webdavConfig.serverUrl || "https://dav.jianguoyun.com/dav/";
+    document.getElementById('davUsername').value = webdavConfig.username || "";
+    document.getElementById('davPassword').value = webdavConfig.password || "";
+    document.getElementById('davPath').value = webdavConfig.filePath || "antigravity/antigravity.json";
+    document.getElementById('davEnable').checked = !!webdavConfig.enabled;
+  }
+  chrome.storage.sync.get({ eudicToken: "" }, (r) => {
+    const eudicInp = document.getElementById('eudicTokenInput');
+    if (eudicInp && r.eudicToken) {
+      eudicInp.value = r.eudicToken;
+    }
+  });
+  davModal.style.display = "flex";
+}
+
+function closeDavModal() {
+  davModal.style.display = "none";
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.storage.sync.get({ webdavConfig: null }, (res) => {
+    webdavConfig = res.webdavConfig;
+    if (webdavConfig && webdavConfig.enabled) {
+      updateSyncBadge('connected', '坚果云已就绪');
+      doWebDAVSync(false);
+    }
+  });
+
+  // 读取本地生词库 (默认空白 [])
+  chrome.storage.local.get({ savedWords: [] }, (res) => {
+    const list = res.savedWords || [];
+    currentWords = list.map(item => {
+      item.notes = cleanNotes(item.notes);
+      if (item.phonetic) item.phonetic = cleanIPA(item.phonetic);
+      if (typeof item.srsLevel === 'undefined') item.srsLevel = 0;
+      return item;
+    });
+    
+    applyFilter();
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.savedWords) {
+      currentWords = changes.savedWords.newValue || [];
+      if (!isInternalSrsUpdate && currentView !== 'flashcard') {
+        applyFilter();
+      }
+    }
+  });
+
+  // 添加新词输入框防抖查词与失焦查词
+  const inputWordEl = document.getElementById('inputWord');
+  if (inputWordEl) {
+    inputWordEl.addEventListener('input', (e) => {
+      clearTimeout(autoLookupTimeout);
+      autoLookupTimeout = setTimeout(() => {
+        handleWordInputAutoFill(e.target.value);
+      }, 400);
+    });
+    inputWordEl.addEventListener('blur', (e) => {
+      handleWordInputAutoFill(e.target.value);
+    });
+  }
+
+  // Tab 切换事件
+  document.getElementById('tabTableView').onclick = () => switchView('table');
+  document.getElementById('tabFlashcardView').onclick = () => switchView('flashcard');
+
+  // 闪卡自测事件
+  document.getElementById('flashcardBox').onclick = toggleCardReveal;
+  
+  const btnRevealCard = document.getElementById('btnRevealCard');
+  if (btnRevealCard) {
+    btnRevealCard.onclick = (e) => {
+      e.stopPropagation();
+      toggleCardReveal();
+    };
+  }
+
+  document.getElementById('btnCardNext').onclick = (e) => {
+    e.stopPropagation();
+    nextCard();
+  };
+  document.getElementById('btnCardPrev').onclick = (e) => {
+    e.stopPropagation();
+    prevCard();
+  };
+  document.getElementById('btnCardShuffle').onclick = (e) => {
+    e.stopPropagation();
+    shuffleCards();
+  };
+  
+  const fcAudioPill = document.getElementById('fcAudioPill');
+  if (fcAudioPill) {
+    fcAudioPill.onclick = (e) => {
+      e.stopPropagation();
+      const w = document.getElementById('fcWord').innerText;
+      speakWord(w);
+    };
+  }
+
+  // 闪卡定量自测 Tabs (10 / 20 / 50 / 全部)
+  const batchTabs = document.querySelectorAll('.batch-tab');
+  batchTabs.forEach(tab => {
+    tab.onclick = () => {
+      batchTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentBatchSize = tab.getAttribute('data-size');
+      updateFlashcardList(true);
+    };
+  });
+
+  const btnRestartBatch = document.getElementById('btnRestartBatch');
+  if (btnRestartBatch) {
+    btnRestartBatch.onclick = () => {
+      updateFlashcardList(true);
+    };
+  }
+
+  const btnBackToTable = document.getElementById('btnBackToTable');
+  if (btnBackToTable) {
+    btnBackToTable.onclick = () => {
+      switchView('table');
+    };
+  }
+
+  // 艾宾浩斯自测反馈按键点击
+  document.getElementById('btnSrsAgain').onclick = (e) => {
+    e.stopPropagation();
+    handleSRSFeedback(1);
+  };
+  document.getElementById('btnSrsHard').onclick = (e) => {
+    e.stopPropagation();
+    handleSRSFeedback(2);
+  };
+  document.getElementById('btnSrsGood').onclick = (e) => {
+    e.stopPropagation();
+    handleSRSFeedback(3);
+  };
+
+  // 全局键盘快捷键
+  document.addEventListener('keydown', (e) => {
+    if (modal.style.display === 'flex' || davModal.style.display === 'flex') return;
+    if (document.activeElement === document.getElementById('searchInput')) return;
+
+    if (currentView === 'flashcard') {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        toggleCardReveal();
+      } else if (e.code === 'Digit1' || e.code === 'Numpad1') {
+        e.preventDefault();
+        if (!cardRevealed) toggleCardReveal();
+        handleSRSFeedback(1);
+      } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault();
+        if (!cardRevealed) toggleCardReveal();
+        handleSRSFeedback(2);
+      } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+        e.preventDefault();
+        if (!cardRevealed) toggleCardReveal();
+        handleSRSFeedback(3);
+      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        e.preventDefault();
+        nextCard();
+      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        e.preventDefault();
+        prevCard();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        const w = document.getElementById('fcWord').innerText;
+        speakWord(w);
+      }
+    }
+  });
+
+  // 闪卡纯净音标点击朗读
+  const fcPhoneticEl = document.getElementById('fcPhonetic');
+  if (fcPhoneticEl) {
+    fcPhoneticEl.onclick = (e) => {
+      e.stopPropagation();
+      const w = document.getElementById('fcWord').innerText;
+      speakWord(w);
+    };
+  }
+
+  // 状态胶囊点击：点击图标立即触发手动刷新，点击胶囊文本打开设置面板
+  const btnSyncStatus = document.getElementById('btnSyncStatus');
+  const syncDotEl = document.getElementById('syncDot');
+
+  if (syncDotEl) {
+    syncDotEl.onclick = (e) => {
+      e.stopPropagation();
+      syncDotEl.classList.add('rotating');
+      doWebDAVSync(false).then(() => {
+        setTimeout(() => {
+          syncDotEl.classList.remove('rotating');
+        }, 800);
+      }).catch(() => {
+        syncDotEl.classList.remove('rotating');
+      });
+    };
+  }
+
+  if (btnSyncStatus) {
+    btnSyncStatus.onclick = openDavModal;
+  }
+  document.getElementById('davModalClose').onclick = closeDavModal;
+
+  // 欧路词典 (Eudic) 一键拉取合并
+  const btnEudicSync = document.getElementById('btnEudicSync');
+  if (btnEudicSync) {
+    btnEudicSync.onclick = async (e) => {
+      e.preventDefault();
+      const token = (document.getElementById('eudicTokenInput') ? document.getElementById('eudicTokenInput').value : "").trim();
+      if (!token) {
+        alert("请先填写欧路词典授权 Token（可点击右上角「👉 获取授权 Token」在欧路开放平台一键生成）。");
+        return;
+      }
+
+      const statusEl = document.getElementById('eudicSyncStatus');
+      btnEudicSync.disabled = true;
+      btnEudicSync.innerText = "⏳ 正在拉取欧路生词...";
+      if (statusEl) statusEl.innerText = "正在连接欧路 OpenAPI...";
+
+      try {
+        chrome.storage.sync.set({ eudicToken: token });
+
+        const engine = new EudicSyncEngine(token);
+        if (statusEl) statusEl.innerText = "正在验证授权并扫描全部分类生词本...";
+        const eudicWords = await engine.fetchAllCategoriesAndWords();
+
+        if (statusEl) statusEl.innerText = `已拉取 ${eudicWords.length} 词，正在比对合并...`;
+        const { mergedList, newAddedCount, totalEudicScanned } = engine.mergeEudicWords(currentWords, eudicWords);
+
+        currentWords = mergedList;
+        chrome.storage.local.set({ savedWords: currentWords }, () => {
+          applyFilter();
+          doWebDAVSync(false);
+          alert(`🎉 欧路词典同步成功！\n\n• 扫描欧路生词: ${totalEudicScanned} 个\n• 成功新增入库: ${newAddedCount} 个未收录单词\n• 当前生词库总量: ${currentWords.length} 个\n\n新数据已自动同步至坚果云多端漫游！`);
+          if (statusEl) statusEl.innerText = `已同步: 新增 ${newAddedCount} 词 (总计: ${currentWords.length})`;
+        });
+      } catch (err) {
+        alert(`❌ 欧路词典同步失败: ${err.message}`);
+        if (statusEl) statusEl.innerText = `同步失败: ${err.message}`;
+      } finally {
+        btnEudicSync.disabled = false;
+        btnEudicSync.innerText = "📥 立即从欧路词典拉取合并";
+      }
+    };
+  }
+
+  document.getElementById('davTestBtn').onclick = () => {
+    const cfg = {
+      serverUrl: document.getElementById('davServer').value.trim(),
+      username: document.getElementById('davUsername').value.trim(),
+      password: document.getElementById('davPassword').value.trim(),
+      filePath: document.getElementById('davPath').value.trim(),
+      enabled: document.getElementById('davEnable').checked
+    };
+    webdavConfig = cfg;
+    chrome.storage.sync.set({ webdavConfig: cfg }, () => {
+      doWebDAVSync(true);
+    });
+  };
+
+  davForm.onsubmit = (e) => {
+    e.preventDefault();
+    const cfg = {
+      serverUrl: document.getElementById('davServer').value.trim(),
+      username: document.getElementById('davUsername').value.trim(),
+      password: document.getElementById('davPassword').value.trim(),
+      filePath: document.getElementById('davPath').value.trim(),
+      enabled: document.getElementById('davEnable').checked
+    };
+    webdavConfig = cfg;
+    chrome.storage.sync.set({ webdavConfig: cfg }, () => {
+      closeDavModal();
+      doWebDAVSync(true);
+    });
+  };
+
+  document.getElementById('modalClose').onclick = closeModal;
+  document.getElementById('modalCancel').onclick = closeModal;
+  document.getElementById('btnAddWord').onclick = openAddModal;
+
+  vocabForm.onsubmit = (e) => {
+    e.preventDefault();
+    const idx = parseInt(editIndexInput.value);
+    const word = document.getElementById('inputWord').value.trim();
+    const phonetic = document.getElementById('inputPhonetic').value.trim();
+    const trans = document.getElementById('inputTrans').value.trim();
+    const context = document.getElementById('inputContext').value.trim();
+    const source = document.getElementById('inputSource').value.trim() || 'Manual Entry';
+    const notes = document.getElementById('inputNotes').value.trim();
+
+    const newItem = {
+      text: word,
+      trans: trans,
+      phonetic: cleanIPA(phonetic),
+      context: context,
+      title: source,
+      url: "",
+      date: Date.now(),
+      notes: notes,
+      srsLevel: 0
+    };
+
+    if (idx === -1) {
+      const existIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase() === word.toLowerCase());
+      if (existIdx !== -1) {
+        currentWords[existIdx] = Object.assign(currentWords[existIdx], newItem);
+      } else {
+        currentWords.unshift(newItem);
+      }
+    } else {
+      currentWords[idx] = Object.assign(currentWords[idx] || {}, newItem);
+    }
+
+    closeModal();
+    saveAndRefresh();
+  };
+
+  const exportBtn = document.getElementById('btnExportJson');
+  if (exportBtn) {
+    exportBtn.onclick = () => {
+      const blob = new Blob([JSON.stringify(getStandardJsonList(), null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'antigravity.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+  }
+
+  // 苹果风格自定义多选下拉菜单交互 (宽度固定为 122px，绝不拉伸走形)
+  const srsDropdownBtn = document.getElementById('srsDropdownBtn');
+  const srsDropdownMenu = document.getElementById('srsDropdownMenu');
+  const currentSrsDot = document.getElementById('currentSrsDot');
+  const currentSrsLabel = document.getElementById('currentSrsLabel');
+
+  if (srsDropdownBtn && srsDropdownMenu) {
+    srsDropdownBtn.onclick = (e) => {
+      e.stopPropagation();
+      const isOpen = srsDropdownMenu.style.display === 'flex';
+      srsDropdownMenu.style.display = isOpen ? 'none' : 'flex';
+    };
+
+    document.addEventListener('click', () => {
+      srsDropdownMenu.style.display = 'none';
+      document.querySelectorAll('.mastery-picker-popup.open').forEach(p => p.classList.remove('open'));
+    });
+
+    srsDropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const val = item.getAttribute('data-value');
+
+        if (val === 'all') {
+          selectedSrsSet = new Set(['all']);
+        } else {
+          selectedSrsSet.delete('all');
+          if (selectedSrsSet.has(val)) {
+            selectedSrsSet.delete(val);
+          } else {
+            selectedSrsSet.add(val);
+          }
+
+          if (selectedSrsSet.size === 0 || (selectedSrsSet.has('0') && selectedSrsSet.has('1') && selectedSrsSet.has('2') && selectedSrsSet.has('3'))) {
+            selectedSrsSet = new Set(['all']);
+          }
+        }
+
+        // 同步每项的勾选 UI 状态
+        srsDropdownMenu.querySelectorAll('.dropdown-item').forEach(i => {
+          const iVal = i.getAttribute('data-value');
+          const isSelected = selectedSrsSet.has(iVal);
+          
+          i.classList.toggle('selected', isSelected);
+          const ck = i.querySelector('.check-mark');
+          if (ck) ck.remove();
+          if (isSelected) {
+            i.insertAdjacentHTML('beforeend', '<span class="check-mark">✓</span>');
+          }
+        });
+
+        // 动态计算按钮文案与圆点 (固定精炼文案，宽度永不抖动拉伸)
+        if (selectedSrsSet.has('all')) {
+          currentSrsDot.className = "dropdown-dot dot-all";
+          currentSrsLabel.innerText = "全部熟练度";
+        } else if (selectedSrsSet.size === 1) {
+          const onlyVal = Array.from(selectedSrsSet)[0];
+          currentSrsDot.className = `dropdown-dot dot-${onlyVal}`;
+          switch (onlyVal) {
+            case '0': currentSrsLabel.innerText = "生疏待背"; break;
+            case '1': currentSrsLabel.innerText = "初识阶段"; break;
+            case '2': currentSrsLabel.innerText = "巩固阶段"; break;
+            case '3': currentSrsLabel.innerText = "熟练掌握"; break;
+          }
+        } else {
+          currentSrsDot.className = "dropdown-dot dot-all";
+          currentSrsLabel.innerText = `已选 ${selectedSrsSet.size} 项`;
+        }
+
+        applyFilter();
+      };
+    });
+  }
+
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      applyFilter();
+    });
+  }
+
+  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings)
+  if (window.location.hash === '#flashcard') {
+    switchView('flashcard');
+  } else if (window.location.hash === '#settings') {
+    openDavModal();
+  }
+});
