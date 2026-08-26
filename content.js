@@ -101,22 +101,34 @@ function hideTriggerIcon() {
   }
 }
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function formatDefinition(def) {
   if (!def) return "";
-  return def.replace(/\b(noun|verb|adj|adv|pron|prep|conj|v|n|a)\./gi, '<span class="agy-pos-tag">$1.</span>');
+  const safe = escapeHtml(def);
+  return safe.replace(/\b(noun|verb|adj|adv|pron|prep|conj|v|vt|vi|n|a)\./gi, '<span class="agy-pos-tag">$1.</span>');
 }
 
 function showCard(rect, text, sentence) {
   const card = getPopupCard();
   const wordsCount = text.trim().split(/\s+/).length;
   const isWordMode = wordsCount <= 2;
+  const safeText = escapeHtml(text);
 
   if (isWordMode) {
     card.innerHTML = `
       <div class="agy-card agy-card-word">
         <div class="agy-header">
           <div class="agy-word-group">
-            <span class="agy-word">${text}</span>
+            <span class="agy-word">${safeText}</span>
             <div class="agy-phonetic-pill" id="agy-btn-speak" title="点击朗读发音" style="display:none;">
               <span class="agy-phonetic" id="agy-phonetic"></span>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -283,6 +295,11 @@ document.addEventListener('mouseup', (e) => {
   if (selectedText && selectedText.length >= 1 && selectedText.length <= 400 && selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) {
+      hideTriggerIcon();
+      hideCard();
+      return;
+    }
     const sentence = getSurroundingSentence(selection);
     hideCard();
     showTriggerIcon(rect, selectedText, sentence);

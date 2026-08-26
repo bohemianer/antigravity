@@ -300,20 +300,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "SAVE_WORD") {
     const payload = request.data;
-    const item = {
-      text: payload.text || payload.word,
-      trans: payload.trans || payload.definition || "",
-      phonetic: cleanIPA(payload.phonetic || ""),
-      context: payload.context || payload.sentence || "",
-      title: payload.title || payload.sourceTitle || "Web Article",
-      url: payload.url || payload.sourceUrl || "",
-      date: payload.date || Date.now(),
-      notes: payload.notes || ""
-    };
+    const cleanWord = (payload.text || payload.word || "").trim();
 
     chrome.storage.local.get({ savedWords: [] }, (result) => {
-      const list = result.savedWords;
-      const existsIndex = list.findIndex(x => (x.text || x.word).toLowerCase() === item.text.toLowerCase());
+      const list = result.savedWords || [];
+      const existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
+      
+      let prevItem = existsIndex !== -1 ? list[existsIndex] : null;
+
+      const item = {
+        text: cleanWord,
+        trans: payload.trans || payload.definition || (prevItem ? prevItem.trans : ""),
+        phonetic: cleanIPA(payload.phonetic || (prevItem ? prevItem.phonetic : "")),
+        context: payload.context || payload.sentence || (prevItem ? prevItem.context : ""),
+        title: payload.title || payload.sourceTitle || (prevItem ? prevItem.title : "Web Article"),
+        url: payload.url || payload.sourceUrl || (prevItem ? prevItem.url : ""),
+        date: Date.now(),
+        notes: payload.notes !== undefined ? payload.notes : (prevItem ? prevItem.notes : ""),
+        srsLevel: (prevItem && prevItem.srsLevel !== undefined) ? prevItem.srsLevel : (payload.srsLevel !== undefined ? payload.srsLevel : 0),
+        srsNextReview: (prevItem && prevItem.srsNextReview !== undefined) ? prevItem.srsNextReview : (payload.srsNextReview || 0),
+        srsReviews: (prevItem && prevItem.srsReviews !== undefined) ? prevItem.srsReviews : (payload.srsReviews || 0)
+      };
+
       if (existsIndex !== -1) {
         list.splice(existsIndex, 1);
       }
