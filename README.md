@@ -20,7 +20,7 @@
 
 ## 🚀 安装使用指南
 
-1. 下载项目最新 Release 压缩包 `Antigravity-v1.0.0-ChromeExtension.zip` 并解压；
+1. **[📥 点击一键下载 Antigravity-v1.0.0-ChromeExtension.zip 预打包安装包](https://github.com/bohemianer/antigravity/raw/main/Antigravity-v1.0.0-ChromeExtension.zip)** 并解压；
 2. 打开 Chrome 浏览器，访问 `chrome://extensions/`；
 3. 开启右上角 **「开发者模式（Developer Mode）」**；
 4. 点击左上角 **「加载已解压的扩展程序（Load Unpacked）」**，选择解压出的 `AntigravityVocabExtension` 文件夹即可完成安装！
