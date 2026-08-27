@@ -1022,29 +1022,6 @@ function shuffleCards() {
   if (current) speakWord(current.text || current.word);
 }
 
-// 视图切换控制
-function switchView(viewName) {
-  currentView = viewName;
-  const tableContainer = document.getElementById('viewTableContainer');
-  const flashcardContainer = document.getElementById('viewFlashcardContainer');
-  const tabTable = document.getElementById('tabTableView');
-  const tabCard = document.getElementById('tabFlashcardView');
-
-  if (viewName === 'table') {
-    tableContainer.style.display = 'block';
-    flashcardContainer.style.display = 'none';
-    tabTable.classList.add('active');
-    tabCard.classList.remove('active');
-    applyFilter();
-  } else {
-    tableContainer.style.display = 'none';
-    flashcardContainer.style.display = 'flex';
-    tabCard.classList.add('active');
-    tabTable.classList.remove('active');
-    updateFlashcardList(true);
-  }
-}
-
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
 
 function applyFilter() {
