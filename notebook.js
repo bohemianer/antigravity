@@ -927,6 +927,12 @@ function showBatchSummary() {
 }
 
 function toggleCardReveal() {
+  // 如果用户当前正在划选例句文本，绝不触发翻转卡片
+  const sel = window.getSelection();
+  if (sel && sel.toString().trim().length > 0) {
+    return;
+  }
+
   cardRevealed = !cardRevealed;
   const ansBox = document.getElementById('fcAnswerBox');
   const hint = document.getElementById('cardHintText');
@@ -1582,10 +1588,170 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings)
+  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings 或 #quiz)
   if (window.location.hash === '#flashcard') {
     switchView('flashcard');
+  } else if (window.location.hash === '#quiz') {
+    switchView('quiz');
   } else if (window.location.hash === '#settings') {
     openDavModal();
   }
+
+  // ---------------- 笔记本内嵌即时划词查词与双击查词引擎 ----------------
+  let nbTriggerIcon = document.getElementById('nb-trigger-icon');
+  let nbPopupCard = document.getElementById('nb-vocab-popup');
+  let nbSelectedText = "";
+
+  function showNbTrigger(rect, text) {
+    nbSelectedText = text;
+    if (!nbTriggerIcon) nbTriggerIcon = document.getElementById('nb-trigger-icon');
+    if (!nbTriggerIcon) return;
+
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+
+    nbTriggerIcon.style.left = `${Math.max(10, rect.right + scrollX + 4)}px`;
+    nbTriggerIcon.style.top = `${Math.max(10, rect.top + scrollY - 24)}px`;
+    nbTriggerIcon.style.display = 'flex';
+  }
+
+  function hideNbTrigger() {
+    if (nbTriggerIcon) nbTriggerIcon.style.display = 'none';
+  }
+
+  function showNbCard(rect, text) {
+    hideNbTrigger();
+    if (!nbPopupCard) nbPopupCard = document.getElementById('nb-vocab-popup');
+    if (!nbPopupCard) return;
+
+    const scrollX = window.scrollX || window.pageXOffset;
+    const scrollY = window.scrollY || window.pageYOffset;
+    const cardWidth = 280;
+    const estimatedHeight = 130;
+
+    let targetX = rect ? rect.left + scrollX : scrollX + 20;
+    let targetY = rect ? rect.bottom + scrollY + 8 : scrollY + 20;
+
+    if (targetX + cardWidth > window.innerWidth + scrollX - 16) {
+      targetX = window.innerWidth + scrollX - cardWidth - 16;
+    }
+    if (targetX < scrollX + 16) targetX = scrollX + 16;
+
+    if (rect && (rect.bottom + estimatedHeight > window.innerHeight) && (rect.top - estimatedHeight > 0)) {
+      targetY = rect.top + scrollY - estimatedHeight - 8;
+    }
+
+    nbPopupCard.style.left = `${Math.round(targetX)}px`;
+    nbPopupCard.style.top = `${Math.round(targetY)}px`;
+    nbPopupCard.style.display = 'block';
+
+    document.getElementById('nbWord').innerText = text;
+    document.getElementById('nbPhonetic').innerText = "";
+    document.getElementById('nbSpeakPill').style.display = 'none';
+    document.getElementById('nbLoading').style.display = 'flex';
+    document.getElementById('nbDefinition').style.display = 'none';
+
+    chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (res) => {
+      document.getElementById('nbLoading').style.display = 'none';
+      const defEl = document.getElementById('nbDefinition');
+      const phoEl = document.getElementById('nbPhonetic');
+      const speakPill = document.getElementById('nbSpeakPill');
+
+      if (res && res.phonetic) {
+        phoEl.innerText = cleanIPA(res.phonetic);
+        speakPill.style.display = 'inline-flex';
+        speakPill.onclick = (e) => {
+          e.stopPropagation();
+          speakWord(text);
+        };
+      }
+
+      const rawDef = (res && (res.definition || res.translation)) || "暂无权威释义";
+      defEl.innerText = formatTrans(rawDef);
+      defEl.style.display = 'block';
+    });
+  }
+
+  function hideNbCard() {
+    if (nbPopupCard) nbPopupCard.style.display = 'none';
+  }
+
+  if (nbTriggerIcon) {
+    nbTriggerIcon.onmousedown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    nbTriggerIcon.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
+        showNbCard(rect, nbSelectedText);
+      }
+    };
+  }
+
+  if (nbPopupCard) {
+    nbPopupCard.onmousedown = (e) => e.stopPropagation();
+    nbPopupCard.onclick = (e) => e.stopPropagation();
+  }
+
+  document.addEventListener('mouseup', (e) => {
+    if (modal.style.display === 'flex' || davModal.style.display === 'flex') return;
+    if (nbTriggerIcon && nbTriggerIcon.contains(e.target)) return;
+    if (nbPopupCard && nbPopupCard.contains(e.target)) return;
+
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+
+    if (selectedText && selectedText.length >= 1 && selectedText.length <= 250 && selection.rangeCount > 0) {
+      const anchor = selection.anchorNode;
+      const parentEl = anchor ? (anchor.nodeType === 3 ? anchor.parentElement : anchor) : null;
+      const isInsideContext = parentEl && (
+        parentEl.closest('.flashcard-context') ||
+        parentEl.closest('.quiz-cloze-sentence') ||
+        parentEl.closest('.quiz-cloze-box') ||
+        parentEl.closest('.note-box') ||
+        parentEl.closest('.table-container')
+      );
+
+      if (isInsideContext) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width > 0 || rect.height > 0) {
+          hideNbCard();
+          showNbTrigger(rect, selectedText);
+          return;
+        }
+      }
+    }
+
+    hideNbTrigger();
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    if (nbTriggerIcon && !nbTriggerIcon.contains(e.target)) {
+      hideNbTrigger();
+    }
+    if (nbPopupCard && !nbPopupCard.contains(e.target)) {
+      hideNbCard();
+    }
+  });
+
+  // 双击例句中的单词直接秒查
+  document.addEventListener('dblclick', (e) => {
+    if (modal.style.display === 'flex' || davModal.style.display === 'flex') return;
+    const target = e.target;
+    const isInsideContext = target.closest('.flashcard-context') || target.closest('.quiz-cloze-sentence') || target.closest('.table-container');
+    if (isInsideContext) {
+      const sel = window.getSelection();
+      const text = sel.toString().trim();
+      if (text && text.length >= 1 && text.length <= 50) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        showNbCard(rect, text);
+      }
+    }
+  });
 });

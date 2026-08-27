@@ -1139,6 +1139,108 @@
       20%, 60% { transform: translateX(-4px); }
       40%, 80% { transform: translateX(4px); }
     }
+    /* 内嵌外刊即时划词查词引擎 (In-Notebook Selection Lookup) */
+    .flashcard-context,
+    .quiz-cloze-sentence,
+    .quiz-cloze-box,
+    .context-box,
+    .note-box {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text !important;
+    }
+
+    #nb-trigger-icon {
+      position: absolute;
+      z-index: 9999;
+      width: 28px;
+      height: 28px;
+      background: #FAF9F5;
+      border: 1px solid #E6E4DD;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(60, 50, 40, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
+      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+      animation: agySpringIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #nb-trigger-icon .nb-icon-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #nb-trigger-icon:hover {
+      transform: scale(1.18) translateY(-2px);
+      background: #FFFFFF;
+      border-color: #CC785C;
+      box-shadow: 0 6px 18px rgba(204, 120, 92, 0.28);
+    }
+    #nb-vocab-popup {
+      position: absolute;
+      z-index: 9999;
+      display: none;
+      min-width: 260px;
+      max-width: 340px;
+      background: #FAF9F5;
+      border-radius: 12px;
+      border: 1px solid #E8E6DF;
+      box-shadow: 0 14px 36px rgba(45, 40, 35, 0.14), 0 2px 6px rgba(0, 0, 0, 0.04);
+      padding: 14px 16px;
+      animation: agyCardIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+      color: #1F1E1D;
+    }
+    #nb-vocab-popup .nb-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+      gap: 8px;
+    }
+    #nb-vocab-popup .nb-word {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      color: #1A1918;
+    }
+    #nb-vocab-popup .nb-phonetic-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 1px 6px;
+      background: #F3EFEA;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #78716C;
+      font-size: 12.5px;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    #nb-vocab-popup .nb-phonetic-pill:hover {
+      background: rgba(204, 120, 92, 0.12);
+      color: #CC785C;
+    }
+    #nb-vocab-popup .nb-definition {
+      font-size: 13.5px;
+      font-weight: 550;
+      color: #2D2825;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+    #nb-vocab-popup .nb-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 4px 0;
+    }
+    #nb-vocab-popup .nb-sk-line {
+      height: 12px;
+      background: linear-gradient(90deg, #EDEAE2 25%, #F5F3ED 50%, #EDEAE2 75%);
+      background-size: 200% 100%;
+      animation: agyShimmer 1.4s infinite;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1514,6 +1616,34 @@
 
   <!-- Apple 风格五彩礼花微动效画布 -->
   <canvas id="confettiCanvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:99999; display:none;"></canvas>
+
+  <!-- 笔记本内嵌即时划词微标与卡片 -->
+  <div id="nb-trigger-icon" title="点击查词">
+    <div class="nb-icon-inner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#CC785C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 17L12 22L22 17" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 12L12 17L22 12" stroke="#8C533E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+  <div id="nb-vocab-popup">
+    <div class="nb-header">
+      <span class="nb-word" id="nbWord">Word</span>
+      <div class="nb-phonetic-pill" id="nbSpeakPill" title="点击朗读发音" style="display:none;">
+        <span id="nbPhonetic"></span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+        </svg>
+      </div>
+    </div>
+    <div class="nb-skeleton" id="nbLoading">
+      <div class="nb-sk-line"></div>
+    </div>
+    <div class="nb-definition" id="nbDefinition" style="display:none;"></div>
+  </div>
 
   <script src="webdav.js"></script>
   <script src="notebook.js"></script>
