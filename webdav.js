@@ -184,13 +184,13 @@ class EudicSyncEngine {
     return data && data.data ? data.data : [];
   }
 
-  // 2. 分页递归拉取指定生词本的所有单词 (page 从 0 开始)
-  async fetchAllWords(categoryId = "0") {
+  // 2. 分页递归拉取指定生词本的所有单词 (page 从 0 开始，支持增量早停加速)
+  async fetchAllWords(categoryId = "0", existingKeys = null) {
     let page = 0;
     let allWords = [];
     const pageSize = 100;
 
-    while (page < 50) {
+    while (page < 10) { // 限制单次同步最多检查前 1000 词
       const url = `https://api.frdic.com/api/open/v1/studylist/words?language=en&category_id=${encodeURIComponent(categoryId)}&page=${page}&page_size=${pageSize}`;
       const resp = await fetch(url, {
         headers: {
@@ -206,6 +206,18 @@ class EudicSyncEngine {
       if (!list || list.length === 0) break;
 
       allWords = allWords.concat(list);
+
+      // 智能早停优化：如果开启了已有词比对，且这一页的所有单词都已存在，说明后续都是历史老词，直接早停！
+      if (existingKeys && list.length > 0) {
+        const allExisted = list.every(item => {
+          const k = (item.word || item.text || item.key || "").toLowerCase().trim();
+          return k && existingKeys.has(k);
+        });
+        if (allExisted) {
+          break; // 提前退出，节省 90% 以上的网络耗时！
+        }
+      }
+
       if (list.length < pageSize) break;
       page++;
     }
@@ -213,8 +225,8 @@ class EudicSyncEngine {
     return allWords;
   }
 
-  // 3. 自动扫描所有生词本分类并汇总全量单词
-  async fetchAllCategoriesAndWords() {
+  // 3. 自动多分类并行扫描并汇总全量单词 (Promise.all 并发极速提速)
+  async fetchAllCategoriesAndWords(existingWords = []) {
     let categories = [];
     try {
       categories = await this.getCategories();
@@ -231,20 +243,29 @@ class EudicSyncEngine {
       });
     }
 
-    const wordMap = new Map();
-    for (const catId of categoryIds) {
-      try {
-        const words = await this.fetchAllWords(catId);
-        words.forEach(w => {
-          const key = (w.word || w.text || w.key || "").toLowerCase().trim();
-          if (key && !wordMap.has(key)) {
-            wordMap.set(key, w);
-          }
-        });
-      } catch (err) {
+    // 构建已有词哈希表用于早停加速
+    const existingKeys = new Set(existingWords.map(w => (w.text || w.word || "").toLowerCase().trim()).filter(Boolean));
+
+    // 并发拉取各个分类
+    const catArray = Array.from(categoryIds);
+    const fetchPromises = catArray.map(catId => 
+      this.fetchAllWords(catId, existingKeys).catch(err => {
         console.warn(`拉取生词本分类 ${catId} 失败:`, err);
-      }
-    }
+        return [];
+      })
+    );
+
+    const results = await Promise.all(fetchPromises);
+    const wordMap = new Map();
+
+    results.forEach(words => {
+      words.forEach(w => {
+        const key = (w.word || w.text || w.key || "").toLowerCase().trim();
+        if (key && !wordMap.has(key)) {
+          wordMap.set(key, w);
+        }
+      });
+    });
 
     return Array.from(wordMap.values());
   }

@@ -330,6 +330,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.storage.local.set({ savedWords: list }, () => {
         autoSyncWebDAV(list);
         sendResponse({ success: true, count: list.length });
+
+        // 若当前单词缺少音标，后台自动发起多源音标补充
+        if (!item.phonetic && cleanWord.split(/\s+/).length <= 2) {
+          queryYoudaoDict(cleanWord).then(ydRes => {
+            if (ydRes && ydRes.phonetic) {
+              chrome.storage.local.get({ savedWords: [] }, (r2) => {
+                const curList = r2.savedWords || [];
+                const target = curList.find(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
+                if (target && !target.phonetic) {
+                  target.phonetic = cleanIPA(ydRes.phonetic);
+                  chrome.storage.local.set({ savedWords: curList }, () => {
+                    autoSyncWebDAV(curList);
+                  });
+                }
+              });
+            }
+          }).catch(() => {});
+        }
       });
     });
 

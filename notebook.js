@@ -479,8 +479,7 @@ function renderList(list) {
       e.stopPropagation();
       const targetWord = btn.getAttribute('data-word');
       if (!targetWord) return;
-      
-      if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
+  if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
         currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
         chrome.storage.local.set({ savedWords: currentWords }, () => {
           doWebDAVOverwrite(); // 关键：立即用删除后的纯净数据覆盖坚果云端，彻底抹除云端该词！
@@ -498,8 +497,8 @@ function renderList(list) {
           applyFilter();
         });
       }
-    };
-  });
+    });
+  }
 }
 
 // ---------------- 艾宾浩斯交互闪卡系统 (SM-2 SRS + 定量组自测) ----------------
@@ -558,6 +557,12 @@ function updateFlashcardList(resetIndex = false) {
     pool = [...unmastered, ...reviewing].slice(0, targetN);
   }
 
+  // 默认开启随机洗牌乱序，抗遗忘更高效
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
   cardList = pool;
   batchTotalTarget = cardList.length;
 
@@ -565,6 +570,220 @@ function updateFlashcardList(resetIndex = false) {
     cardIndex = 0;
   }
   renderFlashcard();
+}
+
+// ---------------- 语境挖词极速挑战模式 (Context Cloze Speed Quiz) ----------------
+let quizList = [];
+let quizIndex = 0;
+let quizScore = 0;
+let quizStreak = 0;
+let quizMaxStreak = 0;
+let quizCorrectCount = 0;
+let isQuizAnswering = false;
+
+function startQuiz() {
+  quizIndex = 0;
+  quizScore = 0;
+  quizStreak = 0;
+  quizMaxStreak = 0;
+  quizCorrectCount = 0;
+  isQuizAnswering = false;
+
+  const summaryCard = document.getElementById('quizSummaryCard');
+  const cardBox = document.getElementById('quizCardBox');
+  if (summaryCard) summaryCard.style.display = 'none';
+  if (cardBox) cardBox.style.display = 'flex';
+
+  document.getElementById('quizStreakCount').innerText = '0';
+  document.getElementById('quizScoreCount').innerText = '0';
+
+  // 筛选可用词汇：优先有上下文例句的单词
+  let pool = currentWords.filter(w => (w.context || w.sentence || "").trim().length > 5);
+  if (pool.length < 4) {
+    pool = [...currentWords];
+  }
+
+  // 随机乱序洗牌
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  quizList = pool.slice(0, 20); // 一轮 20 题
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion() {
+  if (quizList.length === 0) {
+    document.getElementById('quizClozeSentence').innerText = "当前生词本中暂无可供挑战的词汇，快去外刊划词加入吧！";
+    document.getElementById('quizOptionsGrid').innerHTML = "";
+    document.getElementById('quizCurrentIndex').innerText = "0";
+    document.getElementById('quizTotalCount').innerText = "0";
+    document.getElementById('quizProgressFill').style.width = '0%';
+    return;
+  }
+
+  if (quizIndex >= quizList.length) {
+    showQuizSummary();
+    return;
+  }
+
+  isQuizAnswering = false;
+  const currentItem = quizList[quizIndex];
+  const targetWord = (currentItem.text || currentItem.word || "").trim();
+  const rawSentence = (currentItem.context || currentItem.sentence || "").trim() || `The word to fill in is ${targetWord}.`;
+  
+  // 挖空例句中的关键词
+  try {
+    const regex = new RegExp(`(\\b${targetWord}\\b|${targetWord})`, 'gi');
+    let clozeSentence = rawSentence.replace(regex, `<span class="cloze-blank">[ ______ ]</span>`);
+    if (!clozeSentence.includes('cloze-blank')) {
+      clozeSentence = `[ ______ ] : ${formatTrans(currentItem.trans || currentItem.definition || "")}`;
+    }
+    document.getElementById('quizClozeSentence').innerHTML = clozeSentence;
+  } catch (e) {
+    document.getElementById('quizClozeSentence').innerHTML = `[ ______ ] : ${formatTrans(currentItem.trans || currentItem.definition || "")}`;
+  }
+
+  document.getElementById('quizSourceTitle').innerText = currentItem.title || "Web Article";
+  document.getElementById('quizCurrentIndex').innerText = (quizIndex + 1).toString();
+  document.getElementById('quizTotalCount').innerText = quizList.length.toString();
+  const pct = Math.min(100, ((quizIndex + 1) / quizList.length) * 100);
+  document.getElementById('quizProgressFill').style.width = `${pct}%`;
+
+  // 提取 3 个干扰项
+  const otherWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
+  for (let i = otherWords.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [otherWords[i], otherWords[j]] = [otherWords[j], otherWords[i]];
+  }
+  const distractors = otherWords.slice(0, 3).map(w => (w.text || w.word || "").trim());
+  const options = [targetWord, ...distractors];
+  
+  // 打乱 4 个选项
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+
+  const grid = document.getElementById('quizOptionsGrid');
+  grid.innerHTML = "";
+  const keys = ['1', '2', '3', '4'];
+  options.forEach((optText, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-option-btn';
+    btn.setAttribute('data-word', optText);
+    btn.setAttribute('data-key', keys[i]);
+    btn.innerHTML = `
+      <span>${optText}</span>
+      <span class="quiz-option-key">${keys[i]}</span>
+    `;
+    btn.onclick = () => handleQuizAnswer(optText, targetWord, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function handleQuizAnswer(selectedWord, correctWord, clickedBtn) {
+  if (isQuizAnswering) return;
+  isQuizAnswering = true;
+
+  const isCorrect = selectedWord.toLowerCase().trim() === correctWord.toLowerCase().trim();
+  const allBtns = document.querySelectorAll('.quiz-option-btn');
+
+  if (isCorrect) {
+    if (clickedBtn) clickedBtn.classList.add('correct');
+    quizStreak++;
+    if (quizStreak > quizMaxStreak) quizMaxStreak = quizStreak;
+    quizScore += 10 + Math.min(quizStreak * 2, 20);
+    quizCorrectCount++;
+    speakWord(correctWord);
+
+    document.getElementById('quizStreakCount').innerText = quizStreak.toString();
+    document.getElementById('quizScoreCount').innerText = quizScore.toString();
+
+    const blank = document.querySelector('.cloze-blank');
+    if (blank) {
+      blank.innerText = correctWord;
+      blank.style.color = "#059669";
+      blank.style.borderBottomColor = "#10B981";
+      blank.style.background = "rgba(16, 185, 129, 0.1)";
+    }
+
+    setTimeout(() => {
+      quizIndex++;
+      renderQuizQuestion();
+    }, 750);
+  } else {
+    if (clickedBtn) clickedBtn.classList.add('wrong');
+    quizStreak = 0;
+    document.getElementById('quizStreakCount').innerText = '0';
+
+    allBtns.forEach(btn => {
+      if ((btn.getAttribute('data-word') || "").toLowerCase().trim() === correctWord.toLowerCase().trim()) {
+        btn.classList.add('correct');
+      }
+    });
+
+    speakWord(correctWord);
+
+    const blank = document.querySelector('.cloze-blank');
+    if (blank) {
+      blank.innerText = correctWord;
+      blank.style.color = "#DC2626";
+      blank.style.borderBottomColor = "#EF4444";
+      blank.style.background = "rgba(239, 68, 68, 0.1)";
+    }
+
+    setTimeout(() => {
+      quizIndex++;
+      renderQuizQuestion();
+    }, 1400);
+  }
+}
+
+function showQuizSummary() {
+  const summaryCard = document.getElementById('quizSummaryCard');
+  const cardBox = document.getElementById('quizCardBox');
+  if (summaryCard && cardBox) {
+    cardBox.style.display = 'none';
+    summaryCard.style.display = 'flex';
+
+    const accuracy = quizList.length > 0 ? Math.round((quizCorrectCount / quizList.length) * 100) : 100;
+    document.getElementById('statMaxStreak').innerText = quizMaxStreak.toString();
+    document.getElementById('statQuizAccuracy').innerText = `${accuracy}%`;
+    document.getElementById('statQuizTotalScore').innerText = quizScore.toString();
+    document.getElementById('quizSummarySubtitle').innerText = `本次挑战共完成 ${quizList.length} 题，准确率 ${accuracy}%`;
+
+    triggerConfetti();
+  }
+}
+
+// 视图切换控制 (支持 table, flashcard, quiz 三重模式)
+function switchView(viewName) {
+  currentView = viewName;
+  const tableContainer = document.getElementById('viewTableContainer');
+  const flashcardContainer = document.getElementById('viewFlashcardContainer');
+  const quizContainer = document.getElementById('viewQuizContainer');
+
+  const tabTable = document.getElementById('tabTableView');
+  const tabCard = document.getElementById('tabFlashcardView');
+  const tabQuiz = document.getElementById('tabQuizView');
+
+  if (tableContainer) tableContainer.style.display = viewName === 'table' ? 'block' : 'none';
+  if (flashcardContainer) flashcardContainer.style.display = viewName === 'flashcard' ? 'flex' : 'none';
+  if (quizContainer) quizContainer.style.display = viewName === 'quiz' ? 'flex' : 'none';
+
+  if (tabTable) tabTable.classList.toggle('active', viewName === 'table');
+  if (tabCard) tabCard.classList.toggle('active', viewName === 'flashcard');
+  if (tabQuiz) tabQuiz.classList.toggle('active', viewName === 'quiz');
+
+  if (viewName === 'table') {
+    applyFilter();
+  } else if (viewName === 'flashcard') {
+    updateFlashcardList(true);
+  } else if (viewName === 'quiz') {
+    startQuiz();
+  }
 }
 
 function triggerConfetti() {
@@ -859,7 +1078,7 @@ function applyFilter() {
 
 function saveAndRefresh() {
   chrome.storage.local.set({ savedWords: currentWords }, () => {
-    doWebDAVSync(false);
+    doFullSync(false);
     applyFilter();
   });
 }
@@ -880,6 +1099,7 @@ function openAddModal() {
   if (modalSubmitBtn) modalSubmitBtn.innerText = "保存入库";
   editIndexInput.value = "-1";
   vocabForm.reset();
+  if (autoFillStatus) autoFillStatus.style.display = "none";
   modal.style.display = "flex";
   document.getElementById('inputWord').focus();
 }
@@ -957,7 +1177,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 添加新词输入框防抖查词与失焦查词
+  // 添加新词输入框防抖智能联想与失焦查词补全
+  let autoLookupTimeout = null;
+  function handleWordInputAutoFill(val) {
+    const text = (val || "").trim();
+    if (!text || text.length < 2) {
+      if (autoFillStatus) autoFillStatus.style.display = 'none';
+      return;
+    }
+
+    if (autoFillStatus) {
+      autoFillStatus.innerText = "✨ 正在智能联想音标与释义...";
+      autoFillStatus.style.display = 'inline';
+    }
+
+    chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (res) => {
+      if (!res) {
+        if (autoFillStatus) autoFillStatus.style.display = 'none';
+        return;
+      }
+      const phoneticInp = document.getElementById('inputPhonetic');
+      const transInp = document.getElementById('inputTrans');
+      
+      if (res.phonetic && phoneticInp && (!phoneticInp.value.trim() || editIndexInput.value === "-1")) {
+        phoneticInp.value = cleanIPA(res.phonetic);
+      }
+      if ((res.definition || res.translation) && transInp && (!transInp.value.trim() || editIndexInput.value === "-1")) {
+        transInp.value = formatTrans(res.definition || res.translation);
+      }
+      if (autoFillStatus) {
+        autoFillStatus.innerText = "✓ 已自动补全音标与释义";
+        setTimeout(() => {
+          if (autoFillStatus) autoFillStatus.style.display = 'none';
+        }, 1800);
+      }
+    });
+  }
+
   const inputWordEl = document.getElementById('inputWord');
   if (inputWordEl) {
     inputWordEl.addEventListener('input', (e) => {
@@ -971,9 +1227,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Tab 切换事件
+  // Tab 切换事件 (笔记本 / 闪卡 / 语境挑战)
   document.getElementById('tabTableView').onclick = () => switchView('table');
   document.getElementById('tabFlashcardView').onclick = () => switchView('flashcard');
+  const tabQuiz = document.getElementById('tabQuizView');
+  if (tabQuiz) {
+    tabQuiz.onclick = () => switchView('quiz');
+  }
+
+  const btnRestartQuiz = document.getElementById('btnRestartQuiz');
+  if (btnRestartQuiz) {
+    btnRestartQuiz.onclick = () => startQuiz();
+  }
+  const btnQuizBackToTable = document.getElementById('btnQuizBackToTable');
+  if (btnQuizBackToTable) {
+    btnQuizBackToTable.onclick = () => switchView('table');
+  }
 
   // 闪卡自测事件
   document.getElementById('flashcardBox').onclick = toggleCardReveal;
@@ -1078,6 +1347,19 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const w = document.getElementById('fcWord').innerText;
         speakWord(w);
+      }
+    } else if (currentView === 'quiz') {
+      const keysMap = {
+        'Digit1': '1', 'Numpad1': '1', 'KeyA': '1',
+        'Digit2': '2', 'Numpad2': '2', 'KeyB': '2',
+        'Digit3': '3', 'Numpad3': '3', 'KeyC': '3',
+        'Digit4': '4', 'Numpad4': '4', 'KeyD': '4'
+      };
+      const keyVal = keysMap[e.code];
+      if (keyVal) {
+        e.preventDefault();
+        const targetBtn = document.querySelector(`.quiz-option-btn[data-key="${keyVal}"]`);
+        if (targetBtn) targetBtn.click();
       }
     }
   });
