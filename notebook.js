@@ -479,7 +479,7 @@ function renderList(list) {
       e.stopPropagation();
       const targetWord = btn.getAttribute('data-word');
       if (!targetWord) return;
-  if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
+      if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
         currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
         chrome.storage.local.set({ savedWords: currentWords }, () => {
           doWebDAVOverwrite(); // 关键：立即用删除后的纯净数据覆盖坚果云端，彻底抹除云端该词！
@@ -497,8 +497,8 @@ function renderList(list) {
           applyFilter();
         });
       }
-    });
-  }
+    };
+  });
 }
 
 // ---------------- 艾宾浩斯交互闪卡系统 (SM-2 SRS + 定量组自测) ----------------
