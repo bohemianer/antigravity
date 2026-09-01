@@ -148,17 +148,67 @@ async function queryYoudaoDict(word) {
   return null;
 }
 
-async function queryYoudaoTranslate(text) {
+function getLangPair(text) {
+  return /[\u4e00-\u9fa5]/.test(text) ? "zh-CN|en" : "en|zh-CN";
+}
+
+async function queryGoogleDictChromeEx(text) {
   try {
-    const url = `https://fanyi.youdao.com/translate?&doctype=json&type=AUTO&i=${encodeURIComponent(text)}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(2500) });
+    const url = `https://translate.googleapis.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=zh-CN&q=${encodeURIComponent(text)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-    if (data && data.translateResult && data.translateResult[0]) {
-      return data.translateResult[0].map(item => item.tgt).join("").trim();
+    if (Array.isArray(data) && data[0]) {
+      return Array.isArray(data[0]) ? data[0][0] : data[0];
     }
   } catch (e) {}
   return null;
+}
+
+async function queryGoogleClients5(text) {
+  try {
+    const url = `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=zh-CN&q=${encodeURIComponent(text)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (Array.isArray(data) && data[0]) {
+      return Array.isArray(data[0]) ? data[0][0] : data[0];
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function queryMyMemoryTranslate(text) {
+  try {
+    const lp = getLangPair(text);
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${lp}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3500) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data && data.responseData && data.responseData.translatedText) {
+      const t = data.responseData.translatedText.trim();
+      if (!t.startsWith("MYMEMORY WARNING") && !t.includes("INVALID SOURCE LANGUAGE")) return t;
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function translateSentenceMultiTier(text) {
+  const promises = [
+    queryGoogleDictChromeEx(text),
+    queryGoogleClients5(text),
+    queryMyMemoryTranslate(text)
+  ].map(p => p.then(res => {
+    if (res && typeof res === 'string' && res.trim().length > 0) return res.trim();
+    throw new Error("Empty translation");
+  }));
+
+  try {
+    return await Promise.any(promises);
+  } catch (e) {
+    const fallback = await queryMyMemoryTranslate(text);
+    return fallback || "翻译加载失败";
+  }
 }
 
 async function queryGoogleTranslate(text) {
@@ -226,26 +276,19 @@ async function smartLookup(text) {
     } catch (e) {}
   }
 
+  // 长句与整段翻译：调用多源高可用并发容灾引擎
   try {
-    const [ggTrans, ydTrans] = await Promise.allSettled([
-      queryGoogleTranslate(cleanText),
-      queryYoudaoTranslate(cleanText)
-    ]);
-
-    const gg = ggTrans.status === "fulfilled" ? ggTrans.value : null;
-    const yd = ydTrans.status === "fulfilled" ? ydTrans.value : null;
-
-    const finalTrans = (gg && gg.translation) || yd || "翻译加载失败";
+    const finalTrans = await translateSentenceMultiTier(cleanText);
     return {
       word: cleanText,
-      phonetic: (gg && gg.phonetic) || "",
-      definition: finalTrans
+      phonetic: "",
+      definition: finalTrans || "翻译加载失败"
     };
   } catch (e) {
     return {
       word: cleanText,
       phonetic: "",
-      definition: "网络超时"
+      definition: "网络连接超时"
     };
   }
 }
