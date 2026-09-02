@@ -113,23 +113,42 @@ function cleanNotes(notes) {
   return s.replace(/音标:\s*\/[^\n\/]+\/\s*/g, "").trim();
 }
 
+const DEFAULT_ARTICLE_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23CC785C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/></svg>";
+const EUDIC_BOOK_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23059669' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/><path d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/></svg>";
+
 function getSourceFavicon(item) {
   const title = (item.title || "").toLowerCase();
   const url = (item.url || "").toLowerCase();
 
+  // 1. 欧路词典同步来源
+  if (title.includes("eudic") || title.includes("欧路") || url.includes("eudic")) {
+    return EUDIC_BOOK_SVG;
+  }
+
+  // 2. 主流外刊权威 Favicon 映射
   if (title.includes("wsj") || url.includes("wsj.com")) return "https://www.wsj.com/favicon.ico";
   if (title.includes("bloomberg") || url.includes("bloomberg.com")) return "https://www.bloomberg.com/favicon.ico";
   if (title.includes("ft") || title.includes("financial times") || url.includes("ft.com")) return "https://www.ft.com/favicon.ico";
   if (title.includes("economist") || url.includes("economist.com")) return "https://www.economist.com/favicon.ico";
   if (title.includes("reuters") || url.includes("reuters.com")) return "https://www.reuters.com/favicon.ico";
   if (title.includes("nytimes") || url.includes("nytimes.com")) return "https://www.nytimes.com/favicon.ico";
+  if (title.includes("guardian") || url.includes("theguardian.com")) return "https://www.theguardian.com/favicon.ico";
+  if (title.includes("bbc") || url.includes("bbc.com") || url.includes("bbc.co.uk")) return "https://www.bbc.com/favicon.ico";
+  if (title.includes("nature") || url.includes("nature.com")) return "https://www.nature.com/favicon.ico";
+  if (title.includes("wired") || url.includes("wired.com")) return "https://www.wired.com/favicon.ico";
+  if (title.includes("medium") || url.includes("medium.com")) return "https://medium.com/favicon.ico";
+  if (title.includes("substack") || url.includes("substack.com")) return "https://substack.com/favicon.ico";
+
+  // 3. 通用外部 URL 提取
   if (item.url && item.url.startsWith("http")) {
     try {
       const u = new URL(item.url);
-      return `https://www.google.com/s2/favicons?domain=${u.hostname}&sz=32`;
+      return `https://icons.duckduckgo.com/ip3/${u.hostname}.ico`;
     } catch (e) {}
   }
-  return "https://www.wsj.com/favicon.ico";
+
+  // 4. 默认优雅报刊书卷 SVG 徽标 (0 网络依赖，100% 呈现)
+  return DEFAULT_ARTICLE_SVG;
 }
 
 function highlightWordInSentence(sentence, word) {
@@ -374,7 +393,7 @@ function renderList(list) {
           <div class="salad-sentence">${contextSentence}</div>
           <div class="salad-divider"></div>
           <div class="salad-source">
-            <img src="${faviconUrl}" class="salad-favicon" onerror="this.style.display='none'">
+            <img src="${faviconUrl}" class="salad-favicon" onerror="this.onerror=null; this.src='${DEFAULT_ARTICLE_SVG}';">
             ${item.url ? `<a href="${item.url}" target="_blank" class="salad-source-text">${sourceTitle}</a>` : `<span class="salad-source-text">${sourceTitle}</span>`}
           </div>
         </div>
