@@ -222,7 +222,8 @@ function showCard(rect, text, sentence) {
     }
   }
 
-  chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (res) => {
+  chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (response) => {
+    const res = response || { definition: "翻译加载失败，请重试" };
     const loading = document.getElementById('agy-loading');
     const defEl = document.getElementById('agy-definition');
     const phoEl = document.getElementById('agy-phonetic');

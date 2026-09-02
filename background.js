@@ -250,21 +250,29 @@ async function queryGoogleTranslate(text) {
 }
 
 async function smartLookup(text) {
-  const cleanText = text.trim();
+  const cleanText = (text || "").trim();
+  if (!cleanText) {
+    return {
+      word: "",
+      phonetic: "",
+      definition: "暂无内容"
+    };
+  }
+
   const isWord = cleanText.split(/\s+/).length <= 2;
 
   if (isWord) {
     try {
       const [youdaoRes, googleRes] = await Promise.allSettled([
         queryYoudaoDict(cleanText),
-        queryGoogleTranslate(cleanText)
+        queryGoogleDictChromeEx(cleanText)
       ]);
 
       const yd = youdaoRes.status === "fulfilled" ? youdaoRes.value : null;
       const gg = googleRes.status === "fulfilled" ? googleRes.value : null;
 
-      const finalPhonetic = (yd && yd.phonetic) || (gg && gg.phonetic) || "";
-      const finalDef = (yd && yd.definition) || (gg && (gg.dictFormatted || gg.translation)) || "";
+      const finalPhonetic = (yd && yd.phonetic) || "";
+      const finalDef = (yd && yd.definition) || (gg && typeof gg === "string" ? gg : "") || "";
 
       if (finalDef) {
         return {
@@ -276,7 +284,7 @@ async function smartLookup(text) {
     } catch (e) {}
   }
 
-  // 长句与整段翻译：调用多源高可用并发容灾引擎
+  // 长句、短语或词典未收录词：调用三路高可用并发容灾翻译引擎
   try {
     const finalTrans = await translateSentenceMultiTier(cleanText);
     return {
@@ -288,7 +296,7 @@ async function smartLookup(text) {
     return {
       word: cleanText,
       phonetic: "",
-      definition: "网络连接超时"
+      definition: "网络连接超时，请检查网络"
     };
   }
 }
@@ -314,16 +322,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // 并行检查本地数据库是否已收录
     chrome.storage.local.get({ savedWords: [] }, (localRes) => {
-      const savedList = localRes.savedWords || [];
+      const savedList = (localRes && localRes.savedWords) || [];
       const existingItem = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord);
       const isSaved = !!existingItem;
       const existingNotes = existingItem ? (existingItem.notes || "") : "";
 
-      smartLookup(request.word).then(result => {
-        result.isSaved = isSaved;
-        result.savedNotes = existingNotes;
-        sendResponse(result);
-      });
+      smartLookup(request.word)
+        .then(result => {
+          const safeResult = result || { word: request.word, phonetic: "", definition: "暂无释义" };
+          safeResult.isSaved = isSaved;
+          safeResult.savedNotes = existingNotes;
+          sendResponse(safeResult);
+        })
+        .catch(err => {
+          sendResponse({
+            word: request.word,
+            phonetic: "",
+            definition: "查询超时，请重试",
+            isSaved: isSaved,
+            savedNotes: existingNotes
+          });
+        });
     });
     return true;
   }
