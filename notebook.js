@@ -107,8 +107,25 @@ function extractPhoneticFromItem(item) {
 function cleanNotes(notes) {
   if (!notes) return "";
   let s = notes.trim();
-  // 清除历史遗留自动拼接的音标格式，保留用户的全部笔记与记忆法
-  return s.replace(/音标:\s*\/[^\n\/]+\/\s*/g, "").trim();
+  // 清除历史遗留自动拼接的音标格式
+  s = s.replace(/音标:\s*\/[^\n\/]+\/\s*/g, "").trim();
+
+  // 智能清洗历史多次同步重复追加的段落
+  const paragraphs = s.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    const uniquePara = Array.from(new Set(paragraphs));
+    s = uniquePara.join("\n\n");
+  }
+
+  // 智能清洗连续相同行
+  const lines = s.split("\n").map(l => l.trim());
+  const dedupLines = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i === 0 || lines[i] !== lines[i - 1] || lines[i] === "") {
+      dedupLines.push(lines[i]);
+    }
+  }
+  return dedupLines.join("\n").trim();
 }
 
 const DEFAULT_ARTICLE_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23CC785C' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/><path d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/></svg>";
