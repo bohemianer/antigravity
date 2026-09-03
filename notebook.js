@@ -391,18 +391,13 @@ function renderList(list) {
       <td style="vertical-align: middle !important;">
         <div class="salad-context-box">
           <div class="salad-sentence">${contextSentence}</div>
-          <div class="salad-divider"></div>
-          <div class="salad-source">
-            <img src="${faviconUrl}" class="salad-favicon" onerror="this.onerror=null; this.src='${DEFAULT_ARTICLE_SVG}';">
-            ${item.url ? `<a href="${item.url}" target="_blank" class="salad-source-text">${sourceTitle}</a>` : `<span class="salad-source-text">${sourceTitle}</span>`}
-          </div>
         </div>
       </td>
       <td style="vertical-align: middle !important;">
         <div class="trans-text">${transText}</div>
       </td>
       <td style="vertical-align: middle !important;">
-        ${notesText ? `<div class="note-box">${notesText}</div>` : ''}
+        <div class="note-text">${notesText || ''}</div>
       </td>
       <td style="vertical-align: middle !important;">
         <div class="action-group">
@@ -664,7 +659,7 @@ function renderQuizQuestion() {
     document.getElementById('quizClozeSentence').innerHTML = `[ ______ ] : ${formatTrans(currentItem.trans || currentItem.definition || "")}`;
   }
 
-  document.getElementById('quizSourceTitle').innerText = currentItem.title || "Web Article";
+  document.getElementById('quizSourceTitle').innerText = "语境挖词";
   document.getElementById('quizCurrentIndex').innerText = (quizIndex + 1).toString();
   document.getElementById('quizTotalCount').innerText = quizList.length.toString();
   const pct = Math.min(100, ((quizIndex + 1) / quizList.length) * 100);
@@ -1117,7 +1112,6 @@ function openEditModal(idx) {
   document.getElementById('inputPhonetic').value = extractPhoneticFromItem(item);
   document.getElementById('inputTrans').value = item.trans || item.definition || "";
   document.getElementById('inputContext').value = item.context || item.sentence || "";
-  document.getElementById('inputSource').value = item.title || "";
   document.getElementById('inputNotes').value = cleanNotes(item.notes);
 
   modal.style.display = "flex";
@@ -1483,19 +1477,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const phonetic = document.getElementById('inputPhonetic').value.trim();
     const trans = document.getElementById('inputTrans').value.trim();
     const context = document.getElementById('inputContext').value.trim();
-    const source = document.getElementById('inputSource').value.trim() || 'Manual Entry';
     const notes = document.getElementById('inputNotes').value.trim();
+    const existingItem = (idx >= 0 && currentWords[idx]) ? currentWords[idx] : null;
 
     const newItem = {
       text: word,
       trans: trans,
       phonetic: cleanIPA(phonetic),
       context: context,
-      title: source,
-      url: "",
+      title: existingItem ? (existingItem.title || "") : "",
+      url: existingItem ? (existingItem.url || "") : "",
       date: Date.now(),
       notes: notes,
-      srsLevel: 0
+      srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0
     };
 
     if (idx === -1) {

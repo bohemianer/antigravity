@@ -366,7 +366,9 @@
       background: #A8A29E;
     }
 
-    .salad-context-box { display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
+    .salad-context-box { 
+      line-height: 1.6; 
+    }
     .salad-sentence {
       font-family: var(--font-serif);
       font-size: 15px;
@@ -384,51 +386,22 @@
       padding: 1px 4px;
       border-radius: 3px;
     }
-    .salad-divider { height: 1px; background: var(--border-light); width: 100%; }
-    .salad-source {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11.5px;
-      color: var(--text-muted);
-      font-family: var(--font-sans);
-    }
-    .salad-favicon {
-      width: 14px;
-      height: 14px;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-    .salad-source-text {
-      color: #78716C;
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .salad-source-text:hover {
-      color: var(--claude-terracotta);
-    }
     
-    .trans-text {
+    .trans-text,
+    .note-text {
       color: #141413;
-      font-weight: 550;
       font-size: 13.5px;
       line-height: 1.7;
       letter-spacing: 0.15px;
       white-space: pre-line;
       word-break: break-word;
     }
-
-    .note-box {
-      font-size: 13px;
+    .trans-text {
+      font-weight: 550;
+    }
+    .note-text {
       font-weight: 450;
       color: #383532;
-      background: #F7F5F0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      border-left: 3px solid var(--claude-terracotta);
-      white-space: pre-line;
-      word-break: break-word;
-      line-height: 1.55;
     }
 
     .action-group {
@@ -1462,7 +1435,7 @@
         <div class="flashcard-top-meta">
           <span class="srs-badge srs-level-2" id="quizMetaBadge">
             <span class="srs-dot"></span>
-            <span id="quizSourceTitle">Web Article</span>
+            <span id="quizSourceTitle">语境挖词</span>
           </span>
           <div class="flashcard-hint" id="quizHintTip">
             <span>按键盘 1~4 或直接点击选项</span>
@@ -1606,10 +1579,6 @@
         <div class="form-group">
           <label class="form-label">上下文例句 (Context)</label>
           <textarea id="inputContext" class="form-textarea" placeholder="包含该词的原汁原味上下文例句"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">来源标题 / 站点 (Source Title)</label>
-          <input type="text" id="inputSource" class="form-input" placeholder="如: Let the Bond Market Speak - WSJ">
         </div>
         <div class="form-group">
           <label class="form-label">专属心得笔记 (Notes)</label>
