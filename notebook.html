@@ -702,6 +702,9 @@
       text-align: center;
       margin-bottom: 8px;
       letter-spacing: -0.5px;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text;
     }
     .flashcard-phonetic-wrap {
       display: flex;
@@ -718,7 +721,8 @@
       padding: 2px 8px;
       border-radius: 6px;
       transition: all 0.15s ease;
-      user-select: none;
+      user-select: text !important;
+      -webkit-user-select: text !important;
     }
     .flashcard-phonetic:hover {
       color: var(--claude-terracotta);
@@ -738,6 +742,9 @@
       border-radius: 10px;
       border: 1px dashed #E6E4DD;
       letter-spacing: 0.1px;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text;
     }
     .flashcard-context .highlight {
       background: #FDE68A;
@@ -767,6 +774,9 @@
       white-space: pre-line;
       word-break: break-word;
       letter-spacing: 0.15px;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      cursor: text;
     }
     .flashcard-notes {
       font-size: 13.5px;
@@ -1576,8 +1586,8 @@
           <input type="text" id="inputPhonetic" class="form-input" placeholder="如: /ˈæbstrækt/">
         </div>
         <div class="form-group">
-          <label class="form-label">权威释义 *</label>
-          <input type="text" id="inputTrans" class="form-input" required placeholder="如: adj. 抽象的；n. 摘要">
+          <label class="form-label">权威释义 * (支持换行分行编辑)</label>
+          <textarea id="inputTrans" class="form-textarea" required placeholder="如: adj. 抽象的；n. 摘要 (支持 Enter 键换行分行)" style="min-height: 70px;"></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">上下文例句 (Context)</label>
