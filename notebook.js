@@ -106,10 +106,8 @@ function extractPhoneticFromItem(item) {
 
 function cleanNotes(notes) {
   if (!notes) return "";
-  const s = notes.trim();
-  if (s.includes("记忆：") || s.includes("sub（在下面）") || s.includes("外刊核心高阶词汇") || s.includes("结合上下文例句加深意群语感")) {
-    return "";
-  }
+  let s = notes.trim();
+  // 清除历史遗留自动拼接的音标格式，保留用户的全部笔记与记忆法
   return s.replace(/音标:\s*\/[^\n\/]+\/\s*/g, "").trim();
 }
 
@@ -899,8 +897,8 @@ function renderFlashcard() {
   document.getElementById('fcSrsText').innerText = srs.label;
 
   const notesEl = document.getElementById('fcNotes');
-  if (notes) {
-    notesEl.innerText = notes;
+  if (notes && notes.trim()) {
+    notesEl.innerHTML = `<span style="font-weight: 600; color: var(--claude-terracotta);">📝 备注：</span>${notes}`;
     notesEl.style.display = 'block';
   } else {
     notesEl.style.display = 'none';
