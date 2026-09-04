@@ -601,8 +601,9 @@ function updateFlashcardList(resetIndex = false) {
   renderFlashcard();
 }
 
-// ---------------- 摸鱼模式 (VS Code 深度工作环境伪装层) ----------------
+// ---------------- 摸鱼模式 (VS Code 深度代码伪装 + 企业邮件伪装双模式) ----------------
 let isStealthMode = false;
+let stealthSubMode = 'code'; // 'code' | 'mail'
 let stealthToastTimer = null;
 
 function escapeHtml(str) {
@@ -626,6 +627,34 @@ function showStealthToast(msg) {
   }, 1600);
 }
 
+function switchStealthSubMode(mode) {
+  stealthSubMode = mode;
+  const codeView = document.getElementById('stealthCodeView');
+  const mailView = document.getElementById('stealthMailView');
+  const btnCode = document.getElementById('btnStealthCodeMode');
+  const btnMail = document.getElementById('btnStealthMailMode');
+  const titleLabel = document.getElementById('stealthTitleBarLabel');
+  const shortcutHint = document.getElementById('stealthShortcutHint');
+
+  if (mode === 'mail') {
+    if (codeView) codeView.style.display = 'none';
+    if (mailView) mailView.style.display = 'flex';
+    if (btnCode) btnCode.classList.remove('active');
+    if (btnMail) btnMail.classList.add('active');
+    if (titleLabel) titleLabel.innerText = 'Outlook (PWA) — Inbox — Language Operations Support';
+    if (shortcutHint) shortcutHint.innerText = '按 [Space] 展开邮件附件 | 1拒绝 2待定 3批准 | [Esc] 快速恢复';
+  } else {
+    if (codeView) codeView.style.display = 'flex';
+    if (mailView) mailView.style.display = 'none';
+    if (btnCode) btnCode.classList.add('active');
+    if (btnMail) btnMail.classList.remove('active');
+    if (titleLabel) titleLabel.innerText = 'memoryCache.ts — antigravity-core — Visual Studio Code';
+    if (shortcutHint) shortcutHint.innerText = '按 [Space] 展开释义 | 1忘了 2模糊 3熟练 | [Esc] 快速恢复';
+  }
+
+  renderStealthCard();
+}
+
 function enterStealthMode() {
   if (cardList.length === 0) {
     updateFlashcardList(true);
@@ -633,7 +662,7 @@ function enterStealthMode() {
   isStealthMode = true;
   const overlay = document.getElementById('stealthOverlay');
   if (overlay) overlay.style.display = 'flex';
-  renderStealthCard();
+  switchStealthSubMode(stealthSubMode || 'code');
 }
 
 function exitStealthMode() {
@@ -646,6 +675,14 @@ function exitStealthMode() {
 }
 
 function renderStealthCard() {
+  if (stealthSubMode === 'mail') {
+    renderStealthMailCard();
+  } else {
+    renderStealthCodeCard();
+  }
+}
+
+function renderStealthCodeCard() {
   if (cardList.length === 0) return;
   const item = cardList[cardIndex];
   if (!item) return;
@@ -756,6 +793,73 @@ function renderStealthCard() {
         toggleCardReveal();
       };
     }
+  }
+}
+
+function renderStealthMailCard() {
+  if (cardList.length === 0) return;
+  const item = cardList[cardIndex];
+  if (!item) return;
+
+  const word = (item.text || item.word || "").trim();
+  const phonetic = extractPhoneticFromItem(item);
+  const trans = formatTrans(item.trans || item.definition || "");
+  const notes = cleanNotes(item.notes);
+  const context = (item.context || item.sentence || "").trim() || `Core operational context for ${word}.`;
+  const pct = Math.round(((cardIndex + 1) / batchTotalTarget) * 100);
+
+  const progEl = document.getElementById('stealthProgressStatus');
+  if (progEl) {
+    progEl.innerText = `Mail: ${cardIndex + 1}/${batchTotalTarget} reviewed (${pct}%)`;
+  }
+
+  const wordTextEl = document.getElementById('mailWordText');
+  if (wordTextEl) wordTextEl.innerText = word;
+
+  const wordIpaEl = document.getElementById('mailWordIpa');
+  if (wordIpaEl) wordIpaEl.innerText = phonetic ? phonetic : '';
+
+  const contextEl = document.getElementById('mailContextText');
+  if (contextEl) contextEl.innerText = context;
+
+  const inboxCountEl = document.getElementById('mailInboxCount');
+  if (inboxCountEl) inboxCountEl.innerText = batchTotalTarget;
+
+  const detailSubjectEl = document.getElementById('mailDetailSubject');
+  if (detailSubjectEl) {
+    detailSubjectEl.innerText = `[Action Required] Terminology Spec Review - Item #${cardIndex + 1} (${word})`;
+  }
+
+  const cardSubjectEl = document.getElementById('mailCardSubject');
+  if (cardSubjectEl) {
+    cardSubjectEl.innerText = `[Action Required] Spec #${cardIndex + 1}: ${word}`;
+  }
+
+  const cardSnippetEl = document.getElementById('mailCardSnippet');
+  if (cardSnippetEl) {
+    cardSnippetEl.innerText = `Please verify usage: "${context.slice(0, 42)}..."`;
+  }
+
+  const foldTrigger = document.getElementById('mailFoldTrigger');
+  const specBox = document.getElementById('mailSpecBox');
+  const specTrans = document.getElementById('mailSpecTrans');
+  const specNotes = document.getElementById('mailSpecNotes');
+
+  if (cardRevealed) {
+    if (foldTrigger) foldTrigger.style.display = 'none';
+    if (specBox) specBox.style.display = 'block';
+    if (specTrans) specTrans.innerText = trans;
+    if (notes && notes.trim()) {
+      if (specNotes) {
+        specNotes.style.display = 'block';
+        specNotes.innerText = notes;
+      }
+    } else {
+      if (specNotes) specNotes.style.display = 'none';
+    }
+  } else {
+    if (foldTrigger) foldTrigger.style.display = 'flex';
+    if (specBox) specBox.style.display = 'none';
   }
 }
 
@@ -881,7 +985,7 @@ function renderFlashcard() {
 
   const notesEl = document.getElementById('fcNotes');
   if (notes && notes.trim()) {
-    notesEl.innerHTML = `<span style="font-weight: 600; color: var(--claude-terracotta);">📝 备注：</span>${notes}`;
+    notesEl.innerText = notes;
     notesEl.style.display = 'block';
   } else {
     notesEl.style.display = 'none';
@@ -995,7 +1099,11 @@ function handleSRSFeedback(rating) {
   // 判断是否已完成本组自测
   if (batchStats.completedCount >= batchTotalTarget) {
     if (isStealthMode) {
-      showStealthToast(`🎉 All ${batchTotalTarget} tests compiled & passed!`);
+      if (stealthSubMode === 'mail') {
+        showStealthToast(`🎉 All ${batchTotalTarget} mail review items completed!`);
+      } else {
+        showStealthToast(`🎉 All ${batchTotalTarget} tests compiled & passed!`);
+      }
     } else {
       showBatchSummary();
     }
@@ -1320,6 +1428,101 @@ document.addEventListener('DOMContentLoaded', () => {
   const stealthExitTrigger = document.getElementById('stealthExitTrigger');
   if (stealthExitTrigger) stealthExitTrigger.onclick = exitStealthMode;
 
+  // 摸鱼模式子视图切换 (代码模式 vs 邮件模式)
+  const btnStealthCodeMode = document.getElementById('btnStealthCodeMode');
+  if (btnStealthCodeMode) {
+    btnStealthCodeMode.onclick = (e) => {
+      e.stopPropagation();
+      switchStealthSubMode('code');
+    };
+  }
+  const btnStealthMailMode = document.getElementById('btnStealthMailMode');
+  if (btnStealthMailMode) {
+    btnStealthMailMode.onclick = (e) => {
+      e.stopPropagation();
+      switchStealthSubMode('mail');
+    };
+  }
+
+  // 摸鱼邮件模式内操作与反馈按钮绑定
+  const mailFoldTrigger = document.getElementById('mailFoldTrigger');
+  if (mailFoldTrigger) {
+    mailFoldTrigger.onclick = (e) => {
+      e.stopPropagation();
+      toggleCardReveal();
+    };
+  }
+  const mailActiveItem = document.getElementById('mailCardActiveItem');
+  if (mailActiveItem) {
+    mailActiveItem.onclick = (e) => {
+      e.stopPropagation();
+      toggleCardReveal();
+    };
+  }
+
+  const btnMailSrs0 = document.getElementById('btnMailSrs0');
+  if (btnMailSrs0) {
+    btnMailSrs0.onclick = (e) => {
+      e.stopPropagation();
+      handleSRSFeedback(1);
+      showStealthToast('[Mail Review: REJECTED (生疏)]');
+    };
+  }
+  const btnMailSrs1 = document.getElementById('btnMailSrs1');
+  if (btnMailSrs1) {
+    btnMailSrs1.onclick = (e) => {
+      e.stopPropagation();
+      handleSRSFeedback(2);
+      showStealthToast('[Mail Review: PENDING (模糊)]');
+    };
+  }
+  const btnMailSrs3 = document.getElementById('btnMailSrs3');
+  if (btnMailSrs3) {
+    btnMailSrs3.onclick = (e) => {
+      e.stopPropagation();
+      handleSRSFeedback(3);
+      showStealthToast('[Mail Review: APPROVED (熟练)]');
+    };
+  }
+
+  const btnMailPrev = document.getElementById('btnMailPrev');
+  if (btnMailPrev) {
+    btnMailPrev.onclick = (e) => {
+      e.stopPropagation();
+      prevCard();
+    };
+  }
+  const btnMailNext = document.getElementById('btnMailNext');
+  if (btnMailNext) {
+    btnMailNext.onclick = (e) => {
+      e.stopPropagation();
+      nextCard();
+    };
+  }
+
+  const btnMailReply = document.getElementById('btnMailReply');
+  if (btnMailReply) {
+    btnMailReply.onclick = (e) => {
+      e.stopPropagation();
+      showStealthToast('[Mail System: Draft reply generated]');
+    };
+  }
+  const btnMailForward = document.getElementById('btnMailForward');
+  if (btnMailForward) {
+    btnMailForward.onclick = (e) => {
+      e.stopPropagation();
+      showStealthToast('[Mail System: Forward window opened]');
+    };
+  }
+  const btnMailArchive = document.getElementById('btnMailArchive');
+  if (btnMailArchive) {
+    btnMailArchive.onclick = (e) => {
+      e.stopPropagation();
+      showStealthToast('[Mail System: Archived to team box]');
+      nextCard();
+    };
+  }
+
   // 艾宾浩斯自测反馈按键点击
   document.getElementById('btnSrsAgain').onclick = (e) => {
     e.stopPropagation();
@@ -1366,15 +1569,15 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (e.code === 'Digit1' || e.code === 'Numpad1') {
         e.preventDefault();
         handleSRSFeedback(1);
-        showStealthToast('[Git Commit: Memory REJECT (0)]');
+        showStealthToast(stealthSubMode === 'mail' ? '[Mail Review: REJECTED (生疏)]' : '[Git Commit: Memory REJECT (0)]');
       } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
         e.preventDefault();
         handleSRSFeedback(2);
-        showStealthToast('[Git Commit: Memory PENDING (1)]');
+        showStealthToast(stealthSubMode === 'mail' ? '[Mail Review: PENDING (模糊)]' : '[Git Commit: Memory PENDING (1)]');
       } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
         e.preventDefault();
         handleSRSFeedback(3);
-        showStealthToast('[Git Commit: Memory RESOLVED (3)]');
+        showStealthToast(stealthSubMode === 'mail' ? '[Mail Review: APPROVED (熟练)]' : '[Git Commit: Memory RESOLVED (3)]');
       } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD' || e.code === 'KeyJ') {
         e.preventDefault();
         nextCard();

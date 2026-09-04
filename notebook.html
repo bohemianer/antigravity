@@ -1444,6 +1444,391 @@
       border-radius: 3px;
       animation: pulse 1s infinite;
     }
+
+    /* ---------------- 摸鱼模式：邮件模式 (Outlook / Work Mail) ---------------- */
+    .stealth-mode-switcher {
+      display: flex;
+      background: rgba(0, 0, 0, 0.28);
+      border-radius: 5px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .stealth-mode-tab {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border: none;
+      background: transparent;
+      color: #999999;
+      font-size: 11px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .stealth-mode-tab:hover {
+      color: #FFFFFF;
+    }
+    .stealth-mode-tab.active {
+      background: rgba(255, 255, 255, 0.18);
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    /* 邮件容器 */
+    #stealthMailView {
+      flex: 1;
+      display: none;
+      background: #F3F2F1;
+      color: #201F1E;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+    }
+    .mail-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    /* 邮箱左侧导航 */
+    .mail-sidebar {
+      width: 175px;
+      background: #EDEBE9;
+      border-right: 1px solid #E1DFDD;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 0;
+      flex-shrink: 0;
+    }
+    .mail-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 16px 12px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #0078D4;
+      border-bottom: 1px solid #E1DFDD;
+    }
+    .mail-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 8px;
+    }
+    .mail-nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #323130;
+      cursor: pointer;
+    }
+    .mail-nav-item:hover {
+      background: #E1DFDD;
+    }
+    .mail-nav-item.active {
+      background: #FFFFFF;
+      color: #0078D4;
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .mail-badge-count {
+      font-size: 10.5px;
+      background: #0078D4;
+      color: #FFFFFF;
+      padding: 1px 5px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+
+    /* 邮件中间列表栏 */
+    .mail-inbox-list {
+      width: 280px;
+      background: #FAF9F8;
+      border-right: 1px solid #E1DFDD;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .inbox-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #EDEBE9;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #201F1E;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mail-card-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #EDEBE9;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: background 0.12s;
+    }
+    .mail-card-item:hover {
+      background: #F3F2F1;
+    }
+    .mail-card-item.active {
+      background: #FFFFFF;
+      border-left: 3.5px solid #0078D4;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .mail-card-sender {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #201F1E;
+    }
+    .mail-card-time {
+      font-size: 11px;
+      color: #605E5C;
+      font-weight: 400;
+    }
+    .mail-card-subject {
+      font-size: 12px;
+      color: #323130;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 500;
+    }
+    .mail-card-snippet {
+      font-size: 11px;
+      color: #605E5C;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 邮件右侧阅读主窗 */
+    .mail-reading-pane {
+      flex: 1;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .mail-action-toolbar {
+      height: 40px;
+      border-bottom: 1px solid #EDEBE9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 18px;
+      background: #FAF9F8;
+    }
+    .btn-mail-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 26px;
+      padding: 0 9px;
+      border-radius: 4px;
+      border: 1px solid #D2D0CE;
+      background: #FFFFFF;
+      font-size: 11.5px;
+      color: #323130;
+      cursor: pointer;
+    }
+    .btn-mail-action:hover {
+      background: #F3F2F1;
+      color: #0078D4;
+      border-color: #0078D4;
+    }
+    .mail-content-wrap {
+      padding: 22px 28px;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .mail-subject-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #201F1E;
+      line-height: 1.4;
+      letter-spacing: -0.2px;
+    }
+    .mail-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #EDEBE9;
+    }
+    .mail-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #0078D4;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .mail-sender-info {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .mail-sender-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #201F1E;
+    }
+    .mail-recipient-line {
+      font-size: 11.5px;
+      color: #605E5C;
+    }
+    
+    .mail-body-paper {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #323130;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+    .mail-term-card {
+      background: #F8F7F6;
+      border: 1px solid #E1DFDD;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 14px 0;
+    }
+    .mail-word-hero {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .mail-word-text {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0078D4;
+      font-family: var(--font-serif);
+      user-select: text !important;
+    }
+    .mail-word-ipa {
+      font-size: 13px;
+      color: #605E5C;
+      font-family: "Lucida Sans Unicode", sans-serif;
+      user-select: text !important;
+    }
+    .mail-context-box {
+      font-size: 13.5px;
+      font-style: italic;
+      color: #201F1E;
+      line-height: 1.6;
+      padding: 10px 14px;
+      background: #FFFFFF;
+      border-left: 3px solid #0078D4;
+      border-radius: 4px;
+      margin: 10px 0;
+      user-select: text !important;
+    }
+
+    .mail-spec-box {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: #FFFFFF;
+      border: 1px dashed #C8C6C4;
+      border-radius: 6px;
+    }
+    .mail-spec-header {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #605E5C;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .mail-spec-trans {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #201F1E;
+      line-height: 1.6;
+      white-space: pre-line;
+      margin-bottom: 8px;
+      user-select: text !important;
+    }
+    .mail-spec-notes {
+      font-size: 13px;
+      color: #494544;
+      line-height: 1.6;
+      white-space: pre-line;
+      padding-top: 8px;
+      border-top: 1px solid #EDEBE9;
+      user-select: text !important;
+    }
+    .mail-unrevealed-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #EFF6FC;
+      border: 1px dashed #0078D4;
+      border-radius: 6px;
+      color: #0078D4;
+      font-size: 12.5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .mail-unrevealed-badge:hover {
+      background: #DEECF9;
+    }
+    .mail-feedback-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #EDEBE9;
+    }
+    .mail-srs-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-mail-srs {
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .btn-mail-srs-0 {
+      background: #FDE7E9;
+      color: #A80000;
+      border-color: #F8D7DA;
+    }
+    .btn-mail-srs-0:hover { background: #FCD2D6; }
+    .btn-mail-srs-1 {
+      background: #FFF4CE;
+      color: #795B00;
+      border-color: #FFECA8;
+    }
+    .btn-mail-srs-1:hover { background: #FFE896; }
+    .btn-mail-srs-3 {
+      background: #DFF6DD;
+      color: #107C10;
+      border-color: #C7E0C4;
+    }
+    .btn-mail-srs-3:hover { background: #CEEFCA; }
   </style>
 </head>
 <body>
@@ -1796,81 +2181,236 @@
         <span class="dot dot-yellow"></span>
         <span class="dot dot-green"></span>
       </div>
-      <div class="vscode-title-text">
+      <div class="vscode-title-text" id="stealthTitleText">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3178C6" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        <span>memoryCache.ts — antigravity-core — Visual Studio Code</span>
+        <span id="stealthTitleBarLabel">memoryCache.ts — antigravity-core — Visual Studio Code</span>
+      </div>
+      <div class="stealth-mode-switcher">
+        <button type="button" class="stealth-mode-tab active" id="btnStealthCodeMode" title="切换为 VS Code 代码模式">
+          <span>💻 代码模式</span>
+        </button>
+        <button type="button" class="stealth-mode-tab" id="btnStealthMailMode" title="切换为企业邮件模式 (Outlook 风格)">
+          <span>✉️ 邮件模式</span>
+        </button>
       </div>
       <div class="vscode-top-actions">
         <span class="stealth-badge-exit" id="stealthExitHint" title="按 Esc 立即恢复正常模式">按 Esc 恢复</span>
       </div>
     </div>
 
-    <!-- 标签页栏 -->
-    <div class="vscode-tabs-bar">
-      <div class="vscode-tab active">
-        <span class="tab-ts-icon">TS</span>
-        <span class="tab-label">memoryCache.ts</span>
-        <span class="tab-close-icon">×</span>
+    <!-- 模式 1: VS Code 界面容器 -->
+    <div id="stealthCodeView" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+      <!-- 标签页栏 -->
+      <div class="vscode-tabs-bar">
+        <div class="vscode-tab active">
+          <span class="tab-ts-icon">TS</span>
+          <span class="tab-label">memoryCache.ts</span>
+          <span class="tab-close-icon">×</span>
+        </div>
+        <div class="vscode-tab">
+          <span class="tab-json-icon">{}</span>
+          <span class="tab-label">package.json</span>
+        </div>
+        <div class="vscode-tab">
+          <span class="tab-env-icon">⚙</span>
+          <span class="tab-label">.env.local</span>
+        </div>
       </div>
-      <div class="vscode-tab">
-        <span class="tab-json-icon">{}</span>
-        <span class="tab-label">package.json</span>
+
+      <!-- 面包屑导航 -->
+      <div class="vscode-breadcrumbs">
+        <span>antigravity-core</span>
+        <span class="bc-sep">›</span>
+        <span>src</span>
+        <span class="bc-sep">›</span>
+        <span>services</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-file">memoryCache.ts</span>
+        <span class="bc-sep">›</span>
+        <span class="bc-symbol" id="stealthBreadcrumbSymbol">process_word()</span>
       </div>
-      <div class="vscode-tab">
-        <span class="tab-env-icon">⚙</span>
-        <span class="tab-label">.env.local</span>
+
+      <!-- 主体区域：Activity Bar + Explorer 文件树 + 编辑器代码区 -->
+      <div class="vscode-main-body">
+        <!-- 最左侧 Activity Bar -->
+        <div class="vscode-activity-bar">
+          <div class="act-item active" title="Explorer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="act-item" title="Search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="act-item" title="Source Control">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+          </div>
+          <div class="act-item" title="Run and Debug">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+        </div>
+
+        <!-- 次级侧边栏 Explorer 文件树 -->
+        <div class="vscode-sidebar">
+          <div class="sidebar-header">EXPLORER: ANTIGRAVITY</div>
+          <div class="tree-item tree-folder expanded">▼ src</div>
+          <div class="tree-item tree-folder sub expanded">  ▼ services</div>
+          <div class="tree-item tree-file sub active">    <span class="ts-file-badge">TS</span> memoryCache.ts</div>
+          <div class="tree-item tree-file sub">    <span class="ts-file-badge">TS</span> authService.ts</div>
+          <div class="tree-item tree-folder sub">  ▶ utils</div>
+          <div class="tree-item tree-folder sub">  ▶ controllers</div>
+          <div class="tree-item tree-file">📄 package.json</div>
+          <div class="tree-item tree-file">📄 tsconfig.json</div>
+          <div class="tree-item tree-file">📄 README.md</div>
+        </div>
+
+        <!-- 代码主编辑区 -->
+        <div class="vscode-editor-pane" id="stealthEditorSurface">
+          <div class="editor-code-container" id="stealthCodeContent">
+            <!-- 动态渲染代码 -->
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 面包屑导航 -->
-    <div class="vscode-breadcrumbs">
-      <span>antigravity-core</span>
-      <span class="bc-sep">›</span>
-      <span>src</span>
-      <span class="bc-sep">›</span>
-      <span>services</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-file">memoryCache.ts</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-symbol" id="stealthBreadcrumbSymbol">process_word()</span>
-    </div>
+    <!-- 模式 2: 企业邮件伪装界面容器 (Outlook / Work Mail) -->
+    <div id="stealthMailView">
+      <div class="mail-layout">
+        <!-- 邮箱左侧导航栏 -->
+        <div class="mail-sidebar">
+          <div class="mail-brand">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <span>Outlook Mail</span>
+          </div>
+          <div class="mail-nav-list">
+            <div class="mail-nav-item active">
+              <span style="display:flex; align-items:center; gap:6px;">📥 <span>收件箱</span></span>
+              <span class="mail-badge-count" id="mailInboxCount">20</span>
+            </div>
+            <div class="mail-nav-item">
+              <span style="display:flex; align-items:center; gap:6px;">⭐ <span>已加星标</span></span>
+            </div>
+            <div class="mail-nav-item">
+              <span style="display:flex; align-items:center; gap:6px;">📤 <span>已发送</span></span>
+            </div>
+            <div class="mail-nav-item">
+              <span style="display:flex; align-items:center; gap:6px;">📁 <span>团队归档</span></span>
+            </div>
+            <div class="mail-nav-item">
+              <span style="display:flex; align-items:center; gap:6px;">🗑️ <span>废件箱</span></span>
+            </div>
+          </div>
+        </div>
 
-    <!-- 主体区域：Activity Bar + Explorer 文件树 + 编辑器代码区 -->
-    <div class="vscode-main-body">
-      <!-- 最左侧 Activity Bar -->
-      <div class="vscode-activity-bar">
-        <div class="act-item active" title="Explorer">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </div>
-        <div class="act-item" title="Search">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </div>
-        <div class="act-item" title="Source Control">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
-        </div>
-        <div class="act-item" title="Run and Debug">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        </div>
-      </div>
+        <!-- 邮件中间列表栏 -->
+        <div class="mail-inbox-list">
+          <div class="inbox-header">
+            <span>重点收件箱</span>
+            <span style="font-size: 11px; font-weight: normal; color: #605E5C;">筛选 ▾</span>
+          </div>
 
-      <!-- 次级侧边栏 Explorer 文件树 -->
-      <div class="vscode-sidebar">
-        <div class="sidebar-header">EXPLORER: ANTIGRAVITY</div>
-        <div class="tree-item tree-folder expanded">▼ src</div>
-        <div class="tree-item tree-folder sub expanded">  ▼ services</div>
-        <div class="tree-item tree-file sub active">    <span class="ts-file-badge">TS</span> memoryCache.ts</div>
-        <div class="tree-item tree-file sub">    <span class="ts-file-badge">TS</span> authService.ts</div>
-        <div class="tree-item tree-folder sub">  ▶ utils</div>
-        <div class="tree-item tree-folder sub">  ▶ controllers</div>
-        <div class="tree-item tree-file">📄 package.json</div>
-        <div class="tree-item tree-file">📄 tsconfig.json</div>
-        <div class="tree-item tree-file">📄 README.md</div>
-      </div>
+          <!-- 待办审核邮件 (当前单词卡片) -->
+          <div class="mail-card-item active" id="mailCardActiveItem">
+            <div class="mail-card-sender">
+              <span>Language Operations</span>
+              <span class="mail-card-time" id="mailCardTime">10:48</span>
+            </div>
+            <div class="mail-card-subject" id="mailCardSubject">[Action Required] Terminology Spec Review</div>
+            <div class="mail-card-snippet" id="mailCardSnippet">Please verify term definition and context before release...</div>
+          </div>
 
-      <!-- 代码主编辑区 -->
-      <div class="vscode-editor-pane" id="stealthEditorSurface">
-        <div class="editor-code-container" id="stealthCodeContent">
-          <!-- 动态渲染代码 -->
+          <!-- 模拟企业真实日常工作邮件 -->
+          <div class="mail-card-item">
+            <div class="mail-card-sender">
+              <span>DevSecOps Audit</span>
+              <span class="mail-card-time">09:30</span>
+            </div>
+            <div class="mail-card-subject">[Notice] Quarterly SOC2 compliance scan completed</div>
+            <div class="mail-card-snippet">The pipeline scan completed with 0 high risk vulnerabilities detected.</div>
+          </div>
+
+          <div class="mail-card-item">
+            <div class="mail-card-sender">
+              <span>Architecture Guild</span>
+              <span class="mail-card-time">Yesterday</span>
+            </div>
+            <div class="mail-card-subject">Re: Microservices schema consolidation RFC</div>
+            <div class="mail-card-snippet">Thanks everyone for attending yesterday's design meeting. Notes attached.</div>
+          </div>
+
+          <div class="mail-card-item">
+            <div class="mail-card-sender">
+              <span>HR &amp; Culture Team</span>
+              <span class="mail-card-time">May 12</span>
+            </div>
+            <div class="mail-card-subject">Internal Tech Sharing: Q2 Best Practices</div>
+            <div class="mail-card-snippet">Don't forget to register for this Friday's lightning talks session.</div>
+          </div>
+        </div>
+
+        <!-- 邮件右侧阅读正文栏 -->
+        <div class="mail-reading-pane">
+          <!-- 邮件顶部操作栏 -->
+          <div class="mail-action-toolbar">
+            <button type="button" class="btn-mail-action" id="btnMailReply">↩️ 回复</button>
+            <button type="button" class="btn-mail-action" id="btnMailForward">↪️ 转发</button>
+            <button type="button" class="btn-mail-action" id="btnMailArchive">📁 归档</button>
+            <button type="button" class="btn-mail-action" id="btnMailPrev" title="上一封 (K / ↑)">▲ 上一封</button>
+            <button type="button" class="btn-mail-action" id="btnMailNext" title="下一封 (J / ↓)">▼ 下一封</button>
+          </div>
+
+          <!-- 邮件详情主体 -->
+          <div class="mail-content-wrap">
+            <div class="mail-subject-title" id="mailDetailSubject">[Action Required] Terminology Spec Review - Item #1</div>
+            <div class="mail-meta-row">
+              <div class="mail-avatar">LO</div>
+              <div class="mail-sender-info">
+                <div class="mail-sender-name">Language Operations Support &lt;ops@corp.internal&gt;</div>
+                <div class="mail-recipient-line">收件人: me &lt;dev@corp.internal&gt;; core-engineering@corp.internal</div>
+              </div>
+            </div>
+
+            <!-- 邮件正文 -->
+            <div class="mail-body-paper">
+              <p>Hi Team,</p>
+              <p style="margin: 8px 0;">Please review the vocabulary specification and contextual application below to ensure team terminology consensus for our upcoming documentation sync:</p>
+
+              <!-- 单词卡片区块 -->
+              <div class="mail-term-card">
+                <div class="mail-word-hero">
+                  <span class="mail-word-text" id="mailWordText">Word</span>
+                  <span class="mail-word-ipa" id="mailWordIpa">/ipa/</span>
+                </div>
+
+                <div style="font-size: 11.5px; font-weight: 700; color: #605E5C; margin-bottom: 4px;">CONTEXTUAL USAGE:</div>
+                <div class="mail-context-box" id="mailContextText">Context sentence appears here...</div>
+
+                <!-- 折叠提示微标 / 展开内容 -->
+                <div class="mail-unrevealed-badge" id="mailFoldTrigger" title="按空格键或点击展开">
+                  <span>📎 Specification_Attachment.enc (已加密暂扣)</span>
+                  <span style="font-size: 11.5px; font-weight: 600;">按 [空格] 或点击展开核验 ▾</span>
+                </div>
+
+                <div class="mail-spec-box" id="mailSpecBox" style="display: none;">
+                  <div class="mail-spec-header">Verified Definitions &amp; Semantic Scope</div>
+                  <div class="mail-spec-trans" id="mailSpecTrans"></div>
+                  <div class="mail-spec-notes" id="mailSpecNotes" style="display: none;"></div>
+                </div>
+
+                <!-- 邮件内审核快捷反馈栏 (SRS) -->
+                <div class="mail-feedback-bar">
+                  <span style="font-size: 12px; color: #605E5C;">Review Decision:</span>
+                  <div class="mail-srs-btns">
+                    <button type="button" class="btn-mail-srs btn-mail-srs-0" id="btnMailSrs0" title="快捷键 1">[1] 拒绝/重背 (生疏)</button>
+                    <button type="button" class="btn-mail-srs btn-mail-srs-1" id="btnMailSrs1" title="快捷键 2">[2] 待定/复核 (模糊)</button>
+                    <button type="button" class="btn-mail-srs btn-mail-srs-3" id="btnMailSrs3" title="快捷键 3">[3] 批准/采纳 (熟练)</button>
+                  </div>
+                </div>
+              </div>
+
+              <p style="font-size: 12px; color: #8A8886; margin-top: 14px;">
+                CONFIDENTIALITY NOTICE: This transmission is intended solely for internal verification. If you received this by error, please press Esc to restore normal screen immediately.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
