@@ -601,217 +601,25 @@ function updateFlashcardList(resetIndex = false) {
   renderFlashcard();
 }
 
-// ---------------- 语境挖词极速挑战模式 (Context Cloze Speed Quiz) ----------------
-let quizList = [];
-let quizIndex = 0;
-let quizScore = 0;
-let quizStreak = 0;
-let quizMaxStreak = 0;
-let quizCorrectCount = 0;
-let isQuizAnswering = false;
-
-function startQuiz() {
-  quizIndex = 0;
-  quizScore = 0;
-  quizStreak = 0;
-  quizMaxStreak = 0;
-  quizCorrectCount = 0;
-  isQuizAnswering = false;
-
-  const summaryCard = document.getElementById('quizSummaryCard');
-  const cardBox = document.getElementById('quizCardBox');
-  if (summaryCard) summaryCard.style.display = 'none';
-  if (cardBox) cardBox.style.display = 'flex';
-
-  document.getElementById('quizStreakCount').innerText = '0';
-  document.getElementById('quizScoreCount').innerText = '0';
-
-  // 筛选可用词汇：优先有上下文例句的单词
-  let pool = currentWords.filter(w => (w.context || w.sentence || "").trim().length > 5);
-  if (pool.length < 4) {
-    pool = [...currentWords];
-  }
-
-  // 随机乱序洗牌
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-
-  quizList = pool.slice(0, 20); // 一轮 20 题
-  renderQuizQuestion();
-}
-
-function renderQuizQuestion() {
-  if (quizList.length === 0) {
-    document.getElementById('quizClozeSentence').innerText = "当前生词本中暂无可供挑战的词汇，快去外刊划词加入吧！";
-    document.getElementById('quizOptionsGrid').innerHTML = "";
-    document.getElementById('quizCurrentIndex').innerText = "0";
-    document.getElementById('quizTotalCount').innerText = "0";
-    document.getElementById('quizProgressFill').style.width = '0%';
-    return;
-  }
-
-  if (quizIndex >= quizList.length) {
-    showQuizSummary();
-    return;
-  }
-
-  isQuizAnswering = false;
-  const currentItem = quizList[quizIndex];
-  const targetWord = (currentItem.text || currentItem.word || "").trim();
-  const rawSentence = (currentItem.context || currentItem.sentence || "").trim() || `The word to fill in is ${targetWord}.`;
-  
-  // 挖空例句中的关键词
-  try {
-    const regex = new RegExp(`(\\b${targetWord}\\b|${targetWord})`, 'gi');
-    let clozeSentence = rawSentence.replace(regex, `<span class="cloze-blank">[ ______ ]</span>`);
-    if (!clozeSentence.includes('cloze-blank')) {
-      clozeSentence = `[ ______ ] : ${formatTrans(currentItem.trans || currentItem.definition || "")}`;
-    }
-    document.getElementById('quizClozeSentence').innerHTML = clozeSentence;
-  } catch (e) {
-    document.getElementById('quizClozeSentence').innerHTML = `[ ______ ] : ${formatTrans(currentItem.trans || currentItem.definition || "")}`;
-  }
-
-  document.getElementById('quizSourceTitle').innerText = "语境挖词";
-  document.getElementById('quizCurrentIndex').innerText = (quizIndex + 1).toString();
-  document.getElementById('quizTotalCount').innerText = quizList.length.toString();
-  const pct = Math.min(100, ((quizIndex + 1) / quizList.length) * 100);
-  document.getElementById('quizProgressFill').style.width = `${pct}%`;
-
-  // 提取 3 个干扰项
-  const otherWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
-  for (let i = otherWords.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [otherWords[i], otherWords[j]] = [otherWords[j], otherWords[i]];
-  }
-  const distractors = otherWords.slice(0, 3).map(w => (w.text || w.word || "").trim());
-  const options = [targetWord, ...distractors];
-  
-  // 打乱 4 个选项
-  for (let i = options.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [options[i], options[j]] = [options[j], options[i]];
-  }
-
-  const grid = document.getElementById('quizOptionsGrid');
-  grid.innerHTML = "";
-  const keys = ['1', '2', '3', '4'];
-  options.forEach((optText, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'quiz-option-btn';
-    btn.setAttribute('data-word', optText);
-    btn.setAttribute('data-key', keys[i]);
-    btn.innerHTML = `
-      <span>${optText}</span>
-      <span class="quiz-option-key">${keys[i]}</span>
-    `;
-    btn.onclick = () => handleQuizAnswer(optText, targetWord, btn);
-    grid.appendChild(btn);
-  });
-}
-
-function handleQuizAnswer(selectedWord, correctWord, clickedBtn) {
-  if (isQuizAnswering) return;
-  isQuizAnswering = true;
-
-  const isCorrect = selectedWord.toLowerCase().trim() === correctWord.toLowerCase().trim();
-  const allBtns = document.querySelectorAll('.quiz-option-btn');
-
-  if (isCorrect) {
-    if (clickedBtn) clickedBtn.classList.add('correct');
-    quizStreak++;
-    if (quizStreak > quizMaxStreak) quizMaxStreak = quizStreak;
-    quizScore += 10 + Math.min(quizStreak * 2, 20);
-    quizCorrectCount++;
-    speakWord(correctWord);
-
-    document.getElementById('quizStreakCount').innerText = quizStreak.toString();
-    document.getElementById('quizScoreCount').innerText = quizScore.toString();
-
-    const blank = document.querySelector('.cloze-blank');
-    if (blank) {
-      blank.innerText = correctWord;
-      blank.style.color = "#059669";
-      blank.style.borderBottomColor = "#10B981";
-      blank.style.background = "rgba(16, 185, 129, 0.1)";
-    }
-
-    setTimeout(() => {
-      quizIndex++;
-      renderQuizQuestion();
-    }, 750);
-  } else {
-    if (clickedBtn) clickedBtn.classList.add('wrong');
-    quizStreak = 0;
-    document.getElementById('quizStreakCount').innerText = '0';
-
-    allBtns.forEach(btn => {
-      if ((btn.getAttribute('data-word') || "").toLowerCase().trim() === correctWord.toLowerCase().trim()) {
-        btn.classList.add('correct');
-      }
-    });
-
-    speakWord(correctWord);
-
-    const blank = document.querySelector('.cloze-blank');
-    if (blank) {
-      blank.innerText = correctWord;
-      blank.style.color = "#DC2626";
-      blank.style.borderBottomColor = "#EF4444";
-      blank.style.background = "rgba(239, 68, 68, 0.1)";
-    }
-
-    setTimeout(() => {
-      quizIndex++;
-      renderQuizQuestion();
-    }, 1400);
-  }
-}
-
-function showQuizSummary() {
-  const summaryCard = document.getElementById('quizSummaryCard');
-  const cardBox = document.getElementById('quizCardBox');
-  if (summaryCard && cardBox) {
-    cardBox.style.display = 'none';
-    summaryCard.style.display = 'flex';
-
-    const accuracy = quizList.length > 0 ? Math.round((quizCorrectCount / quizList.length) * 100) : 100;
-    document.getElementById('statMaxStreak').innerText = quizMaxStreak.toString();
-    document.getElementById('statQuizAccuracy').innerText = `${accuracy}%`;
-    document.getElementById('statQuizTotalScore').innerText = quizScore.toString();
-    document.getElementById('quizSummarySubtitle').innerText = `本次挑战共完成 ${quizList.length} 题，准确率 ${accuracy}%`;
-
-    triggerConfetti();
-  }
-}
-
-// 视图切换控制 (支持 table, flashcard, quiz 三重模式)
+// 视图切换控制 (支持 table 与 flashcard 纯净双视图)
 function switchView(viewName) {
   currentView = viewName;
   const tableContainer = document.getElementById('viewTableContainer');
   const flashcardContainer = document.getElementById('viewFlashcardContainer');
-  const quizContainer = document.getElementById('viewQuizContainer');
 
   const tabTable = document.getElementById('tabTableView');
   const tabCard = document.getElementById('tabFlashcardView');
-  const tabQuiz = document.getElementById('tabQuizView');
 
   if (tableContainer) tableContainer.style.display = viewName === 'table' ? 'block' : 'none';
   if (flashcardContainer) flashcardContainer.style.display = viewName === 'flashcard' ? 'flex' : 'none';
-  if (quizContainer) quizContainer.style.display = viewName === 'quiz' ? 'flex' : 'none';
 
   if (tabTable) tabTable.classList.toggle('active', viewName === 'table');
   if (tabCard) tabCard.classList.toggle('active', viewName === 'flashcard');
-  if (tabQuiz) tabQuiz.classList.toggle('active', viewName === 'quiz');
 
   if (viewName === 'table') {
     applyFilter();
   } else if (viewName === 'flashcard') {
     updateFlashcardList(true);
-  } else if (viewName === 'quiz') {
-    startQuiz();
   }
 }
 
@@ -1063,12 +871,15 @@ function applyFilter() {
   const q = (document.getElementById('searchInput') ? document.getElementById('searchInput').value : "").toLowerCase().trim();
 
   const filtered = currentWords.filter(item => {
-    // 文本匹配
+    // 文本匹配：精准匹配生词本身、中文释义、心得笔记，坚决不搜例句 context，杜绝同一例句带出多个词
+    const wordText = (item.text || item.word || '').toLowerCase();
+    const transText = (item.trans || item.definition || '').toLowerCase();
+    const notesText = (item.notes || '').toLowerCase();
+
     const matchText = !q || (
-      (item.text || item.word || '').toLowerCase().includes(q) ||
-      (item.trans || item.definition || '').toLowerCase().includes(q) ||
-      (item.context || item.sentence || '').toLowerCase().includes(q) ||
-      (item.notes || '').toLowerCase().includes(q)
+      wordText.includes(q) ||
+      transText.includes(q) ||
+      notesText.includes(q)
     );
 
     // 熟练度多选匹配
@@ -1238,25 +1049,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Tab 切换事件 (笔记本 / 闪卡 / 语境挑战)
+  // Tab 切换事件 (笔记本 / 闪卡自测 纯净双模式)
   document.getElementById('tabTableView').onclick = () => switchView('table');
   document.getElementById('tabFlashcardView').onclick = () => switchView('flashcard');
-  const tabQuiz = document.getElementById('tabQuizView');
-  if (tabQuiz) {
-    tabQuiz.onclick = () => switchView('quiz');
-  }
-
-  const btnRestartQuiz = document.getElementById('btnRestartQuiz');
-  if (btnRestartQuiz) {
-    btnRestartQuiz.onclick = () => startQuiz();
-  }
-  const btnQuizBackToTable = document.getElementById('btnQuizBackToTable');
-  if (btnQuizBackToTable) {
-    btnQuizBackToTable.onclick = () => switchView('table');
-  }
 
   // 闪卡自测事件
   document.getElementById('flashcardBox').onclick = toggleCardReveal;
+
+  // 闪卡实时编辑按钮 (点击打开编辑窗，保存即时重绘当前卡片)
+  const btnFcEdit = document.getElementById('btnFcEdit');
+  if (btnFcEdit) {
+    btnFcEdit.onclick = (e) => {
+      e.stopPropagation(); // 绝对阻止卡片翻转
+      if (cardList.length === 0) return;
+      const item = cardList[cardIndex];
+      if (!item) return;
+      const targetWord = item.text || item.word;
+      const realIdx = currentWords.findIndex(w => (w.text || w.word) === targetWord);
+      if (realIdx !== -1) {
+        openEditModal(realIdx);
+      }
+    };
+  }
   
   const btnRevealCard = document.getElementById('btnRevealCard');
   if (btnRevealCard) {
@@ -1358,19 +1172,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const w = document.getElementById('fcWord').innerText;
         speakWord(w);
-      }
-    } else if (currentView === 'quiz') {
-      const keysMap = {
-        'Digit1': '1', 'Numpad1': '1', 'KeyA': '1',
-        'Digit2': '2', 'Numpad2': '2', 'KeyB': '2',
-        'Digit3': '3', 'Numpad3': '3', 'KeyC': '3',
-        'Digit4': '4', 'Numpad4': '4', 'KeyD': '4'
-      };
-      const keyVal = keysMap[e.code];
-      if (keyVal) {
-        e.preventDefault();
-        const targetBtn = document.querySelector(`.quiz-option-btn[data-key="${keyVal}"]`);
-        if (targetBtn) targetBtn.click();
       }
     }
   });
@@ -1520,6 +1321,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeModal();
     saveAndRefresh();
+
+    // 如果当前处于闪卡模式，立刻更新当前闪卡卡片的数据并即时重绘，无需退出重测
+    if (currentView === 'flashcard' && cardList.length > 0) {
+      const currentTarget = cardList[cardIndex];
+      if (currentTarget) {
+        const found = currentWords.find(w => (w.text || w.word || '').toLowerCase() === (currentTarget.text || currentTarget.word || '').toLowerCase());
+        if (found) {
+          cardList[cardIndex] = Object.assign(cardList[cardIndex], found);
+          renderFlashcard();
+        }
+      }
+    }
   };
 
   const exportBtn = document.getElementById('btnExportJson');
@@ -1616,11 +1429,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings 或 #quiz)
+  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings)
   if (window.location.hash === '#flashcard') {
     switchView('flashcard');
-  } else if (window.location.hash === '#quiz') {
-    switchView('quiz');
   } else if (window.location.hash === '#settings') {
     openDavModal();
   }
@@ -1738,9 +1549,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const parentEl = anchor ? (anchor.nodeType === 3 ? anchor.parentElement : anchor) : null;
       const isInsideContext = parentEl && (
         parentEl.closest('.flashcard-context') ||
-        parentEl.closest('.quiz-cloze-sentence') ||
-        parentEl.closest('.quiz-cloze-box') ||
-        parentEl.closest('.note-box') ||
+        parentEl.closest('.note-text') ||
         parentEl.closest('.table-container')
       );
 
@@ -1771,7 +1580,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('dblclick', (e) => {
     if (modal.style.display === 'flex' || davModal.style.display === 'flex') return;
     const target = e.target;
-    const isInsideContext = target.closest('.flashcard-context') || target.closest('.quiz-cloze-sentence') || target.closest('.table-container');
+    const isInsideContext = target.closest('.flashcard-context') || target.closest('.note-text') || target.closest('.table-container');
     if (isInsideContext) {
       const sel = window.getSelection();
       const text = sel.toString().trim();
