@@ -1126,6 +1126,324 @@
       animation: agyShimmer 1.4s infinite;
       border-radius: 4px;
     }
+
+    /* 摸鱼模式：VS Code 逼真工作台全屏层 (Workplace Camouflage) */
+    .btn-stealth-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #57534E;
+      background: #FFFFFF;
+      border: 1px solid var(--border-warm);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+      user-select: none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .btn-stealth-trigger:hover {
+      background: #2D2825;
+      color: #FAF8F5;
+      border-color: #2D2825;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      transform: translateY(-1px);
+    }
+    .btn-stealth-trigger:active {
+      transform: translateY(0);
+    }
+
+    #stealthOverlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #1E1E1E;
+      color: #D4D4D4;
+      z-index: 100000;
+      display: flex;
+      flex-direction: column;
+      font-family: Consolas, "Fira Code", Monaco, Menlo, "Courier New", monospace;
+      font-size: 13px;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    /* VS Code 顶栏 */
+    .vscode-titlebar {
+      height: 32px;
+      background: #323233;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      border-bottom: 1px solid #252526;
+      font-size: 12px;
+      color: #999999;
+      flex-shrink: 0;
+    }
+    .vscode-window-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .vscode-window-controls .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      cursor: pointer;
+    }
+    .vscode-window-controls .dot-red { background: #FF5F56; }
+    .vscode-window-controls .dot-yellow { background: #FFBD2E; }
+    .vscode-window-controls .dot-green { background: #27C93F; }
+    .vscode-title-text {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #CCCCCC;
+      font-weight: 400;
+    }
+    .stealth-badge-exit {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #AAAAAA;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .stealth-badge-exit:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+    }
+
+    /* 标签页栏 */
+    .vscode-tabs-bar {
+      height: 36px;
+      background: #252526;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+    .vscode-tab {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      background: #2D2D2D;
+      color: #969696;
+      font-size: 12.5px;
+      border-right: 1px solid #1E1E1E;
+      cursor: pointer;
+    }
+    .vscode-tab.active {
+      background: #1E1E1E;
+      color: #FFFFFF;
+      border-top: 1px solid #007ACC;
+    }
+    .tab-ts-icon { color: #3178C6; font-weight: 700; font-size: 11px; }
+    .tab-json-icon { color: #CBCB41; font-weight: 700; font-size: 11px; }
+    .tab-env-icon { color: #E5C07B; font-size: 11px; }
+
+    /* 面包屑 */
+    .vscode-breadcrumbs {
+      height: 24px;
+      background: #1E1E1E;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 16px;
+      font-size: 11.5px;
+      color: #888888;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      flex-shrink: 0;
+    }
+    .bc-sep { color: #555555; }
+    .bc-file { color: #CCCCCC; }
+    .bc-symbol { color: #DCDCAA; }
+
+    /* 主体布局 */
+    .vscode-main-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .vscode-activity-bar {
+      width: 48px;
+      background: #333333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 10px;
+      gap: 18px;
+      flex-shrink: 0;
+      color: #858585;
+    }
+    .vscode-activity-bar .act-item {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 38px;
+      border-left: 2px solid transparent;
+      transition: color 0.15s;
+    }
+    .vscode-activity-bar .act-item.active {
+      color: #FFFFFF;
+      border-left: 2px solid #FFFFFF;
+    }
+    .vscode-sidebar {
+      width: 220px;
+      background: #252526;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 0;
+      border-right: 1px solid #1E1E1E;
+      font-size: 12px;
+      color: #CCCCCC;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: #BBBBBB;
+      padding: 0 16px 8px 16px;
+      letter-spacing: 0.5px;
+    }
+    .tree-item {
+      padding: 4px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #CCCCCC;
+    }
+    .tree-item:hover { background: #2A2D2E; }
+    .tree-item.active { background: #37373D; color: #FFFFFF; }
+    .tree-item.sub { padding-left: 28px; }
+    .ts-file-badge { color: #3178C6; font-weight: 700; font-size: 10px; }
+
+    /* 编辑器代码区 */
+    .vscode-editor-pane {
+      flex: 1;
+      background: #1E1E1E;
+      overflow-y: auto;
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .editor-code-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Consolas, "Fira Code", Monaco, Menlo, "Courier New", monospace;
+      font-size: 13.5px;
+      line-height: 22px;
+    }
+    .code-line {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      transition: background 0.1s;
+    }
+    .code-line:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .code-line.highlight-line {
+      background: #282828;
+    }
+    .line-num {
+      width: 46px;
+      text-align: right;
+      padding-right: 18px;
+      color: #858585;
+      user-select: none;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .line-code {
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    /* 代码高亮配色 */
+    .syn-kwd { color: #C586C0; font-weight: 600; }     /* import, export, from, return, class, const, async, await */
+    .syn-type { color: #4EC9B0; }                       /* Promise, string, CacheRecord */
+    .syn-fn { color: #DCDCAA; }                         /* process_word, evaluateSRS */
+    .syn-str { color: #CE9178; }                        /* "..." */
+    .syn-comment { color: #6A9955; font-style: italic; }/* // ... */
+    .syn-jsdoc { color: #6A9955; }                      /* /** ... */ */
+    .syn-jsdoc-tag { color: #569CD6; font-weight: 600; }/* @description, @spec */
+    .syn-spec-text { color: #4FC1FF; font-weight: 550; font-style: normal; }
+    .syn-notes-text { color: #D7BA7D; font-style: normal; }
+    .syn-var { color: #9CDCFE; }                        /* context, symbol */
+    .syn-num { color: #B5CEA8; }                        /* 1, 2, 3 */
+    .syn-prop { color: #9CDCFE; }
+    .syn-ipa { color: #E5C07B; font-weight: 500; font-style: normal; }
+
+    /* 展开提示微按钮 */
+    .stealth-reveal-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(86, 156, 214, 0.15);
+      border: 1px dashed #569CD6;
+      color: #9CDCFE;
+      padding: 1px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 6px;
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .stealth-reveal-pill:hover {
+      background: rgba(86, 156, 214, 0.3);
+      color: #FFFFFF;
+    }
+
+    /* 状态栏 */
+    .vscode-statusbar {
+      height: 24px;
+      background: #007ACC;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      font-size: 11.5px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .vscode-statusbar .status-left,
+    .vscode-statusbar .status-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .vscode-statusbar .status-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: default;
+    }
+    .status-toast {
+      background: #0E639C;
+      padding: 1px 6px;
+      border-radius: 3px;
+      animation: pulse 1s infinite;
+    }
   </style>
 </head>
 <body>
@@ -1215,12 +1533,22 @@
           </div>
         </div>
 
-        <div class="flashcard-progress-box">
-          <span>当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
-          <div class="flashcard-progress-bar">
-            <div class="flashcard-progress-fill" id="cardProgressFill"></div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div class="flashcard-progress-box">
+            <span>当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
+            <div class="flashcard-progress-bar">
+              <div class="flashcard-progress-fill" id="cardProgressFill"></div>
+            </div>
+            <span class="kbd-hint">按 <kbd>空格</kbd> 揭晓</span>
           </div>
-          <span class="kbd-hint">按 <kbd>空格</kbd> 揭晓</span>
+
+          <button class="btn-stealth-trigger" id="btnEnterStealth" title="开启摸鱼模式 (模拟 VS Code 工作环境，按 Esc 快速退出)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>摸鱼模式</span>
+          </button>
         </div>
       </div>
 
@@ -1457,6 +1785,112 @@
       <div class="nb-sk-line"></div>
     </div>
     <div class="nb-definition" id="nbDefinition" style="display:none;"></div>
+  </div>
+
+  <!-- 摸鱼模式全屏工作台 (VS Code 深度伪装层) -->
+  <div id="stealthOverlay" class="stealth-workbench" style="display: none;">
+    <!-- VS Code 顶栏 -->
+    <div class="vscode-titlebar">
+      <div class="vscode-window-controls">
+        <span class="dot dot-red" id="stealthCloseBtn" title="关闭摸鱼模式 (Esc)"></span>
+        <span class="dot dot-yellow"></span>
+        <span class="dot dot-green"></span>
+      </div>
+      <div class="vscode-title-text">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3178C6" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span>memoryCache.ts — antigravity-core — Visual Studio Code</span>
+      </div>
+      <div class="vscode-top-actions">
+        <span class="stealth-badge-exit" id="stealthExitHint" title="按 Esc 立即恢复正常模式">按 Esc 恢复</span>
+      </div>
+    </div>
+
+    <!-- 标签页栏 -->
+    <div class="vscode-tabs-bar">
+      <div class="vscode-tab active">
+        <span class="tab-ts-icon">TS</span>
+        <span class="tab-label">memoryCache.ts</span>
+        <span class="tab-close-icon">×</span>
+      </div>
+      <div class="vscode-tab">
+        <span class="tab-json-icon">{}</span>
+        <span class="tab-label">package.json</span>
+      </div>
+      <div class="vscode-tab">
+        <span class="tab-env-icon">⚙</span>
+        <span class="tab-label">.env.local</span>
+      </div>
+    </div>
+
+    <!-- 面包屑导航 -->
+    <div class="vscode-breadcrumbs">
+      <span>antigravity-core</span>
+      <span class="bc-sep">›</span>
+      <span>src</span>
+      <span class="bc-sep">›</span>
+      <span>services</span>
+      <span class="bc-sep">›</span>
+      <span class="bc-file">memoryCache.ts</span>
+      <span class="bc-sep">›</span>
+      <span class="bc-symbol" id="stealthBreadcrumbSymbol">process_word()</span>
+    </div>
+
+    <!-- 主体区域：Activity Bar + Explorer 文件树 + 编辑器代码区 -->
+    <div class="vscode-main-body">
+      <!-- 最左侧 Activity Bar -->
+      <div class="vscode-activity-bar">
+        <div class="act-item active" title="Explorer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="act-item" title="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="act-item" title="Source Control">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+        </div>
+        <div class="act-item" title="Run and Debug">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+      </div>
+
+      <!-- 次级侧边栏 Explorer 文件树 -->
+      <div class="vscode-sidebar">
+        <div class="sidebar-header">EXPLORER: ANTIGRAVITY</div>
+        <div class="tree-item tree-folder expanded">▼ src</div>
+        <div class="tree-item tree-folder sub expanded">  ▼ services</div>
+        <div class="tree-item tree-file sub active">    <span class="ts-file-badge">TS</span> memoryCache.ts</div>
+        <div class="tree-item tree-file sub">    <span class="ts-file-badge">TS</span> authService.ts</div>
+        <div class="tree-item tree-folder sub">  ▶ utils</div>
+        <div class="tree-item tree-folder sub">  ▶ controllers</div>
+        <div class="tree-item tree-file">📄 package.json</div>
+        <div class="tree-item tree-file">📄 tsconfig.json</div>
+        <div class="tree-item tree-file">📄 README.md</div>
+      </div>
+
+      <!-- 代码主编辑区 -->
+      <div class="vscode-editor-pane" id="stealthEditorSurface">
+        <div class="editor-code-container" id="stealthCodeContent">
+          <!-- 动态渲染代码 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部状态栏 -->
+    <div class="vscode-statusbar">
+      <div class="status-left">
+        <span class="status-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3"/></svg> main*</span>
+        <span class="status-item">⊗ 0  ⚠ 0</span>
+        <span class="status-item" id="stealthProgressStatus">Tests: 1/20 passing (5%)</span>
+        <span class="status-item" id="stealthToastMsg" style="display:none; background: #0E639C; padding: 1px 6px; border-radius: 2px;"></span>
+      </div>
+      <div class="status-right">
+        <span class="status-item" id="stealthShortcutHint">按 [Space] 展开释义 | 1忘了 2模糊 3熟练 | [Esc] 快速恢复</span>
+        <span class="status-item">Ln 24, Col 16</span>
+        <span class="status-item">UTF-8</span>
+        <span class="status-item">TypeScript 5.3</span>
+        <span class="status-item" id="stealthExitTrigger" style="cursor: pointer; background: rgba(255,255,255,0.18); padding: 0 6px; border-radius: 2px;">[退出]</span>
+      </div>
+    </div>
   </div>
 
   <script src="webdav.js"></script>

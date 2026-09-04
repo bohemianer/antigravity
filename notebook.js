@@ -601,6 +601,164 @@ function updateFlashcardList(resetIndex = false) {
   renderFlashcard();
 }
 
+// ---------------- 摸鱼模式 (VS Code 深度工作环境伪装层) ----------------
+let isStealthMode = false;
+let stealthToastTimer = null;
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function showStealthToast(msg) {
+  const toast = document.getElementById('stealthToastMsg');
+  if (!toast) return;
+  toast.innerText = msg;
+  toast.style.display = 'inline-block';
+  clearTimeout(stealthToastTimer);
+  stealthToastTimer = setTimeout(() => {
+    if (toast) toast.style.display = 'none';
+  }, 1600);
+}
+
+function enterStealthMode() {
+  if (cardList.length === 0) {
+    updateFlashcardList(true);
+  }
+  isStealthMode = true;
+  const overlay = document.getElementById('stealthOverlay');
+  if (overlay) overlay.style.display = 'flex';
+  renderStealthCard();
+}
+
+function exitStealthMode() {
+  isStealthMode = false;
+  const overlay = document.getElementById('stealthOverlay');
+  if (overlay) overlay.style.display = 'none';
+  if (currentView === 'flashcard') {
+    renderFlashcard();
+  }
+}
+
+function renderStealthCard() {
+  if (cardList.length === 0) return;
+  const item = cardList[cardIndex];
+  if (!item) return;
+
+  const word = (item.text || item.word || "").trim();
+  const safeIdentifier = word.replace(/[^a-zA-Z0-9_$]/g, '_') || 'routine';
+  const phonetic = extractPhoneticFromItem(item);
+  const trans = formatTrans(item.trans || item.definition || "");
+  const notes = cleanNotes(item.notes);
+  const context = (item.context || item.sentence || "").trim() || `Core execution context for ${word}.`;
+  const srs = getSrsInfo(item.srsLevel || 0);
+
+  const pct = Math.round(((cardIndex + 1) / batchTotalTarget) * 100);
+  const progEl = document.getElementById('stealthProgressStatus');
+  if (progEl) {
+    progEl.innerText = `Tests: ${cardIndex + 1}/${batchTotalTarget} passing (${pct}%)`;
+  }
+  const bcSym = document.getElementById('stealthBreadcrumbSymbol');
+  if (bcSym) {
+    bcSym.innerText = `process_${safeIdentifier}()`;
+  }
+
+  // 构建逼真的 VS Code TypeScript 编辑器行
+  const codeLines = [
+    { num: 1, html: `<span class="syn-kwd">import</span> { evaluateSRS, CacheRecord, SRSLevel } <span class="syn-kwd">from</span> <span class="syn-str">"../types/memory"</span>;` },
+    { num: 2, html: `<span class="syn-kwd">import</span> { SystemLogger, TelemetryHook } <span class="syn-kwd">from</span> <span class="syn-str">"../utils/telemetry"</span>;` },
+    { num: 3, html: `` },
+    { num: 4, html: `<span class="syn-comment">/**</span>` },
+    { num: 5, html: `<span class="syn-comment"> * @module core/services/memoryCacheService</span>` },
+    { num: 6, html: `<span class="syn-comment"> * @currentCycle batch: ${batchTotalTarget} units | compiled: ${pct}%</span>` },
+    { num: 7, html: `<span class="syn-comment"> */</span>` },
+    { num: 8, html: `<span class="syn-kwd">export class</span> <span class="syn-type">MemoryCacheService</span> {` },
+    { num: 9, html: `  <span class="syn-kwd">private readonly</span> <span class="syn-prop">moduleIdentifier</span>: <span class="syn-type">string</span> = <span class="syn-str">"AntigravityCore"</span>;` },
+    { num: 10, html: `  <span class="syn-kwd">public static readonly</span> <span class="syn-prop">TARGET_IPA</span>: <span class="syn-type">string</span> = <span class="syn-str">"${escapeHtml(phonetic || '/.../')}"</span>;` },
+    { num: 11, html: `` },
+    { num: 12, html: `  <span class="syn-comment">/**</span>` },
+    { num: 13, html: `   <span class="syn-comment">* Target symbol handler: [ <span class="syn-spec-text" style="font-weight: 700; font-size: 14px;">${escapeHtml(word)}</span> ]</span>` },
+    { num: 14, html: `   <span class="syn-comment">* Current Mastery: <span class="syn-ipa">${escapeHtml(srs.label)}</span> (Stage ${item.srsLevel || 0})</span>` },
+    { num: 15, html: `   <span class="syn-comment">*</span>` }
+  ];
+
+  let nextLineNum = 16;
+
+  if (cardRevealed) {
+    // 展开状态：以规范 JSDoc 的 @spec 和 @notes 呈现详细释义与笔记
+    const transLines = trans.split('\n').filter(Boolean);
+    transLines.forEach(tl => {
+      codeLines.push({
+        num: nextLineNum++,
+        html: `   <span class="syn-comment">* <span class="syn-jsdoc-tag">@spec</span> <span class="syn-spec-text">${escapeHtml(tl)}</span></span>`,
+        highlight: true
+      });
+    });
+
+    if (notes) {
+      const noteLines = notes.split('\n').filter(Boolean);
+      noteLines.forEach(nl => {
+        codeLines.push({
+          num: nextLineNum++,
+          html: `   <span class="syn-comment">* <span class="syn-jsdoc-tag">@internal_notes</span> <span class="syn-notes-text">${escapeHtml(nl)}</span></span>`,
+          highlight: true
+        });
+      });
+    }
+
+    codeLines.push({
+      num: nextLineNum++,
+      html: `   <span class="syn-comment">* <span class="syn-jsdoc-tag">@folded</span> <span class="stealth-reveal-pill" id="stealthFoldTrigger">折叠释义 (Space)</span></span>`
+    });
+  } else {
+    // 未揭晓状态：显示折叠提示微胶囊，点击或按 Space 展开
+    codeLines.push({
+      num: nextLineNum++,
+      html: `   <span class="syn-comment">* <span class="syn-jsdoc-tag">@specification</span> [JSDoc folded: <span class="stealth-reveal-pill" id="stealthFoldTrigger">按 [Space] 展开规格释义</span>]</span>`,
+      highlight: true
+    });
+  }
+
+  codeLines.push({ num: nextLineNum++, html: `   <span class="syn-comment">*/</span>` });
+  codeLines.push({ num: nextLineNum++, html: `  <span class="syn-kwd">public async</span> <span class="syn-fn">process_${safeIdentifier}</span>(<span class="syn-var">contextToken</span>?: <span class="syn-type">string</span>): <span class="syn-type">Promise</span>&lt;<span class="syn-type">CacheRecord</span>&gt; {` });
+  codeLines.push({ num: nextLineNum++, html: `    <span class="syn-comment">// Verified context sentence:</span>` });
+  codeLines.push({ num: nextLineNum++, html: `    <span class="syn-kwd">const</span> <span class="syn-var">executionSentence</span> = <span class="syn-str">"${escapeHtml(context).replace(/"/g, '\\"')}"</span>;` });
+  codeLines.push({ num: nextLineNum++, html: `` });
+  codeLines.push({ num: nextLineNum++, html: `    <span class="syn-comment">// Evaluate memory state: [1: RETRY(忘了) | 2: PENDING(模糊) | 3: RESOLVED(熟练)]</span>` });
+  codeLines.push({ num: nextLineNum++, html: `    <span class="syn-kwd">return await</span> <span class="syn-fn">evaluateSRS</span>({` });
+  codeLines.push({ num: nextLineNum++, html: `      <span class="syn-prop">symbol</span>: <span class="syn-str">"${escapeHtml(word)}"</span>,` });
+  codeLines.push({ num: nextLineNum++, html: `      <span class="syn-prop">level</span>: <span class="syn-type">SRSLevel</span>.STAGE_${item.srsLevel || 0},` });
+  codeLines.push({ num: nextLineNum++, html: `      <span class="syn-prop">telemetryContext</span>: <span class="syn-var">executionSentence</span>,` });
+  codeLines.push({ num: nextLineNum++, html: `      <span class="syn-prop">status</span>: <span class="syn-num">200</span>` });
+  codeLines.push({ num: nextLineNum++, html: `    });` });
+  codeLines.push({ num: nextLineNum++, html: `  }` });
+  codeLines.push({ num: nextLineNum++, html: `}` });
+
+  // 渲染代码行
+  const container = document.getElementById('stealthCodeContent');
+  if (container) {
+    container.innerHTML = codeLines.map(line => `
+      <div class="code-line ${line.highlight ? 'highlight-line' : ''}">
+        <span class="line-num">${line.num}</span>
+        <span class="line-code">${line.html}</span>
+      </div>
+    `).join('');
+
+    const foldBtn = document.getElementById('stealthFoldTrigger');
+    if (foldBtn) {
+      foldBtn.onclick = (e) => {
+        e.stopPropagation();
+        toggleCardReveal();
+      };
+    }
+  }
+}
+
 // 视图切换控制 (支持 table 与 flashcard 纯净双视图)
 function switchView(viewName) {
   currentView = viewName;
@@ -787,6 +945,10 @@ function toggleCardReveal() {
     if (barUnrevealed) barUnrevealed.style.display = 'flex';
     if (barRevealed) barRevealed.style.display = 'none';
   }
+
+  if (isStealthMode) {
+    renderStealthCard();
+  }
 }
 
 // 艾宾浩斯记忆反馈处理 (1: 忘了, 2: 模糊, 3: 熟练)
@@ -832,25 +994,41 @@ function handleSRSFeedback(rating) {
 
   // 判断是否已完成本组自测
   if (batchStats.completedCount >= batchTotalTarget) {
-    showBatchSummary();
+    if (isStealthMode) {
+      showStealthToast(`🎉 All ${batchTotalTarget} tests compiled & passed!`);
+    } else {
+      showBatchSummary();
+    }
     return;
   }
 
   // 平滑切换到下一张
   cardIndex = (cardIndex + 1) % cardList.length;
-  renderFlashcard();
+  if (isStealthMode) {
+    renderStealthCard();
+  } else {
+    renderFlashcard();
+  }
 }
 
 function nextCard() {
   if (cardList.length === 0) return;
   cardIndex = (cardIndex + 1) % cardList.length;
-  renderFlashcard();
+  if (isStealthMode) {
+    renderStealthCard();
+  } else {
+    renderFlashcard();
+  }
 }
 
 function prevCard() {
   if (cardList.length === 0) return;
   cardIndex = (cardIndex - 1 + cardList.length) % cardList.length;
-  renderFlashcard();
+  if (isStealthMode) {
+    renderStealthCard();
+  } else {
+    renderFlashcard();
+  }
 }
 
 function shuffleCards() {
@@ -1127,6 +1305,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // 摸鱼模式触发入口与退出按钮绑定
+  const btnEnterStealth = document.getElementById('btnEnterStealth');
+  if (btnEnterStealth) {
+    btnEnterStealth.onclick = (e) => {
+      e.stopPropagation();
+      enterStealthMode();
+    };
+  }
+  const stealthCloseBtn = document.getElementById('stealthCloseBtn');
+  if (stealthCloseBtn) stealthCloseBtn.onclick = exitStealthMode;
+  const stealthExitHint = document.getElementById('stealthExitHint');
+  if (stealthExitHint) stealthExitHint.onclick = exitStealthMode;
+  const stealthExitTrigger = document.getElementById('stealthExitTrigger');
+  if (stealthExitTrigger) stealthExitTrigger.onclick = exitStealthMode;
+
   // 艾宾浩斯自测反馈按键点击
   document.getElementById('btnSrsAgain').onclick = (e) => {
     e.stopPropagation();
@@ -1141,10 +1334,61 @@ document.addEventListener('DOMContentLoaded', () => {
     handleSRSFeedback(3);
   };
 
-  // 全局键盘快捷键
+  // 全局键盘快捷键 (支持常规与摸鱼双模式全键盘操作)
   document.addEventListener('keydown', (e) => {
     if (modal.style.display === 'flex' || davModal.style.display === 'flex') return;
+
+    // 摸鱼模式极速老板键 (按 Esc 瞬间退出隐藏)
+    if (e.code === 'Escape' && isStealthMode) {
+      e.preventDefault();
+      exitStealthMode();
+      return;
+    }
+
+    // Alt + M 快捷键快速切换摸鱼模式
+    if (e.altKey && e.code === 'KeyM') {
+      e.preventDefault();
+      if (isStealthMode) {
+        exitStealthMode();
+      } else {
+        enterStealthMode();
+      }
+      return;
+    }
+
     if (document.activeElement === document.getElementById('searchInput')) return;
+
+    // 摸鱼模式专属键盘操作 (极度逼真无痕体验)
+    if (isStealthMode) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        toggleCardReveal();
+      } else if (e.code === 'Digit1' || e.code === 'Numpad1') {
+        e.preventDefault();
+        handleSRSFeedback(1);
+        showStealthToast('[Git Commit: Memory REJECT (0)]');
+      } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault();
+        handleSRSFeedback(2);
+        showStealthToast('[Git Commit: Memory PENDING (1)]');
+      } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+        e.preventDefault();
+        handleSRSFeedback(3);
+        showStealthToast('[Git Commit: Memory RESOLVED (3)]');
+      } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD' || e.code === 'KeyJ') {
+        e.preventDefault();
+        nextCard();
+      } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA' || e.code === 'KeyK') {
+        e.preventDefault();
+        prevCard();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        if (cardList[cardIndex]) {
+          speakWord(cardList[cardIndex].text || cardList[cardIndex].word);
+        }
+      }
+      return;
+    }
 
     if (currentView === 'flashcard') {
       if (e.code === 'Space') {
