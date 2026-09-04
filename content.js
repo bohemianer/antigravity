@@ -31,6 +31,10 @@ function getTriggerIcon() {
   triggerIcon.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isExtensionValid()) {
+      showContextInvalidatedNotice();
+      return;
+    }
     hideTriggerIcon();
     showCard(currentSelectionRect, currentSelectionText, currentSurroundingSentence);
   });
@@ -115,6 +119,68 @@ function formatDefinition(def) {
   if (!def) return "";
   const safe = escapeHtml(def);
   return safe.replace(/\b(noun|verb|adj|adv|pron|prep|conj|v|vt|vi|n|a)\./gi, '<span class="agy-pos-tag">$1.</span>');
+}
+
+function isExtensionValid() {
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.id;
+  } catch (e) {
+    return false;
+  }
+}
+
+function destroyContentScript() {
+  document.removeEventListener('mouseup', handleMouseUp);
+  document.removeEventListener('mousedown', handleMouseDown);
+  if (triggerIcon && triggerIcon.parentNode) {
+    triggerIcon.parentNode.removeChild(triggerIcon);
+    triggerIcon = null;
+  }
+}
+
+function showContextInvalidatedNotice() {
+  const card = getPopupCard();
+  if (!card) return;
+  card.innerHTML = `
+    <div class="agy-card" style="padding: 16px 18px; border-radius: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FFFDF9; border: 1px solid #E8E5DF; box-shadow: 0 8px 24px rgba(0,0,0,0.12);">
+      <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #D97706; margin-bottom: 6px; font-size: 13.5px;">
+        <span>⚠️ 插件已在后台更新</span>
+      </div>
+      <div style="font-size: 12.5px; color: #57534E; line-height: 1.55;">
+        扩展插件刚完成更新或重载。请按 <b style="color: #CC785C;">F5</b> 或 <b style="color: #CC785C;">⌘ + R</b> 刷新当前页面即可恢复划词功能。
+      </div>
+    </div>
+  `;
+  card.style.display = 'block';
+  destroyContentScript();
+}
+
+function safeSendMessage(message, callback) {
+  if (!isExtensionValid()) {
+    showContextInvalidatedNotice();
+    return;
+  }
+  try {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        const errMsg = chrome.runtime.lastError.message || "";
+        if (errMsg.includes("context invalidated") || errMsg.includes("Extension context")) {
+          showContextInvalidatedNotice();
+          return;
+        }
+        console.warn("[Antigravity] Runtime message error:", errMsg);
+      }
+      if (typeof callback === 'function') {
+        callback(response);
+      }
+    });
+  } catch (e) {
+    if (e && e.message && (e.message.includes("context invalidated") || e.message.includes("Extension context"))) {
+      showContextInvalidatedNotice();
+    } else {
+      console.warn("[Antigravity] Failed to send message:", e);
+    }
+  }
 }
 
 function showCard(rect, text, sentence) {
@@ -222,7 +288,7 @@ function showCard(rect, text, sentence) {
     }
   }
 
-  chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (response) => {
+  safeSendMessage({ action: "LOOKUP_WORD", word: text }, (response) => {
     const res = response || { definition: "翻译加载失败，请重试" };
     const loading = document.getElementById('agy-loading');
     const defEl = document.getElementById('agy-definition');
@@ -256,7 +322,7 @@ function showCard(rect, text, sentence) {
         saveBtn.innerHTML = `<span>⏳</span>`;
         saveBtn.disabled = true;
         
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           action: "SAVE_WORD",
           data: {
             text: text,
@@ -285,7 +351,12 @@ function hideCard() {
   }
 }
 
-document.addEventListener('mouseup', (e) => {
+function handleMouseUp(e) {
+  if (!isExtensionValid()) {
+    destroyContentScript();
+    return;
+  }
+
   if ((triggerIcon && triggerIcon.contains(e.target)) || (popupCard && popupCard.contains(e.target))) {
     return;
   }
@@ -308,13 +379,21 @@ document.addEventListener('mouseup', (e) => {
     hideTriggerIcon();
     hideCard();
   }
-});
+}
 
-document.addEventListener('mousedown', (e) => {
+function handleMouseDown(e) {
+  if (!isExtensionValid()) {
+    destroyContentScript();
+    return;
+  }
+
   if (triggerIcon && !triggerIcon.contains(e.target)) {
     hideTriggerIcon();
   }
   if (popupCard && !popupCard.contains(e.target)) {
     hideCard();
   }
-});
+}
+
+document.addEventListener('mouseup', handleMouseUp);
+document.addEventListener('mousedown', handleMouseDown);
