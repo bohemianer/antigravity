@@ -166,11 +166,174 @@ function getSourceFavicon(item) {
   return DEFAULT_ARTICLE_SVG;
 }
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 常见不规则动词变化表（支持原型与过去式/分词双向智能联想）
+const IRREGULAR_VERBS = {
+  'be': ['am', 'is', 'are', 'was', 'were', 'been', 'being'],
+  'have': ['had', 'having', 'has'],
+  'do': ['did', 'done', 'doing', 'does'],
+  'go': ['went', 'gone', 'going', 'goes'],
+  'say': ['said', 'saying', 'says'],
+  'get': ['got', 'gotten', 'getting', 'gets'],
+  'make': ['made', 'making', 'makes'],
+  'know': ['knew', 'known', 'knowing', 'knows'],
+  'think': ['thought', 'thinking', 'thinks'],
+  'take': ['took', 'taken', 'taking', 'takes'],
+  'see': ['saw', 'seen', 'seeing', 'sees'],
+  'come': ['came', 'coming', 'comes'],
+  'find': ['found', 'finding', 'finds'],
+  'give': ['gave', 'given', 'giving', 'gives'],
+  'tell': ['told', 'telling', 'tells'],
+  'feel': ['felt', 'feeling', 'feels'],
+  'become': ['became', 'becoming', 'becomes'],
+  'leave': ['left', 'leaving', 'leaves'],
+  'put': ['putting', 'puts'],
+  'mean': ['meant', 'meaning', 'means'],
+  'keep': ['kept', 'keeping', 'keeps'],
+  'let': ['letting', 'lets'],
+  'begin': ['began', 'begun', 'beginning', 'begins'],
+  'seem': ['seemed', 'seeming', 'seems'],
+  'help': ['helped', 'helping', 'helps'],
+  'show': ['showed', 'shown', 'showing', 'shows'],
+  'hear': ['heard', 'hearing', 'hears'],
+  'play': ['played', 'playing', 'plays'],
+  'run': ['ran', 'running', 'runs'],
+  'move': ['moved', 'moving', 'moves'],
+  'live': ['lived', 'living', 'lives'],
+  'bring': ['brought', 'bringing', 'brings'],
+  'happen': ['happened', 'happening', 'happens'],
+  'write': ['wrote', 'written', 'writing', 'writes'],
+  'sit': ['sat', 'sitting', 'sits'],
+  'stand': ['stood', 'standing', 'stands'],
+  'lose': ['lost', 'losing', 'loses'],
+  'pay': ['paid', 'paying', 'pays'],
+  'meet': ['met', 'meeting', 'meets'],
+  'speak': ['spoke', 'spoken', 'speaking', 'speaks'],
+  'spend': ['spent', 'spending', 'spends'],
+  'grow': ['grew', 'grown', 'growing', 'grows'],
+  'win': ['won', 'winning', 'wins'],
+  'teach': ['taught', 'teaching', 'teaches'],
+  'buy': ['bought', 'buying', 'buys'],
+  'send': ['sent', 'sending', 'sends'],
+  'build': ['built', 'building', 'builds'],
+  'fall': ['fell', 'fallen', 'falling', 'falls'],
+  'cut': ['cutting', 'cuts'],
+  'sell': ['sold', 'selling', 'sells'],
+  'break': ['broke', 'broken', 'breaking', 'breaks'],
+  'choose': ['chose', 'chosen', 'choosing', 'chooses'],
+  'drive': ['drove', 'driven', 'driving', 'drives'],
+  'eat': ['ate', 'eaten', 'eating', 'eats'],
+  'fly': ['flew', 'flown', 'flying', 'flies'],
+  'forget': ['forgot', 'forgotten', 'forgetting', 'forgets'],
+  'hide': ['hid', 'hidden', 'hiding', 'hides'],
+  'ride': ['rode', 'ridden', 'riding', 'rides'],
+  'ring': ['rang', 'rung', 'ringing', 'rings'],
+  'rise': ['rose', 'risen', 'rising', 'rises'],
+  'sing': ['sang', 'sung', 'singing', 'sings'],
+  'sink': ['sank', 'sunk', 'sinking', 'sinks'],
+  'sleep': ['slept', 'sleeping', 'sleeps'],
+  'swim': ['swam', 'swum', 'swimming', 'swims'],
+  'throw': ['threw', 'thrown', 'throwing', 'throws'],
+  'wake': ['woke', 'woken', 'waking', 'wakes'],
+  'wear': ['wore', 'worn', 'wearing', 'wears'],
+  'withdraw': ['withdrew', 'withdrawn', 'withdrawing', 'withdraws']
+};
+
+const COMMON_GRAMMATICAL_SUFFIXES = '(?:d|ed|s|es|ing|ingly|er|ers|est|or|ors|able|ably|ible|ibly|ive|ively|ions?|ations?|ments?|ness|ly|ful|fully|less|lessly)';
+
+function buildSingleWordPattern(w) {
+  const patterns = new Set();
+  patterns.add(escapeRegex(w));
+
+  // 1. 不规则动词查表
+  if (IRREGULAR_VERBS[w]) {
+    IRREGULAR_VERBS[w].forEach(iv => patterns.add(escapeRegex(iv)));
+  }
+  for (const [base, forms] of Object.entries(IRREGULAR_VERBS)) {
+    if (forms.includes(w)) {
+      patterns.add(escapeRegex(base));
+      forms.forEach(f => patterns.add(escapeRegex(f)));
+    }
+  }
+
+  // 2. 超短词 (<= 3 字符，如 cat, run, in) 严格边界，防止误伤（如 catalog）
+  if (w.length <= 3) {
+    patterns.add(escapeRegex(w) + '(?:s|es|ed|ing|d)?');
+    if (/[aeiou][b-df-hj-np-tv-z]$/i.test(w)) {
+      const c = w[w.length - 1];
+      patterns.add(escapeRegex(w) + c + '(?:ed|ing|er|ers)?');
+    }
+    return Array.from(patterns).sort((a, b) => b.length - a.length).join('|');
+  }
+
+  // 3. 常规词（>= 4 字符）：本体 + 屈折后缀（如 attribute -> attributed, attributes）
+  patterns.add(escapeRegex(w) + COMMON_GRAMMATICAL_SUFFIXES + '?');
+
+  // 若以 'e' 结尾（如 attribute, create, live, save）：去 e + ing/able/ive/ion
+  if (w.endsWith('e')) {
+    const stem = w.slice(0, -1);
+    patterns.add(escapeRegex(stem) + '(?:ing|ingly|ions?|ations?|ables?|ably|ives?|ively|ors?|ers?)');
+  }
+  // 若以辅音 + 'y' 结尾（如 apply, study, carry）：变 y 为 i + ed/es/er/est
+  else if (w.endsWith('y') && !/[aeiou]y$/i.test(w)) {
+    const stem = w.slice(0, -1);
+    patterns.add(escapeRegex(stem) + 'i(?:ed|es|er|est|able|ables|ably|al|ally|ful|fully)');
+    patterns.add(escapeRegex(w) + '(?:ing|ingly|s)?');
+  }
+  // 若以元音 + 辅音结尾（如 stop, occur, plan, refer）：双写尾辅音 + ed/ing
+  else if (/[aeiou][b-df-hj-np-tv-z]$/i.test(w) && !/[wyx]$/i.test(w)) {
+    const c = w[w.length - 1];
+    patterns.add(escapeRegex(w) + c + '(?:ed|ing|er|ers|able)');
+  }
+
+  // 4. 若存入的词本身就是过去式或分词形态（如 attributed, played, applying），倒推原型匹配
+  if (w.endsWith('ed')) {
+    const b1 = w.slice(0, -2);
+    const b2 = w.slice(0, -1);
+    patterns.add(escapeRegex(b1) + COMMON_GRAMMATICAL_SUFFIXES + '?');
+    patterns.add(escapeRegex(b2) + COMMON_GRAMMATICAL_SUFFIXES + '?');
+  } else if (w.endsWith('ing')) {
+    const b1 = w.slice(0, -3);
+    const b2 = w.slice(0, -3) + 'e';
+    patterns.add(escapeRegex(b1) + COMMON_GRAMMATICAL_SUFFIXES + '?');
+    patterns.add(escapeRegex(b2) + COMMON_SUFFIXES + '?');
+  } else if (w.endsWith('ies')) {
+    const b = w.slice(0, -3) + 'y';
+    patterns.add(escapeRegex(b));
+    patterns.add(escapeRegex(w.slice(0, -3)) + 'i(?:ed|es)');
+  } else if (w.endsWith('es')) {
+    patterns.add(escapeRegex(w.slice(0, -2)));
+    patterns.add(escapeRegex(w.slice(0, -1)));
+  } else if (w.endsWith('s') && !w.endsWith('ss')) {
+    patterns.add(escapeRegex(w.slice(0, -1)));
+  }
+
+  return Array.from(patterns).sort((a, b) => b.length - a.length).join('|');
+}
+
 function highlightWordInSentence(sentence, word) {
   if (!sentence || !word) return sentence || '';
+  const w = word.trim().toLowerCase();
+  if (!w) return sentence;
+
   try {
-    const regex = new RegExp(`(\\b${word}\\b|${word})`, 'gi');
-    return sentence.replace(regex, `<span class="highlight">$1</span>`);
+    let patternStr;
+    if (w.includes(' ')) {
+      // 复合短语处理（如 take into account, rely on, look forward to）
+      const parts = w.split(/\s+/);
+      const firstPat = buildSingleWordPattern(parts[0]);
+      const rest = parts.slice(1).map(escapeRegex).join('\\s+');
+      patternStr = `(?:${firstPat})\\s+${rest}`;
+    } else {
+      patternStr = buildSingleWordPattern(w);
+    }
+
+    // 确保完整词边界匹配，绝不落掉尾部字母
+    const regex = new RegExp(`\\b(${patternStr})\\b`, 'gi');
+    return sentence.replace(regex, '<span class="highlight">$1</span>');
   } catch (e) {
     return sentence;
   }
@@ -820,7 +983,7 @@ function renderStealthMailCard() {
   if (wordIpaEl) wordIpaEl.innerText = phonetic ? phonetic : '';
 
   const contextEl = document.getElementById('mailContextText');
-  if (contextEl) contextEl.innerText = context;
+  if (contextEl) contextEl.innerHTML = highlightWordInSentence(context, word);
 
   const inboxCountEl = document.getElementById('mailInboxCount');
   if (inboxCountEl) inboxCountEl.innerText = batchTotalTarget;
