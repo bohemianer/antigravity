@@ -242,9 +242,10 @@ const IRREGULAR_VERBS = {
   'withdraw': ['withdrew', 'withdrawn', 'withdrawing', 'withdraws']
 };
 
-const COMMON_GRAMMATICAL_SUFFIXES = '(?:d|ed|s|es|ing|ingly|er|ers|est|or|ors|able|ably|ible|ibly|ive|ively|ions?|ations?|ments?|ness|ly|ful|fully|less|lessly)';
+const POSSESSIVE_SUFFIXES = "(?:['’‘`]s|s['’‘`]|['’‘`])?";
+const BOUNDARY_LOOKAHEAD = "(?=\\b|\\s|[.,!?;:\"'’‘`)\\]]|$)";
 
-function buildSingleWordPattern(w) {
+function getDirectInflections(w) {
   const patterns = new Set();
   patterns.add(escapeRegex(w));
 
@@ -259,59 +260,51 @@ function buildSingleWordPattern(w) {
     }
   }
 
-  // 2. 超短词 (<= 3 字符，如 cat, run, in) 严格边界，防止误伤（如 catalog）
+  // 2. 超短词 (<= 3 字符，如 cat, run, in)
   if (w.length <= 3) {
     patterns.add(escapeRegex(w) + '(?:s|es|ed|ing|d)?');
     if (/[aeiou][b-df-hj-np-tv-z]$/i.test(w)) {
       const c = w[w.length - 1];
       patterns.add(escapeRegex(w) + c + '(?:ed|ing|er|ers)?');
     }
-    return Array.from(patterns).sort((a, b) => b.length - a.length).join('|');
+    return patterns;
   }
 
-  // 3. 常规词（>= 4 字符）：本体 + 屈折后缀（如 attribute -> attributed, attributes）
-  patterns.add(escapeRegex(w) + COMMON_GRAMMATICAL_SUFFIXES + '?');
+  // 3. 常规词（>= 4 字符）：本体 + 屈折后缀
+  patterns.add(escapeRegex(w) + '(?:d|ed|s|es|ing|ingly|er|ers|est|or|ors|able|ably|ible|ibly|ive|ively|ions?|ations?|ments?|ness|ly|ful|fully|less|lessly)');
 
-  // 若以 'e' 结尾（如 attribute, create, live, save）：去 e + ing/able/ive/ion
   if (w.endsWith('e')) {
     const stem = w.slice(0, -1);
     patterns.add(escapeRegex(stem) + '(?:ing|ingly|ions?|ations?|ables?|ably|ives?|ively|ors?|ers?)');
-  }
-  // 若以辅音 + 'y' 结尾（如 apply, study, carry）：变 y 为 i + ed/es/er/est
-  else if (w.endsWith('y') && !/[aeiou]y$/i.test(w)) {
+  } else if (w.endsWith('y') && !/[aeiou]y$/i.test(w)) {
     const stem = w.slice(0, -1);
     patterns.add(escapeRegex(stem) + 'i(?:ed|es|er|est|able|ables|ably|al|ally|ful|fully)');
     patterns.add(escapeRegex(w) + '(?:ing|ingly|s)?');
-  }
-  // 若以元音 + 辅音结尾（如 stop, occur, plan, refer）：双写尾辅音 + ed/ing
-  else if (/[aeiou][b-df-hj-np-tv-z]$/i.test(w) && !/[wyx]$/i.test(w)) {
+  } else if (/[aeiou][b-df-hj-np-tv-z]$/i.test(w) && !/[wyx]$/i.test(w)) {
     const c = w[w.length - 1];
     patterns.add(escapeRegex(w) + c + '(?:ed|ing|er|ers|able)');
   }
 
-  // 4. 若存入的词本身就是过去式或分词形态（如 attributed, played, applying），倒推原型匹配
-  if (w.endsWith('ed')) {
-    const b1 = w.slice(0, -2);
-    const b2 = w.slice(0, -1);
-    patterns.add(escapeRegex(b1) + COMMON_GRAMMATICAL_SUFFIXES + '?');
-    patterns.add(escapeRegex(b2) + COMMON_GRAMMATICAL_SUFFIXES + '?');
-  } else if (w.endsWith('ing')) {
-    const b1 = w.slice(0, -3);
-    const b2 = w.slice(0, -3) + 'e';
-    patterns.add(escapeRegex(b1) + COMMON_GRAMMATICAL_SUFFIXES + '?');
-    patterns.add(escapeRegex(b2) + COMMON_SUFFIXES + '?');
-  } else if (w.endsWith('ies')) {
-    const b = w.slice(0, -3) + 'y';
-    patterns.add(escapeRegex(b));
-    patterns.add(escapeRegex(w.slice(0, -3)) + 'i(?:ed|es)');
-  } else if (w.endsWith('es')) {
-    patterns.add(escapeRegex(w.slice(0, -2)));
-    patterns.add(escapeRegex(w.slice(0, -1)));
-  } else if (w.endsWith('s') && !w.endsWith('ss')) {
-    patterns.add(escapeRegex(w.slice(0, -1)));
-  }
+  return patterns;
+}
 
-  return Array.from(patterns).sort((a, b) => b.length - a.length).join('|');
+function getReverseLemmas(w) {
+  const lemmas = new Set();
+  if (w.endsWith('ed')) {
+    lemmas.add(escapeRegex(w.slice(0, -2)));       // played -> play
+    lemmas.add(escapeRegex(w.slice(0, -1)));       // attributed -> attribute
+  } else if (w.endsWith('ing')) {
+    lemmas.add(escapeRegex(w.slice(0, -3)));       // playing -> play
+    lemmas.add(escapeRegex(w.slice(0, -3) + 'e')); // creating -> create
+  } else if (w.endsWith('ies')) {
+    lemmas.add(escapeRegex(w.slice(0, -3) + 'y')); // applies -> apply
+  } else if (w.endsWith('es')) {
+    lemmas.add(escapeRegex(w.slice(0, -2)));       // watches -> watch
+    lemmas.add(escapeRegex(w.slice(0, -1)));       // creates -> create
+  } else if (w.endsWith('s') && !w.endsWith('ss')) {
+    lemmas.add(escapeRegex(w.slice(0, -1)));
+  }
+  return lemmas;
 }
 
 function highlightWordInSentence(sentence, word) {
@@ -320,21 +313,50 @@ function highlightWordInSentence(sentence, word) {
   if (!w) return sentence;
 
   try {
-    let patternStr;
+    // 优先级 1: 精准目标匹配 (含所有格 's, ’s, s', s’)
+    // 若句子中已有目标词本身（如 nailed），仅高亮精准词本身，杜绝连带匹配 nails 等同词根其他词
+    let tier1Pattern;
     if (w.includes(' ')) {
-      // 复合短语处理（如 take into account, rely on, look forward to）
-      const parts = w.split(/\s+/);
-      const firstPat = buildSingleWordPattern(parts[0]);
-      const rest = parts.slice(1).map(escapeRegex).join('\\s+');
-      patternStr = `(?:${firstPat})\\s+${rest}`;
+      const parts = w.split(/\s+/).map(escapeRegex);
+      tier1Pattern = parts.join('\\s+');
     } else {
-      patternStr = buildSingleWordPattern(w);
+      tier1Pattern = escapeRegex(w);
     }
 
-    // 智能附加名词所有格/缩写后缀 (如 's, ’s, s', s’, ')，并匹配完整词边界与标点边界，绝不把 's 遗留在框外
-    const fullPattern = `(?:${patternStr})(?:['’‘\`]s|s['’‘\`]|['’‘\`])?`;
-    const regex = new RegExp(`\\b(${fullPattern})(?=\\b|\\s|[.,!?;:"'’‘\`)\\]]|$)`, 'gi');
-    return sentence.replace(regex, '<span class="highlight">$1</span>');
+    const regex1 = new RegExp(`\\b(${tier1Pattern}${POSSESSIVE_SUFFIXES})${BOUNDARY_LOOKAHEAD}`, 'gi');
+    if (regex1.test(sentence)) {
+      return sentence.replace(regex1, '<span class="highlight">$1</span>');
+    }
+
+    // 优先级 2: 目标原型向前屈折形态 (当例句中没有原型，但有过去式/分词等形态，如 attribute -> attributed)
+    let tier2PatternStr;
+    if (w.includes(' ')) {
+      const parts = w.split(/\s+/);
+      const firstForms = getDirectInflections(parts[0]);
+      const rest = parts.slice(1).map(escapeRegex).join('\\s+');
+      const firstGroup = Array.from(firstForms).sort((a, b) => b.length - a.length).join('|');
+      tier2PatternStr = `(?:${firstGroup})\\s+${rest}`;
+    } else {
+      const tier2Forms = getDirectInflections(w);
+      tier2PatternStr = Array.from(tier2Forms).sort((a, b) => b.length - a.length).join('|');
+    }
+
+    const regex2 = new RegExp(`\\b((?:${tier2PatternStr})${POSSESSIVE_SUFFIXES})${BOUNDARY_LOOKAHEAD}`, 'gi');
+    if (regex2.test(sentence)) {
+      return sentence.replace(regex2, '<span class="highlight">$1</span>');
+    }
+
+    // 优先级 3: 目标屈折词向后倒推原型 (当存入的词是过去式/进行时，如 playing / attributed，而例句中是原型 play / attribute)
+    const tier3Lemmas = getReverseLemmas(w);
+    if (tier3Lemmas.size > 0) {
+      const tier3PatternStr = Array.from(tier3Lemmas).sort((a, b) => b.length - a.length).join('|');
+      const regex3 = new RegExp(`\\b((?:${tier3PatternStr})${POSSESSIVE_SUFFIXES})${BOUNDARY_LOOKAHEAD}`, 'gi');
+      if (regex3.test(sentence)) {
+        return sentence.replace(regex3, '<span class="highlight">$1</span>');
+      }
+    }
+
+    return sentence;
   } catch (e) {
     return sentence;
   }
