@@ -747,6 +747,122 @@ function formatTrans(s) {
             .join('\n');
 }
 
+let sessionTestedWordKeys = new Set(); // 记录当前会话已测试词汇，避免多组自测时频繁重复
+
+function calculateMemoryUrgency(item, now) {
+  const lv = parseInt(item.srsLevel) || 0;
+  const nextRev = parseInt(item.srsNextReview) || 0;
+  const date = item.date ? (typeof item.date === 'number' ? item.date : new Date(item.date).getTime()) : 0;
+  const ageDays = Math.max(0, (now - date) / (86400 * 1000));
+
+  let score = 0;
+  if (lv > 0 && nextRev > 0 && now >= nextRev) {
+    // 1. 到期未复习词：遗忘临界点，最高优先级
+    const overdueDays = (now - nextRev) / (86400 * 1000);
+    score = 2000 + overdueDays * 25;
+  } else if (lv === 0) {
+    // 2. 零熟练度生词：越早收录越容易彻底遗忘，给予极高抢救权重
+    score = 1000 + ageDays * 8 - (parseInt(item.srsReviews) || 0) * 40;
+  } else {
+    // 3. 尚未到期的高阶词：保持基础活性探索
+    score = 200 + ageDays * 2 - (lv * 60);
+  }
+
+  // 叠加动态随机扰动因子
+  score += Math.random() * 80;
+  return score;
+}
+
+function selectSmartFlashcardBatch(pool, targetN) {
+  if (pool.length <= targetN) {
+    const res = [...pool];
+    for (let i = res.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [res[i], res[j]] = [res[j], res[i]];
+    }
+    return res;
+  }
+
+  const now = Date.now();
+
+  // 若已测试词数接近池总量，自动重置以便无缝开启新一轮全库循环
+  if (sessionTestedWordKeys.size >= pool.length - Math.min(5, Math.floor(targetN / 2))) {
+    sessionTestedWordKeys.clear();
+  }
+
+  // 1. 优先从当前会话尚未测过的词池中抽选
+  const freshPool = pool.filter(w => !sessionTestedWordKeys.has((w.text || w.word || '').toLowerCase().trim()));
+  const candidatePool = freshPool.length >= targetN ? freshPool : pool;
+
+  // 2. 分桶 A: 到期应复习词 (srsLevel > 0 且 srsNextReview <= now，按最逾期优先)
+  const dueReviews = candidatePool.filter(w => (parseInt(w.srsLevel) || 0) > 0 && (parseInt(w.srsNextReview) || 0) <= now);
+  dueReviews.sort((a, b) => (parseInt(a.srsNextReview) || 0) - (parseInt(b.srsNextReview) || 0));
+
+  // 3. 分桶 B: 早期沉淀 / 最早加入生词 (srsLevel == 0，按加入时间最早优先，彻底解决老词无法出题问题)
+  const unmastered = candidatePool.filter(w => (parseInt(w.srsLevel) || 0) === 0);
+  const unmasteredOldest = [...unmastered].sort((a, b) => {
+    const dateA = a.date ? (typeof a.date === 'number' ? a.date : new Date(a.date).getTime()) : 0;
+    const dateB = b.date ? (typeof b.date === 'number' ? b.date : new Date(b.date).getTime()) : 0;
+    return dateA - dateB;
+  });
+
+  // 4. 分桶 C: 近期新增生词 (srsLevel == 0，按加入时间最新优先)
+  const unmasteredNewest = [...unmastered].sort((a, b) => {
+    const dateA = a.date ? (typeof a.date === 'number' ? a.date : new Date(a.date).getTime()) : 0;
+    const dateB = b.date ? (typeof b.date === 'number' ? b.date : new Date(b.date).getTime()) : 0;
+    return dateB - dateA;
+  });
+
+  // 科学配额：约 35% 到期复习词 + 约 40% 最早老生词 + 约 25% 近期新增生词
+  const quotaDue = Math.min(dueReviews.length, Math.max(1, Math.floor(targetN * 0.35)));
+  const quotaOld = Math.min(unmasteredOldest.length, Math.max(2, Math.floor(targetN * 0.40)));
+  const quotaNew = Math.min(unmasteredNewest.length, Math.max(1, Math.floor(targetN * 0.25)));
+
+  const selectedSet = new Set();
+  const selectedList = [];
+
+  function addCandidates(list, count) {
+    let added = 0;
+    for (const item of list) {
+      const key = (item.text || item.word || '').toLowerCase().trim();
+      if (!selectedSet.has(key) && added < count) {
+        selectedSet.add(key);
+        selectedList.push(item);
+        added++;
+      }
+    }
+  }
+
+  addCandidates(dueReviews, quotaDue);
+  addCandidates(unmasteredOldest, quotaOld);
+  addCandidates(unmasteredNewest, quotaNew);
+
+  // 5. 剩余配额按全库艾宾浩斯综合记忆紧迫度补充
+  if (selectedList.length < targetN) {
+    const remaining = candidatePool.filter(item => {
+      const key = (item.text || item.word || '').toLowerCase().trim();
+      return !selectedSet.has(key);
+    });
+
+    remaining.sort((a, b) => calculateMemoryUrgency(b, now) - calculateMemoryUrgency(a, now));
+    addCandidates(remaining, targetN - selectedList.length);
+  }
+
+  // 组内 Fisher-Yates 随机乱序
+  for (let i = selectedList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [selectedList[i], selectedList[j]] = [selectedList[j], selectedList[i]];
+  }
+
+  // 记录选中的词条
+  selectedList.forEach(item => {
+    const key = (item.text || item.word || '').toLowerCase().trim();
+    sessionTestedWordKeys.add(key);
+  });
+
+  return selectedList;
+}
+
 function updateFlashcardList(resetIndex = false) {
   // 重置完成小结卡片
   const summaryCard = document.getElementById('flashcardSummaryCard');
@@ -764,18 +880,15 @@ function updateFlashcardList(resetIndex = false) {
 
   let pool = [...filteredWords];
   
-  // 优先按定量抽取生词 (生疏与到期复习优先)
   if (currentBatchSize !== 'all') {
     const targetN = parseInt(currentBatchSize) || 20;
-    const unmastered = pool.filter(w => (parseInt(w.srsLevel) || 0) === 0);
-    const reviewing = pool.filter(w => (parseInt(w.srsLevel) || 0) > 0);
-    pool = [...unmastered, ...reviewing].slice(0, targetN);
-  }
-
-  // 默认开启随机洗牌乱序，抗遗忘更高效
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    pool = selectSmartFlashcardBatch(pool, targetN);
+  } else {
+    // 全量模式：整库乱序
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
   }
 
   cardList = pool;
