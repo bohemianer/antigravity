@@ -331,8 +331,9 @@ function highlightWordInSentence(sentence, word) {
       patternStr = buildSingleWordPattern(w);
     }
 
-    // 确保完整词边界匹配，绝不落掉尾部字母
-    const regex = new RegExp(`\\b(${patternStr})\\b`, 'gi');
+    // 智能附加名词所有格/缩写后缀 (如 's, ’s, s', s’, ')，并匹配完整词边界与标点边界，绝不把 's 遗留在框外
+    const fullPattern = `(?:${patternStr})(?:['’‘\`]s|s['’‘\`]|['’‘\`])?`;
+    const regex = new RegExp(`\\b(${fullPattern})(?=\\b|\\s|[.,!?;:"'’‘\`)\\]]|$)`, 'gi');
     return sentence.replace(regex, '<span class="highlight">$1</span>');
   } catch (e) {
     return sentence;
