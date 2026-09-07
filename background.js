@@ -370,6 +370,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       let prevItem = existsIndex !== -1 ? list[existsIndex] : null;
 
+      const originalDate = prevItem ? (prevItem.date || Date.now()) : Date.now();
+
       const item = {
         text: cleanWord,
         trans: payload.trans || payload.definition || (prevItem ? prevItem.trans : ""),
@@ -377,7 +379,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         context: payload.context || payload.sentence || (prevItem ? prevItem.context : ""),
         title: payload.title || payload.sourceTitle || (prevItem ? prevItem.title : "Web Article"),
         url: payload.url || payload.sourceUrl || (prevItem ? prevItem.url : ""),
-        date: Date.now(),
+        date: originalDate,
+        updatedAt: Date.now(),
         notes: payload.notes !== undefined ? payload.notes : (prevItem ? prevItem.notes : ""),
         srsLevel: (prevItem && prevItem.srsLevel !== undefined) ? prevItem.srsLevel : (payload.srsLevel !== undefined ? payload.srsLevel : 0),
         srsNextReview: (prevItem && prevItem.srsNextReview !== undefined) ? prevItem.srsNextReview : (payload.srsNextReview || 0),
@@ -385,9 +388,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       };
 
       if (existsIndex !== -1) {
-        list.splice(existsIndex, 1);
+        list[existsIndex] = Object.assign({}, list[existsIndex], item);
+      } else {
+        list.unshift(item);
       }
-      list.unshift(item);
       
       chrome.storage.local.set({ savedWords: list }, () => {
         autoSyncWebDAV(list);

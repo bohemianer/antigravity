@@ -117,8 +117,26 @@ function escapeHtml(str) {
 
 function formatDefinition(def) {
   if (!def) return "";
-  const safe = escapeHtml(def);
-  return safe.replace(/\b(noun|verb|adj|adv|pron|prep|conj|v|vt|vi|n|a)\./gi, '<span class="agy-pos-tag">$1.</span>');
+  let str = String(def).replace(/<[^>]+>/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  str = str.replace(/;/g, '；').replace(/；\s*/g, '；').replace(/,\s*/g, '，').replace(/，\s*/g, '，');
+  
+  const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
+  str = str.replace(posRegex, '\n$1 ');
+
+  const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
+  str = str.replace(numRegex, '\n$1 ');
+
+  const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]?)\s*/gi;
+  str = str.replace(metaRegex, '\n$1 ');
+
+  return str.split('\n')
+    .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, '').trim())
+    .filter(Boolean)
+    .map(line => {
+      const safe = escapeHtml(line);
+      const highlighted = safe.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="agy-pos-tag">$1</span> ');
+      return `<div style="margin-bottom: 3px;">${highlighted}</div>`;
+    }).join('');
 }
 
 function isExtensionValid() {

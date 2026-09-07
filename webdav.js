@@ -113,20 +113,28 @@ class WebDAVClient {
         // 云端没有，把本地的补充进去
         map.set(k, Object.assign({}, lItem));
       } else {
-        // 两端都有同一个词，进行字段级智能互补与时间戳决胜
+        // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
         const rItem = map.get(k);
-        const lTime = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0);
-        const rTime = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0);
+        const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
+        const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
+
+        const isLocalNewer = lUpdate >= rUpdate;
+
+        // 保留该词最初收录时的真实创建时间 (Creation Date)
+        const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
+        const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
+        const originalDate = Math.min(lCreate || Date.now(), rCreate || Date.now()) || lItem.date || rItem.date || Date.now();
 
         const mergedWord = {
           text: lItem.text || rItem.text || lItem.word || rItem.word,
-          trans: (lTime >= rTime ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
+          trans: (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
           phonetic: lItem.phonetic || rItem.phonetic || "",
-          context: (lTime >= rTime ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
-          title: (lTime >= rTime ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
-          url: (lTime >= rTime ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
-          date: Math.max(lTime, rTime) || Date.now(),
-          notes: (lTime >= rTime ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
+          context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
+          title: (isLocalNewer ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
+          url: (isLocalNewer ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
+          date: originalDate, // 核心：保持最初收录时间不变，从而保持在生词本中的原始位置！
+          updatedAt: Math.max(lUpdate, rUpdate) || Date.now(),
+          notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
           srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),
           srsNextReview: Math.max(lItem.srsNextReview || 0, rItem.srsNextReview || 0),
           srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0)
@@ -136,9 +144,13 @@ class WebDAVClient {
       }
     });
 
-    // 按添加时间倒序排列
+    // 按创建时间倒序排列（新词在前，老词在后，编辑单词不改变其创建时间与排序位置）
     const result = Array.from(map.values());
-    result.sort((a, b) => (b.date || 0) - (a.date || 0));
+    result.sort((a, b) => {
+      const dateA = a.date ? (typeof a.date === 'number' ? a.date : new Date(a.date).getTime()) : 0;
+      const dateB = b.date ? (typeof b.date === 'number' ? b.date : new Date(b.date).getTime()) : 0;
+      return dateB - dateA;
+    });
     return result;
   }
 

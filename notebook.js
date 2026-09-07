@@ -572,7 +572,7 @@ function renderList(list) {
   list.forEach((item) => {
     const wordText = item.text || item.word || "";
     const phonetic = extractPhoneticFromItem(item);
-    const transText = formatTrans(item.trans || item.definition || "");
+    const transHtml = formatTransHtml(item.trans || item.definition || "");
     const notesText = cleanNotes(item.notes);
     const contextSentence = highlightWordInSentence(item.context || item.sentence || "暂无上下文例句", wordText);
     const sourceTitle = item.title || "Web Article";
@@ -595,7 +595,7 @@ function renderList(list) {
         </div>
       </td>
       <td style="vertical-align: middle !important;">
-        <div class="trans-text">${transText}</div>
+        <div class="trans-text">${transHtml}</div>
       </td>
       <td style="vertical-align: middle !important;">
         <div class="note-text">${notesText || ''}</div>
@@ -721,10 +721,10 @@ let currentBatchSize = '20'; // 10, 20, 50, all
 let batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
 let batchTotalTarget = 20;
 
-// 智能释义格式化引擎：多词性 (n./v./adj./adv.) 与形态衍生 (时态/名词/复数) 自动分行排版
+// 智能释义格式化引擎：多词性 (n./v./adj./adv.)、序号列表与形态衍生 (时态/名词/复数) 自动分行排版
 function formatTrans(s) {
   if (!s) return "";
-  let str = String(s).replace(/<[^>]+>/g, '').trim();
+  let str = String(s).replace(/<[^>]+>/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
 
   // 1. 标准化分号与逗号
   str = str.replace(/;/g, '；')
@@ -732,19 +732,34 @@ function formatTrans(s) {
            .replace(/,\s*/g, '，')
            .replace(/，\s*/g, '，');
 
-  // 2. 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. prep. conj. pron. art. num. interj. aux. v.)
-  const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|prep|conj|pron|art|num|int|interj|aux)\.)\s*/gi;
+  // 2. 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. a. ad. prep. conj. pron. art. num. interj. aux. abbr. pl. sing. pref. suff. link-v. 等)
+  const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
   str = str.replace(posRegex, '\n$1 ');
 
-  // 3. 识别中文时态与衍生词标记并自动换行 (如 时 态: 名 词: 形 容 词: 副 词: 复 数: 比较级: 最高级: 过去式: 过去分词: 等)
-  const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词)\s*[:：])\s*/gi;
+  // 3. 识别序号列表分项并自动换行 (如 1. 2. / 1、2、/ (1) (2) / ① ② 等)
+  const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
+  str = str.replace(numRegex, '\n$1 ');
+
+  // 4. 识别中文词性与时态衍生标签并自动换行 (如 [名] [动] 【形】 或 时态: 名词: 过去式: 等)
+  const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]?)\s*/gi;
   str = str.replace(metaRegex, '\n$1 ');
 
-  // 4. 清理每行首尾多余标点与空格
+  // 5. 清理每行首尾多余标点与空格
   return str.split('\n')
             .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, '').trim())
             .filter(Boolean)
             .join('\n');
+}
+
+function formatTransHtml(s) {
+  const formatted = formatTrans(s);
+  if (!formatted) return "";
+  return formatted.split('\n').map(line => {
+    const escaped = escapeHtml(line);
+    // 渲染词性与序号微标高亮
+    const highlighted = escaped.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="trans-pos-tag">$1</span> ');
+    return `<div class="trans-line">${highlighted}</div>`;
+  }).join('');
 }
 
 let sessionTestedWordKeys = new Set(); // 记录当前会话已测试词汇，避免多组自测时频繁重复
@@ -1147,7 +1162,7 @@ function renderStealthMailCard() {
   if (cardRevealed) {
     if (foldTrigger) foldTrigger.style.display = 'none';
     if (specBox) specBox.style.display = 'block';
-    if (specTrans) specTrans.innerText = trans;
+    if (specTrans) specTrans.innerHTML = formatTransHtml(item.trans || item.definition || "");
     if (notes && notes.trim()) {
       if (specNotes) {
         specNotes.style.display = 'block';
@@ -1276,7 +1291,7 @@ function renderFlashcard() {
   document.getElementById('fcWord').innerText = word;
   document.getElementById('fcPhonetic').innerText = phonetic;
   document.getElementById('fcContext').innerHTML = context;
-  document.getElementById('fcTrans').innerText = trans;
+  document.getElementById('fcTrans').innerHTML = formatTransHtml(item.trans || item.definition || "");
 
   const badgeEl = document.getElementById('fcSrsBadge');
   badgeEl.className = `srs-badge ${srs.class}`;
@@ -1521,7 +1536,7 @@ function openEditModal(idx) {
 
   document.getElementById('inputWord').value = item.text || item.word || "";
   document.getElementById('inputPhonetic').value = extractPhoneticFromItem(item);
-  document.getElementById('inputTrans').value = item.trans || item.definition || "";
+  document.getElementById('inputTrans').value = formatTrans(item.trans || item.definition || "");
   document.getElementById('inputContext').value = item.context || item.sentence || "";
   document.getElementById('inputNotes').value = cleanNotes(item.notes);
 
@@ -2042,27 +2057,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const notes = document.getElementById('inputNotes').value.trim();
     const existingItem = (idx >= 0 && currentWords[idx]) ? currentWords[idx] : null;
 
+    const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
+    const formattedTrans = formatTrans(trans);
+
     const newItem = {
       text: word,
-      trans: trans,
+      trans: formattedTrans,
       phonetic: cleanIPA(phonetic),
       context: context,
       title: existingItem ? (existingItem.title || "") : "",
       url: existingItem ? (existingItem.url || "") : "",
-      date: Date.now(),
+      date: originalDate, // 严格保留原始创建时间戳，绝不破坏先后排序
+      updatedAt: Date.now(),
       notes: notes,
-      srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0
+      srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
+      srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
+      srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0
     };
 
     if (idx === -1) {
-      const existIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase() === word.toLowerCase());
+      const existIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
       if (existIdx !== -1) {
-        currentWords[existIdx] = Object.assign(currentWords[existIdx], newItem);
+        const existDate = currentWords[existIdx].date || Date.now();
+        currentWords[existIdx] = Object.assign({}, currentWords[existIdx], newItem, { date: existDate });
       } else {
         currentWords.unshift(newItem);
       }
     } else {
-      currentWords[idx] = Object.assign(currentWords[idx] || {}, newItem);
+      currentWords[idx] = Object.assign({}, currentWords[idx] || {}, newItem, { date: originalDate });
     }
 
     closeModal();
@@ -2072,7 +2094,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currentView === 'flashcard' && cardList.length > 0) {
       const currentTarget = cardList[cardIndex];
       if (currentTarget) {
-        const found = currentWords.find(w => (w.text || w.word || '').toLowerCase() === (currentTarget.text || currentTarget.word || '').toLowerCase());
+        const found = currentWords.find(w => (w.text || w.word || '').toLowerCase().trim() === (currentTarget.text || currentTarget.word || '').toLowerCase().trim());
         if (found) {
           cardList[cardIndex] = Object.assign(cardList[cardIndex], found);
           renderFlashcard();
