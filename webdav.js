@@ -120,10 +120,10 @@ class WebDAVClient {
 
         const isLocalNewer = lUpdate >= rUpdate;
 
-        // 保留该词最初收录时的真实创建时间 (Creation Date)
         const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
         const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
-        const originalDate = Math.min(lCreate || Date.now(), rCreate || Date.now()) || lItem.date || rItem.date || Date.now();
+        // 若本地版本较新，以本地设定的 date 为准（新添加词置顶，已修改词保持原位）
+        const targetDate = isLocalNewer ? (lItem.date || lCreate) : (rItem.date || rCreate);
 
         const mergedWord = {
           text: lItem.text || rItem.text || lItem.word || rItem.word,
@@ -132,7 +132,7 @@ class WebDAVClient {
           context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
           title: (isLocalNewer ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
           url: (isLocalNewer ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
-          date: originalDate, // 核心：保持最初收录时间不变，从而保持在生词本中的原始位置！
+          date: targetDate, // 保持最新添加的词在最前，编辑修改的词保持原创建位置
           updatedAt: Math.max(lUpdate, rUpdate) || Date.now(),
           notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
           srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),

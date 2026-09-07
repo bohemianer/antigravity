@@ -2057,34 +2057,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const notes = document.getElementById('inputNotes').value.trim();
     const existingItem = (idx >= 0 && currentWords[idx]) ? currentWords[idx] : null;
 
-    const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
     const formattedTrans = formatTrans(trans);
 
-    const newItem = {
-      text: word,
-      trans: formattedTrans,
-      phonetic: cleanIPA(phonetic),
-      context: context,
-      title: existingItem ? (existingItem.title || "") : "",
-      url: existingItem ? (existingItem.url || "") : "",
-      date: originalDate, // 严格保留原始创建时间戳，绝不破坏先后排序
-      updatedAt: Date.now(),
-      notes: notes,
-      srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
-      srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
-      srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0
-    };
-
     if (idx === -1) {
+      // 1. 手动添加新词条：计算全库最高时间戳，确保新加入的词必定排在最顶端（第 1 位）
+      const maxExistingDate = currentWords.reduce((max, w) => {
+        const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
+        return Math.max(max, t);
+      }, 0);
+      const newDate = Math.max(Date.now(), maxExistingDate + 1);
+
+      const newItem = {
+        text: word,
+        trans: formattedTrans,
+        phonetic: cleanIPA(phonetic),
+        context: context,
+        title: "手动录入",
+        url: "",
+        date: newDate,
+        updatedAt: Date.now(),
+        notes: notes,
+        srsLevel: 0,
+        srsNextReview: 0,
+        srsReviews: 0
+      };
+
+      // 若库中已存在同名单词，先移除旧记录再置顶更新
       const existIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
       if (existIdx !== -1) {
-        const existDate = currentWords[existIdx].date || Date.now();
-        currentWords[existIdx] = Object.assign({}, currentWords[existIdx], newItem, { date: existDate });
-      } else {
-        currentWords.unshift(newItem);
+        currentWords.splice(existIdx, 1);
       }
+      currentWords.unshift(newItem);
     } else {
-      currentWords[idx] = Object.assign({}, currentWords[idx] || {}, newItem, { date: originalDate });
+      // 2. 编辑修改已有单词：严格保留原有 date 创建时间，原地就地更新，顺序绝对保持不变
+      const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
+      const updatedItem = {
+        text: word,
+        trans: formattedTrans,
+        phonetic: cleanIPA(phonetic),
+        context: context,
+        title: existingItem ? (existingItem.title || "") : "",
+        url: existingItem ? (existingItem.url || "") : "",
+        date: originalDate,
+        updatedAt: Date.now(),
+        notes: notes,
+        srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
+        srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
+        srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0
+      };
+
+      currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
     }
 
     closeModal();

@@ -370,7 +370,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       let prevItem = existsIndex !== -1 ? list[existsIndex] : null;
 
-      const originalDate = prevItem ? (prevItem.date || Date.now()) : Date.now();
+      // 划词新收录/重新收藏：计算最高时间戳，确保新添加词条必定排在生词本最上方（第 1 位）
+      const maxExistingDate = list.reduce((max, w) => {
+        const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
+        return Math.max(max, t);
+      }, 0);
+      const newDate = Math.max(Date.now(), maxExistingDate + 1);
 
       const item = {
         text: cleanWord,
@@ -379,7 +384,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         context: payload.context || payload.sentence || (prevItem ? prevItem.context : ""),
         title: payload.title || payload.sourceTitle || (prevItem ? prevItem.title : "Web Article"),
         url: payload.url || payload.sourceUrl || (prevItem ? prevItem.url : ""),
-        date: originalDate,
+        date: newDate,
         updatedAt: Date.now(),
         notes: payload.notes !== undefined ? payload.notes : (prevItem ? prevItem.notes : ""),
         srsLevel: (prevItem && prevItem.srsLevel !== undefined) ? prevItem.srsLevel : (payload.srsLevel !== undefined ? payload.srsLevel : 0),
@@ -388,10 +393,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       };
 
       if (existsIndex !== -1) {
-        list[existsIndex] = Object.assign({}, list[existsIndex], item);
-      } else {
-        list.unshift(item);
+        list.splice(existsIndex, 1);
       }
+      list.unshift(item);
       
       chrome.storage.local.set({ savedWords: list }, () => {
         autoSyncWebDAV(list);
