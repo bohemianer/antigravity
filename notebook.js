@@ -2142,8 +2142,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // 如果当前处于闪卡模式，立刻更新当前闪卡卡片的数据并即时重绘，无需退出重测
-    if (currentView === 'flashcard' && cardList.length > 0) {
+    // 只有在【显式编辑当前闪卡单词】(idx >= 0) 时，才即时更新并重绘当前卡片；
+    // 若是在闪卡界面点击右上角「➕ 添加新词」(idx === -1)，只存入生词库，绝不覆盖当前正在测试的闪卡词条！
+    if (idx >= 0 && currentView === 'flashcard' && cardList.length > 0) {
       const currentTarget = cardList[cardIndex];
       if (currentTarget) {
         const found = currentWords[idx] || currentWords.find(w => (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
