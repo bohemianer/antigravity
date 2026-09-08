@@ -1517,10 +1517,13 @@ const modalSubmitBtn = document.getElementById('modalSubmitBtn');
 const davModal = document.getElementById('webdavModal');
 const davForm = document.getElementById('davForm');
 
+let originalEditingWord = "";
+
 function openAddModal() {
   modalTitle.innerText = "添加新词条";
   if (modalSubmitBtn) modalSubmitBtn.innerText = "保存入库";
   editIndexInput.value = "-1";
+  originalEditingWord = "";
   vocabForm.reset();
   if (autoFillStatus) autoFillStatus.style.display = "none";
   modal.style.display = "flex";
@@ -1534,6 +1537,7 @@ function openEditModal(idx) {
   const item = currentWords[idx];
   if (!item) return;
 
+  originalEditingWord = (item.text || item.word || "").trim();
   document.getElementById('inputWord').value = item.text || item.word || "";
   document.getElementById('inputPhonetic').value = extractPhoneticFromItem(item);
   document.getElementById('inputTrans').value = formatTrans(item.trans || item.definition || "");
@@ -2088,8 +2092,13 @@ document.addEventListener('DOMContentLoaded', () => {
         currentWords.splice(existIdx, 1);
       }
       currentWords.unshift(newItem);
+      closeModal();
+      saveAndRefresh();
     } else {
-      // 2. 编辑修改已有单词：严格保留原有 date 创建时间，原地就地更新，顺序绝对保持不变
+      // 2. 编辑修改已有单词（即便修改了单词本体拼写，如 girls 改为 girl）：原地更新原词条，严格保留原有 date 创建时间，顺序绝对不变
+      const oldWordText = originalEditingWord || (existingItem ? (existingItem.text || existingItem.word) : "");
+      const isWordRenamed = oldWordText && oldWordText.toLowerCase().trim() !== word.toLowerCase().trim();
+
       const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
       const updatedItem = {
         text: word,
@@ -2098,7 +2107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         context: context,
         title: existingItem ? (existingItem.title || "") : "",
         url: existingItem ? (existingItem.url || "") : "",
-        date: originalDate,
+        date: originalDate, // 核心：保持原创建时间戳，牢牢锁定在原有位置！
         updatedAt: Date.now(),
         notes: notes,
         srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
@@ -2106,17 +2115,38 @@ document.addEventListener('DOMContentLoaded', () => {
         srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0
       };
 
+      // 原地更新当前索引位置的词条
       currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
-    }
 
-    closeModal();
-    saveAndRefresh();
+      closeModal();
+
+      if (isWordRenamed) {
+        // 单词本体被重命名：
+        // 1. 保存本地更新
+        chrome.storage.local.set({ savedWords: currentWords }, () => {
+          // 2. 关键：立即执行 WebDAV 覆盖同步，彻底抹除云端的旧词 (如 girls)，防止云端拉取时双份合并！
+          doWebDAVOverwrite();
+          // 3. 同时从欧路词典生词本中同步删除旧词
+          chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+            if (r.eudicToken) {
+              const engine = new EudicSyncEngine(r.eudicToken);
+              engine.deleteWord(oldWordText).catch(err => {
+                console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
+              });
+            }
+          });
+          applyFilter();
+        });
+      } else {
+        saveAndRefresh();
+      }
+    }
 
     // 如果当前处于闪卡模式，立刻更新当前闪卡卡片的数据并即时重绘，无需退出重测
     if (currentView === 'flashcard' && cardList.length > 0) {
       const currentTarget = cardList[cardIndex];
       if (currentTarget) {
-        const found = currentWords.find(w => (w.text || w.word || '').toLowerCase().trim() === (currentTarget.text || currentTarget.word || '').toLowerCase().trim());
+        const found = currentWords[idx] || currentWords.find(w => (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
         if (found) {
           cardList[cardIndex] = Object.assign(cardList[cardIndex], found);
           renderFlashcard();
