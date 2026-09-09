@@ -721,34 +721,98 @@ let currentBatchSize = '20'; // 10, 20, 50, all
 let batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
 let batchTotalTarget = 20;
 
-// 智能释义格式化引擎：多词性 (n./v./adj./adv.)、序号列表与形态衍生 (时态/名词/复数) 自动分行排版
+// 智能释义格式化与精简引擎：过滤人名/冗余释义、多词性 (n./v./adj./adv.)、序号列表与形态衍生自动分行排版
 function formatTrans(s) {
   if (!s) return "";
-  let str = String(s).replace(/<[^>]+>/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+  let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
 
   // 1. 标准化分号与逗号
-  str = str.replace(/;/g, '；')
-           .replace(/；\s*/g, '；')
-           .replace(/,\s*/g, '，')
-           .replace(/，\s*/g, '，');
+  str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
 
   // 2. 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. a. ad. prep. conj. pron. art. num. interj. aux. abbr. pl. sing. pref. suff. link-v. 等)
   const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
-  str = str.replace(posRegex, '\n$1 ');
+  str = str.replace(posRegex, "\n$1 ");
 
   // 3. 识别序号列表分项并自动换行 (如 1. 2. / 1、2、/ (1) (2) / ① ② 等)
   const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
-  str = str.replace(numRegex, '\n$1 ');
+  str = str.replace(numRegex, "\n$1 ");
 
   // 4. 识别中文词性与时态衍生标签并自动换行 (如 [名] [动] 【形】 或 时态: 名词: 过去式: 等)
   const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]?)\s*/gi;
-  str = str.replace(metaRegex, '\n$1 ');
+  str = str.replace(metaRegex, "\n$1 ");
 
-  // 5. 清理每行首尾多余标点与空格
-  return str.split('\n')
-            .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, '').trim())
-            .filter(Boolean)
-            .join('\n');
+  const rawLines = str.split("\n").map(l => l.trim()).filter(Boolean);
+  if (rawLines.length === 0) return "";
+
+  const isNameClause = (text) => /【名】|\[名\]|人名|男子名|女子名|男名|女名|姓氏|教名|（人名）|\(人名\)|（男子名）|\(男子名\)|（女子名）|\(女子名\)|（姓氏）|\(姓氏\)/.test(text);
+
+  // 检查是否包含任何非人名的常规词义
+  const hasAnyLexical = rawLines.some(line => {
+    if (/^(?:【名】|\[名\])/.test(line)) return false;
+    const clauses = line.split(/[；;]/).map(c => c.trim()).filter(Boolean);
+    return clauses.some(c => !isNameClause(c));
+  });
+
+  const resultLines = [];
+
+  for (const line of rawLines) {
+    // 如果已有常规词义，直接跳过【名】（人名）整行
+    if (/^(?:【名】|\[名\])/.test(line) && hasAnyLexical) {
+      continue;
+    }
+
+    const posMatch = line.match(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|\d+[\.、]|\(\d+\)|[\u2460-\u2473])\s*(.*)$/);
+    const prefix = posMatch ? (posMatch[1] + " ") : "";
+    const content = posMatch ? posMatch[2] : line;
+
+    const clauses = content.split(/[；;]/).map(c => c.trim()).filter(Boolean);
+    const hasLexicalInLine = clauses.some(c => !isNameClause(c));
+
+    const filteredClauses = [];
+    const seenMeanings = new Set();
+
+    for (let c of clauses) {
+      if (isNameClause(c)) {
+        if (hasLexicalInLine || hasAnyLexical) {
+          continue; // 忽略人名释义
+        } else {
+          // 纯人名专有名词：精简国家与括号标签
+          c = c.replace(/（(?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?）|\((?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?\)/g, "");
+          c = c.replace(/[（\(](?:人名|男子名|女子名|男名|女名|姓氏|教名|英语姓氏)[）\)]/g, "").trim();
+        }
+      }
+
+      // 清除冷僻字典行业术语标签与多余英文说明
+      c = c.replace(/<(?:英|美|澳|古|罕|非正式)>(?:燃气|赛马|英橄|澳橄|板球|棒球跑垒)[^，；;]*/g, "");
+      c = c.replace(/^[（\(][a-zA-Z\s]+[）\)]/g, "").trim();
+      c = c.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "").trim();
+
+      if (!c) continue;
+
+      const key = c.replace(/[\s，、\(\)（）]/g, "");
+      if (seenMeanings.has(key)) continue;
+      seenMeanings.add(key);
+
+      filteredClauses.push(c);
+    }
+
+    // 尽量精简：每个词性最多保留前 3 个最具代表性的核心释义
+    if (filteredClauses.length > 3) {
+      filteredClauses.length = 3;
+    }
+
+    if (filteredClauses.length > 0) {
+      let joined = filteredClauses.join("； ");
+      joined = joined.replace(/（\s*）|\(\s*\)/g, "").trim();
+      resultLines.push(prefix + joined);
+    }
+  }
+
+  if (resultLines.length === 0 && rawLines.length > 0) {
+    return rawLines[0].replace(/[\s；，,;]+$/g, "");
+  }
+
+  return resultLines.join("\n");
 }
 
 function formatTransHtml(s) {
