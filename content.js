@@ -129,77 +129,14 @@ function formatDefinition(def) {
   const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]?)\s*/gi;
   str = str.replace(metaRegex, "\n$1 ");
 
-  const rawLines = str.split("\n").map(l => l.trim()).filter(Boolean);
-  if (rawLines.length === 0) return "";
-
-  const isNameClause = (text) => /【名】|\[名\]|人名|男子名|女子名|男名|女名|姓氏|教名|（人名）|\(人名\)|（男子名）|\(男子名\)|（女子名）|\(女子名\)|（姓氏）|\(姓氏\)/.test(text);
-
-  const hasAnyLexical = rawLines.some(line => {
-    if (/^(?:【名】|\[名\])/.test(line)) return false;
-    const clauses = line.split(/[；;]/).map(c => c.trim()).filter(Boolean);
-    return clauses.some(c => !isNameClause(c));
-  });
-
-  const resultLines = [];
-
-  for (const line of rawLines) {
-    if (/^(?:【名】|\[名\])/.test(line) && hasAnyLexical) {
-      continue;
-    }
-
-    const posMatch = line.match(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|\d+[\.、]|\(\d+\)|[\u2460-\u2473])\s*(.*)$/);
-    const prefix = posMatch ? (posMatch[1] + " ") : "";
-    const content = posMatch ? posMatch[2] : line;
-
-    const clauses = content.split(/[；;]/).map(c => c.trim()).filter(Boolean);
-    const hasLexicalInLine = clauses.some(c => !isNameClause(c));
-
-    const filteredClauses = [];
-    const seenMeanings = new Set();
-
-    for (let c of clauses) {
-      if (isNameClause(c)) {
-        if (hasLexicalInLine || hasAnyLexical) {
-          continue;
-        } else {
-          c = c.replace(/（(?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?）|\((?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?\)/g, "");
-          c = c.replace(/[（\(](?:人名|男子名|女子名|男名|女名|姓氏|教名|英语姓氏)[）\)]/g, "").trim();
-        }
-      }
-
-      c = c.replace(/<(?:英|美|澳|古|罕|非正式)>(?:燃气|赛马|英橄|澳橄|板球|棒球跑垒)[^，；;]*/g, "");
-      c = c.replace(/^[（\(][a-zA-Z\s]+[）\)]/g, "").trim();
-      c = c.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "").trim();
-
-      if (!c) continue;
-
-      const key = c.replace(/[\s，、\(\)（）]/g, "");
-      if (seenMeanings.has(key)) continue;
-      seenMeanings.add(key);
-
-      filteredClauses.push(c);
-    }
-
-    if (filteredClauses.length > 3) {
-      filteredClauses.length = 3;
-    }
-
-    if (filteredClauses.length > 0) {
-      let joined = filteredClauses.join("； ");
-      joined = joined.replace(/（\s*）|\(\s*\)/g, "").trim();
-      resultLines.push(prefix + joined);
-    }
-  }
-
-  if (resultLines.length === 0 && rawLines.length > 0) {
-    resultLines.push(rawLines[0].replace(/[\s；，,;]+$/g, ""));
-  }
-
-  return resultLines.map(line => {
-    const safe = escapeHtml(line);
-    const highlighted = safe.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="agy-pos-tag">$1</span> ');
-    return `<div style="margin-bottom: 3px;">${highlighted}</div>`;
-  }).join('');
+  return str.split("\n")
+    .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, "").trim())
+    .filter(Boolean)
+    .map(line => {
+      const safe = escapeHtml(line);
+      const highlighted = safe.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="agy-pos-tag">$1</span> ');
+      return `<div style="margin-bottom: 3px;">${highlighted}</div>`;
+    }).join("");
 }
 
 function isExtensionValid() {

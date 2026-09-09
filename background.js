@@ -96,8 +96,8 @@ function deriveInflectedPhonetic(basePhonetic, originalWord, baseForm) {
   return `/${p}/`;
 }
 
-// 智能释义格式化与精简引擎：过滤人名/冗余释义、多词性 (n./v./adj./adv.)、序号列表与形态衍生自动分行排版
-function formatTrans(s) {
+// 划词查词与词典精简引擎：过滤人名/冗余释义、多词性自动分行排版、保留核心前 3 条释义（仅在划词查词/入库时执行）
+function cleanAndStreamlineDictDefinition(s) {
   if (!s) return "";
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
 
@@ -227,7 +227,7 @@ async function queryYoudaoDict(word) {
         p = deriveInflectedPhonetic(p, word, form);
       }
 
-      const formattedExplain = formatTrans(explain);
+      const formattedExplain = cleanAndStreamlineDictDefinition(explain);
 
       if (p || formattedExplain) {
         return {
@@ -364,13 +364,13 @@ async function smartLookup(text) {
       const gg = googleRes.status === "fulfilled" ? googleRes.value : null;
 
       const finalPhonetic = (yd && yd.phonetic) || "";
-      const finalDef = (yd && yd.definition) || (gg && typeof gg === "string" ? formatTrans(gg) : "") || "";
+      const finalDef = (yd && yd.definition) || (gg && typeof gg === "string" ? cleanAndStreamlineDictDefinition(gg) : "") || "";
 
       if (finalDef) {
         return {
           word: cleanText,
           phonetic: finalPhonetic,
-          definition: formatTrans(finalDef)
+          definition: cleanAndStreamlineDictDefinition(finalDef)
         };
       }
     } catch (e) {}
