@@ -1569,7 +1569,100 @@ function closeDavModal() {
   davModal.style.display = "none";
 }
 
+// ---------------- 主题外观系统 (跟随系统 / 浅色模式 / 黑色模式) ----------------
+let currentThemeMode = 'system'; // 'system' | 'light' | 'dark'
+
+function applyThemeMode(mode) {
+  currentThemeMode = mode || 'system';
+  try {
+    localStorage.setItem('antigravity_theme', currentThemeMode);
+  } catch (e) {}
+
+  const isDark = currentThemeMode === 'dark' || (currentThemeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', currentThemeMode);
+  document.documentElement.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
+
+  // 更新下拉菜单按钮与勾选 UI
+  const iconEl = document.getElementById('currentThemeIcon');
+  const labelEl = document.getElementById('currentThemeLabel');
+  if (iconEl && labelEl) {
+    if (currentThemeMode === 'system') {
+      iconEl.innerText = '💻';
+      labelEl.innerText = '跟随系统';
+    } else if (currentThemeMode === 'light') {
+      iconEl.innerText = '☀️';
+      labelEl.innerText = '浅色模式';
+    } else {
+      iconEl.innerText = '🌙';
+      labelEl.innerText = '黑色模式';
+    }
+  }
+
+  const themeMenu = document.getElementById('themeDropdownMenu');
+  if (themeMenu) {
+    themeMenu.querySelectorAll('.dropdown-item').forEach(item => {
+      const val = item.getAttribute('data-theme-val');
+      const isSelected = val === currentThemeMode;
+      item.classList.toggle('selected', isSelected);
+      const ck = item.querySelector('.check-mark');
+      if (ck) ck.remove();
+      if (isSelected) {
+        item.insertAdjacentHTML('beforeend', '<span class="check-mark">✓</span>');
+      }
+    });
+  }
+}
+
+function initTheme() {
+  chrome.storage.sync.get({ themeMode: 'system' }, (res) => {
+    applyThemeMode(res.themeMode || 'system');
+  });
+
+  // 监听系统深色模式动态切换 (当处于“跟随系统”时实时响应)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (currentThemeMode === 'system') {
+      document.documentElement.setAttribute('data-applied-theme', e.matches ? 'dark' : 'light');
+    }
+  });
+
+  // 监听其他标签页或弹窗中的主题修改
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.themeMode) {
+      applyThemeMode(changes.themeMode.newValue || 'system');
+    }
+  });
+
+  const themeDropdownBtn = document.getElementById('themeDropdownBtn');
+  const themeDropdownMenu = document.getElementById('themeDropdownMenu');
+  if (themeDropdownBtn && themeDropdownMenu) {
+    themeDropdownBtn.onclick = (e) => {
+      e.stopPropagation();
+      const isOpen = themeDropdownMenu.style.display === 'flex';
+      // 关闭其他可能打开的下拉浮层
+      const srsMenu = document.getElementById('srsDropdownMenu');
+      if (srsMenu) srsMenu.style.display = 'none';
+      themeDropdownMenu.style.display = isOpen ? 'none' : 'flex';
+    };
+
+    document.addEventListener('click', () => {
+      themeDropdownMenu.style.display = 'none';
+    });
+
+    themeDropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+      item.onclick = (e) => {
+        e.stopPropagation();
+        const val = item.getAttribute('data-theme-val') || 'system';
+        applyThemeMode(val);
+        chrome.storage.sync.set({ themeMode: val });
+        themeDropdownMenu.style.display = 'none';
+      };
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+
   chrome.storage.sync.get({ webdavConfig: null }, (res) => {
     webdavConfig = res.webdavConfig;
     if (webdavConfig && webdavConfig.enabled) {

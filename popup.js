@@ -1,6 +1,64 @@
 // Antigravity Vocab - popup.js (实时数据看板与快捷入口)
 
+let currentPopupTheme = 'system';
+
+function applyPopupTheme(mode) {
+  currentPopupTheme = mode || 'system';
+  try {
+    localStorage.setItem('antigravity_theme', currentPopupTheme);
+  } catch (e) {}
+
+  const isDark = currentPopupTheme === 'dark' || (currentPopupTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', currentPopupTheme);
+  document.documentElement.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
+
+  const btn = document.getElementById('popupThemeBtn');
+  const icon = document.getElementById('popupThemeIcon');
+  if (btn && icon) {
+    if (currentPopupTheme === 'system') {
+      icon.innerText = '💻';
+      btn.title = '当前：跟随系统 (点击切换为浅色模式)';
+    } else if (currentPopupTheme === 'light') {
+      icon.innerText = '☀️';
+      btn.title = '当前：浅色模式 (点击切换为黑色模式)';
+    } else {
+      icon.innerText = '🌙';
+      btn.title = '当前：黑色模式 (点击切换为跟随系统)';
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // 0. 初始化主题系统
+  chrome.storage.sync.get({ themeMode: 'system' }, (res) => {
+    applyPopupTheme(res.themeMode || 'system');
+  });
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (currentPopupTheme === 'system') {
+      document.documentElement.setAttribute('data-applied-theme', e.matches ? 'dark' : 'light');
+    }
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.themeMode) {
+      applyPopupTheme(changes.themeMode.newValue || 'system');
+    }
+  });
+
+  const themeBtn = document.getElementById('popupThemeBtn');
+  if (themeBtn) {
+    themeBtn.onclick = () => {
+      let nextTheme = 'system';
+      if (currentPopupTheme === 'system') nextTheme = 'light';
+      else if (currentPopupTheme === 'light') nextTheme = 'dark';
+      else if (currentPopupTheme === 'dark') nextTheme = 'system';
+
+      applyPopupTheme(nextTheme);
+      chrome.storage.sync.set({ themeMode: nextTheme });
+    };
+  }
+
   // 1. 获取并渲染生词统计
   chrome.storage.local.get({ savedWords: [] }, (res) => {
     const list = res.savedWords || [];

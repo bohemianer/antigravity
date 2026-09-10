@@ -262,3 +262,64 @@
   word-break: break-word;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ---------------- 黑色模式与深色自适应样式 ---------------- */
+#agy-vocab-popup[data-applied-theme="dark"] .agy-card {
+  background: #1C1C21;
+  color: #F4F4F7;
+  border-color: #33333E;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+#agy-vocab-popup[data-applied-theme="dark"] .agy-word {
+  color: #FFFFFF;
+}
+#agy-vocab-popup[data-applied-theme="dark"] .agy-phonetic-pill {
+  color: #9595A3;
+}
+#agy-vocab-popup[data-applied-theme="dark"] .agy-definition,
+#agy-vocab-popup[data-applied-theme="dark"] .agy-sentence-translation {
+  color: #D3D3DB;
+  border-top-color: #2D2D38;
+}
+#agy-vocab-popup[data-applied-theme="dark"] .agy-pos-tag {
+  color: #E2886E;
+}
+#agy-vocab-popup[data-applied-theme="dark"] .agy-sk-line {
+  background: linear-gradient(90deg, #272730 25%, #202027 50%, #272730 75%);
+}
+#agy-trigger-icon[data-applied-theme="dark"] {
+  background: #1C1C21;
+  border-color: #33333E;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-card {
+    background: #1C1C21;
+    color: #F4F4F7;
+    border-color: #33333E;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-word {
+    color: #FFFFFF;
+  }
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-phonetic-pill {
+    color: #9595A3;
+  }
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-definition,
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-sentence-translation {
+    color: #D3D3DB;
+    border-top-color: #2D2D38;
+  }
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-pos-tag {
+    color: #E2886E;
+  }
+  #agy-vocab-popup:not([data-applied-theme="light"]) .agy-sk-line {
+    background: linear-gradient(90deg, #272730 25%, #202027 50%, #272730 75%);
+  }
+  #agy-trigger-icon:not([data-applied-theme="light"]) {
+    background: #1C1C21;
+    border-color: #33333E;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  }
+}

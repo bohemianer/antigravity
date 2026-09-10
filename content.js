@@ -6,7 +6,10 @@ let currentSelectionText = "";
 let currentSurroundingSentence = "";
 
 function getTriggerIcon() {
-  if (triggerIcon) return triggerIcon;
+  if (triggerIcon) {
+    syncContentTheme(triggerIcon);
+    return triggerIcon;
+  }
   
   triggerIcon = document.createElement('div');
   triggerIcon.id = 'agy-trigger-icon';
@@ -42,12 +45,30 @@ function getTriggerIcon() {
   return triggerIcon;
 }
 
+function syncContentTheme(el) {
+  if (!el) return;
+  try {
+    if (chrome.storage && chrome.storage.sync) {
+      chrome.storage.sync.get({ themeMode: 'system' }, (res) => {
+        const mode = res.themeMode || 'system';
+        const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        el.setAttribute('data-theme', mode);
+        el.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
+      });
+    }
+  } catch (e) {}
+}
+
 function getPopupCard() {
-  if (popupCard) return popupCard;
+  if (popupCard) {
+    syncContentTheme(popupCard);
+    return popupCard;
+  }
   
   popupCard = document.createElement('div');
   popupCard.id = 'agy-vocab-popup';
   popupCard.style.display = 'none';
+  syncContentTheme(popupCard);
   document.body.appendChild(popupCard);
   
   popupCard.addEventListener('mousedown', (e) => {

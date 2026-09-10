@@ -3,11 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Antigravity Vocab</title>
+  <script>
+    (function() {
+      try {
+        const storedTheme = localStorage.getItem('antigravity_theme') || 'system';
+        const isDark = storedTheme === 'dark' || (storedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', storedTheme);
+        document.documentElement.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
   <style>
-    :root {
+    :root, [data-applied-theme="light"] {
       --bg-warm: #FAF9F5;
       --bg-card: #FFFFFF;
+      --bg-card-hover: #F5F3ED;
       --border-warm: #E6E4DD;
+      --border-subtle: #D6D3CD;
       --text-main: #1F1E1D;
       --text-body: #383532;
       --text-muted: #8C827A;
@@ -17,6 +29,37 @@
       --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     }
+
+    [data-applied-theme="dark"] {
+      --bg-warm: #131316;
+      --bg-card: #1C1C21;
+      --bg-card-hover: #26262E;
+      --border-warm: #33333E;
+      --border-subtle: #424250;
+      --text-main: #F4F4F7;
+      --text-body: #D3D3DB;
+      --text-muted: #9595A3;
+      --claude-terracotta: #E2886E;
+      --claude-terracotta-hover: #F09880;
+      --claude-green: #34D399;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        --bg-warm: #131316;
+        --bg-card: #1C1C21;
+        --bg-card-hover: #26262E;
+        --border-warm: #33333E;
+        --border-subtle: #424250;
+        --text-main: #F4F4F7;
+        --text-body: #D3D3DB;
+        --text-muted: #9595A3;
+        --claude-terracotta: #E2886E;
+        --claude-terracotta-hover: #F09880;
+        --claude-green: #34D399;
+      }
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       width: 290px;
@@ -26,6 +69,7 @@
       font-family: var(--font-sans);
       -webkit-font-smoothing: antialiased;
       user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     /* 顶部导航 */
@@ -59,7 +103,12 @@
       font-size: 15px;
       font-weight: 700;
       letter-spacing: -0.2px;
-      color: #1A1918;
+      color: var(--text-main);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .sync-status {
       display: inline-flex;
@@ -67,7 +116,8 @@
       gap: 5px;
       font-size: 11px;
       color: var(--text-muted);
-      background: #EFECE6;
+      background: var(--bg-card);
+      border: 1px solid var(--border-warm);
       padding: 3px 8px;
       border-radius: 10px;
     }
@@ -75,11 +125,32 @@
       width: 5px;
       height: 5px;
       border-radius: 50%;
-      background: #A8A29E;
+      background: var(--text-muted);
     }
     .sync-dot.active {
       background: var(--claude-green);
       box-shadow: 0 0 5px rgba(5, 150, 105, 0.5);
+    }
+    .theme-toggle-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      border: 1px solid var(--border-warm);
+      background: var(--bg-card);
+      color: var(--text-body);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+    .theme-toggle-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+      transform: scale(1.08);
     }
 
     /* 统计看板网格 (Apple Metrics Grid) */
@@ -97,7 +168,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      box-shadow: 0 1px 3px rgba(45, 35, 25, 0.03);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     .stat-label {
       font-size: 11px;
@@ -151,7 +222,7 @@
     .btn-sub {
       flex: 1;
       height: 32px;
-      background: #FFFFFF;
+      background: var(--bg-card);
       border: 1px solid var(--border-warm);
       color: var(--text-body);
       border-radius: 8px;
@@ -166,15 +237,15 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
     .btn-sub:hover {
-      background: #F5F3ED;
-      border-color: #D6D3CD;
+      background: var(--bg-card-hover);
+      border-color: var(--border-subtle);
       color: var(--text-main);
     }
 
     /* 底部极简提示 */
     .footer-tip {
       font-size: 11px;
-      color: #A8A29E;
+      color: var(--text-muted);
       text-align: center;
       display: flex;
       align-items: center;
@@ -189,9 +260,14 @@
       <div class="logo-icon">A</div>
       <span class="title">Antigravity</span>
     </div>
-    <div class="sync-status" id="syncBadge">
-      <span class="sync-dot" id="syncDot"></span>
-      <span id="syncText">未同步</span>
+    <div class="header-right">
+      <div class="sync-status" id="syncBadge">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncText">未同步</span>
+      </div>
+      <button class="theme-toggle-btn" id="popupThemeBtn" title="切换主题外观 (跟随系统 / 浅色 / 黑色)">
+        <span id="popupThemeIcon">💻</span>
+      </button>
     </div>
   </div>
 
