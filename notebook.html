@@ -906,12 +906,12 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .flashcard-trans {
-      display: inline-flex;
+      display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      max-width: 90%;
-      margin: 0 auto 10px;
-      gap: 10px;
+      width: 100%;
+      max-width: 530px;
+      margin: 0 auto 12px;
+      gap: 12px;
       user-select: text !important;
       -webkit-user-select: text !important;
       cursor: text;
@@ -919,10 +919,11 @@
     .flashcard-trans .trans-line {
       display: flex;
       align-items: baseline;
-      line-height: 1.65;
+      line-height: 1.7;
     }
     .flashcard-trans .trans-line-pos {
-      gap: 10px;
+      gap: 12px;
+      width: 100%;
     }
     .flashcard-trans .trans-pos-tag {
       flex-shrink: 0;
@@ -941,20 +942,29 @@
       text-align: center;
       user-select: none;
       letter-spacing: 0.2px;
+      margin-top: 2px;
     }
     .flashcard-trans .trans-meaning {
       flex: 1;
-      font-size: 16px;
+      font-size: 15.5px;
       font-weight: 500;
       color: var(--text-main);
-      letter-spacing: 0.15px;
+      letter-spacing: 0.1px;
+      line-height: 1.7;
+      text-align: justify;
+      text-justify: inter-ideograph;
+      text-align-last: left;
       word-break: break-word;
     }
     .flashcard-trans .trans-line-plain {
-      font-size: 16px;
+      width: 100%;
+      font-size: 15.5px;
       font-weight: 500;
       color: var(--text-main);
-      line-height: 1.65;
+      line-height: 1.7;
+      text-align: justify;
+      text-justify: inter-ideograph;
+      text-align-last: left;
     }
     .flashcard-notes {
       font-size: 13.5px;
@@ -967,10 +977,11 @@
       line-height: 1.6;
       margin-top: 10px;
       margin-bottom: 8px;
-      width: fit-content;
-      max-width: 90%;
+      width: 100%;
+      max-width: 530px;
       text-align: left;
       word-break: break-word;
+      box-sizing: border-box;
     }
     
     /* 艾宾浩斯一体化智能动态底栏 (Smart Unified Bottom Bar) */
