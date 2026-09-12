@@ -751,12 +751,18 @@ function formatTrans(s) {
 function formatTransHtml(s) {
   const formatted = formatTrans(s);
   if (!formatted) return "";
+  const POS_RE = /^([a-zA-Z\-]+\.|[\u2460-\u2473]|\(\d+\)|\[\d+\]|\d+[\.、]|\[.+?\]|【.+?】)\s*/;
   return formatted.split('\n').map(line => {
-    const escaped = escapeHtml(line);
-    // 渲染词性与序号微标高亮
-    const highlighted = escaped.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="trans-pos-tag">$1</span> ');
-    return `<div class="trans-line">${highlighted}</div>`;
-  }).join('');
+    const escaped = escapeHtml(line.trim());
+    if (!escaped) return '';
+    const m = escaped.match(POS_RE);
+    if (m) {
+      const posTag = m[1];
+      const rest = escaped.slice(m[0].length);
+      return `<div class="trans-line trans-line-pos"><span class="trans-pos-tag">${posTag}</span><span class="trans-meaning">${rest}</span></div>`;
+    }
+    return `<div class="trans-line trans-line-plain">${escaped}</div>`;
+  }).filter(Boolean).join('');
 }
 
 let sessionTestedWordKeys = new Set(); // 记录当前会话已测试词汇，避免多组自测时频繁重复
