@@ -1,4 +1,4 @@
-// Antigravity Vocab - popup.js (实时数据看板与快捷入口)
+// Antigravity - popup.js (实时数据看板与快捷入口)
 
 let currentPopupTheme = 'system';
 

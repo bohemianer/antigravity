@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Antigravity",
   "version": "1.0.0",
-  "description": "Antigravity - 专为外刊深度阅读定制的极简划词与全能生词本神器（WebDAV 双向云同步·标准音标·规范释义·完整语境沉淀）。",
+  "description": "Immersive reading-first vocabulary builder for English publications. Capture words in context, review with SM-2 spaced repetition flashcards, and sync across devices via WebDAV & Eudic.",
   "permissions": [
     "storage",
     "unlimitedStorage",

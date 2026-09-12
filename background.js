@@ -1,4 +1,4 @@
-// Antigravity Vocab Pro - Background Service Worker (智能词形还原 + 100% 纯净标准 IPA 音标清洗引擎)
+// Antigravity - Background Service Worker (智能词形还原 + 100% 纯净标准 IPA 音标清洗引擎)
 importScripts('webdav.js');
 
 function cleanIPA(s) {

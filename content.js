@@ -1,4 +1,4 @@
-// Antigravity Vocab Pro - Content Script (完整捕获上下文 + 显式存储独立音标字段)
+// Antigravity - Content Script (完整捕获上下文 + 显式存储独立音标字段)
 
 let triggerIcon = null;
 let popupCard = null;
