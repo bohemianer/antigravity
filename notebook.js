@@ -896,7 +896,14 @@ function updateFlashcardList(resetIndex = false) {
   // 重置统计数据
   batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
 
-  let pool = [...filteredWords];
+  // 核心修复：闪卡自测池仅受熟练度（SRS）筛选器控制，绝不受顶部搜索框临时检索词干扰，保障艾宾浩斯组卷完整
+  let pool = currentWords.filter(item => {
+    if (!selectedSrsSet.has('all')) {
+      const itemLv = (parseInt(item.srsLevel) || 0).toString();
+      return selectedSrsSet.has(itemLv);
+    }
+    return true;
+  });
   
   if (currentBatchSize !== 'all') {
     const targetN = parseInt(currentBatchSize) || 20;
@@ -1502,15 +1509,15 @@ function applyFilter() {
 
   filteredWords = filtered;
   renderList(filtered);
-  if (currentView !== 'flashcard') {
-    updateFlashcardList(false);
-  }
 }
 
 function saveAndRefresh() {
   chrome.storage.local.set({ savedWords: currentWords }, () => {
     doFullSync(false);
     applyFilter();
+    if (currentView === 'flashcard') {
+      updateFlashcardList(false);
+    }
   });
 }
 
@@ -2334,6 +2341,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         applyFilter();
+        if (currentView === 'flashcard') {
+          updateFlashcardList(true);
+        }
       };
     });
   }
@@ -2341,7 +2351,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      applyFilter();
+      // 若用户在闪卡界面中在搜索框输入内容，智能自动切换到笔记本列表，方便直观查看单词检索结果
+      if (currentView === 'flashcard' && searchInput.value.trim().length > 0) {
+        switchView('table');
+      } else {
+        applyFilter();
+      }
     });
   }
 
