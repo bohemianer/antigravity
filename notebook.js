@@ -1301,9 +1301,14 @@ function renderFlashcard() {
   document.getElementById('fcSrsText').innerText = srs.label;
 
   const notesEl = document.getElementById('fcNotes');
+  const notesBody = document.getElementById('fcNotesBody');
   if (notes && notes.trim()) {
-    notesEl.innerText = notes;
-    notesEl.style.display = 'block';
+    if (notesBody) {
+      notesBody.innerText = notes;
+    } else {
+      notesEl.innerText = notes;
+    }
+    notesEl.style.display = 'inline-flex';
   } else {
     notesEl.style.display = 'none';
   }
