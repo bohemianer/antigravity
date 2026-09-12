@@ -967,44 +967,60 @@
       text-align-last: left;
     }
     .flashcard-notes {
-      display: inline-flex;
+      display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      width: fit-content;
-      min-width: 200px;
+      width: 100%;
       max-width: 530px;
-      margin: 14px auto 6px;
-      padding: 10px 16px;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-warm);
-      border-left: 3.5px solid var(--claude-terracotta);
-      border-radius: 4px 10px 10px 4px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      margin: 0 auto;
       user-select: text !important;
       -webkit-user-select: text !important;
       cursor: text;
       box-sizing: border-box;
       animation: fadeIn 0.18s ease;
     }
-    .fc-notes-header {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--claude-terracotta);
-      margin-bottom: 5px;
-      user-select: none;
-      letter-spacing: 0.3px;
+    .fc-notes-divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border-light);
+      margin: 6px 0 10px 0;
     }
-    .fc-notes-body {
-      font-size: 13.5px;
+    .flashcard-notes .trans-line-note {
+      gap: 12px;
+      width: 100%;
+      display: flex;
+      align-items: baseline;
+      line-height: 1.7;
+    }
+    .flashcard-notes .trans-notes-tag {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-sans);
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--claude-terracotta);
+      background: rgba(204, 120, 92, 0.14);
+      border: 1px solid rgba(204, 120, 92, 0.28);
+      border-radius: 4px;
+      padding: 1px 6px;
+      min-width: 32px;
+      text-align: center;
+      user-select: none;
+      letter-spacing: 0.2px;
+      margin-top: 2px;
+    }
+    .flashcard-notes .fc-notes-body {
+      flex: 1;
+      font-size: 15px;
       color: var(--text-body);
-      line-height: 1.65;
+      line-height: 1.7;
+      letter-spacing: 0.1px;
       white-space: pre-line;
       word-break: break-word;
-      text-align: left;
-      letter-spacing: 0.1px;
+      text-align: justify;
+      text-justify: inter-ideograph;
+      text-align-last: left;
     }
     
     /* 艾宾浩斯一体化智能动态底栏 (Smart Unified Bottom Bar) */
@@ -2239,14 +2255,11 @@
         <div class="flashcard-answer-box" id="fcAnswerBox" style="display: none;">
           <div class="flashcard-trans" id="fcTrans">n. 巨大；重要性；震级</div>
           <div class="flashcard-notes" id="fcNotes" style="display: none;">
-            <div class="fc-notes-header">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"></path>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-              </svg>
-              <span>个人随记</span>
+            <div class="fc-notes-divider"></div>
+            <div class="trans-line trans-line-pos trans-line-note">
+              <span class="trans-pos-tag trans-notes-tag">随记</span>
+              <div class="trans-meaning fc-notes-body" id="fcNotesBody"></div>
             </div>
-            <div class="fc-notes-body" id="fcNotesBody"></div>
           </div>
         </div>
       </div>

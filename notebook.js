@@ -1308,7 +1308,7 @@ function renderFlashcard() {
     } else {
       notesEl.innerText = notes;
     }
-    notesEl.style.display = 'inline-flex';
+    notesEl.style.display = 'flex';
   } else {
     notesEl.style.display = 'none';
   }
