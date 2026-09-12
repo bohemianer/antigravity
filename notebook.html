@@ -892,8 +892,13 @@
     
     .flashcard-answer-box {
       border-top: 1px solid var(--border-light);
-      padding-top: 18px;
-      margin-top: 6px;
+      padding-top: 20px;
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
       animation: fadeIn 0.18s ease;
     }
     @keyframes fadeIn {
@@ -901,40 +906,55 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .flashcard-trans {
-      font-size: 15.5px;
-      font-weight: 500;
-      color: var(--text-main);
-      text-align: left;
-      line-height: 1.75;
-      margin-bottom: 14px;
-      word-break: break-word;
-      letter-spacing: 0.1px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      max-width: 90%;
+      margin: 0 auto 10px;
+      gap: 10px;
       user-select: text !important;
       -webkit-user-select: text !important;
       cursor: text;
     }
-    .trans-line {
-      padding: 2px 0;
-      line-height: 1.75;
-    }
-    .trans-line-pos {
+    .flashcard-trans .trans-line {
       display: flex;
       align-items: baseline;
-      gap: 0;
+      line-height: 1.65;
     }
-    .trans-line-pos .trans-pos-tag {
+    .flashcard-trans .trans-line-pos {
+      gap: 10px;
+    }
+    .flashcard-trans .trans-pos-tag {
       flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--claude-terracotta);
+      background: rgba(204, 120, 92, 0.12);
+      border: 1px solid rgba(204, 120, 92, 0.22);
+      border-radius: 4px;
+      padding: 1px 6px;
       min-width: 32px;
-      text-align: right;
-      margin-right: 7px;
+      text-align: center;
+      user-select: none;
+      letter-spacing: 0.2px;
     }
-    .trans-meaning {
+    .flashcard-trans .trans-meaning {
       flex: 1;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-main);
+      letter-spacing: 0.15px;
       word-break: break-word;
     }
-    .trans-line-plain {
-      padding-left: 2px;
-      color: var(--text-body);
+    .flashcard-trans .trans-line-plain {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-main);
+      line-height: 1.65;
     }
     .flashcard-notes {
       font-size: 13.5px;
@@ -947,6 +967,8 @@
       line-height: 1.6;
       margin-top: 10px;
       margin-bottom: 8px;
+      width: fit-content;
+      max-width: 90%;
       text-align: left;
       word-break: break-word;
     }
