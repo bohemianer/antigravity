@@ -2349,13 +2349,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const searchInput = document.getElementById('searchInput');
+  const searchBoxWrap = document.getElementById('searchBoxWrap');
+  const btnSearchClear = document.getElementById('btnSearchClear');
+
+  function updateSearchClearState() {
+    const hasVal = searchInput && searchInput.value.length > 0;
+    if (searchBoxWrap) {
+      searchBoxWrap.classList.toggle('has-text', hasVal);
+    }
+  }
+
   if (searchInput) {
     searchInput.addEventListener('input', () => {
+      updateSearchClearState();
       // 若用户在闪卡界面中在搜索框输入内容，智能自动切换到笔记本列表，方便直观查看单词检索结果
       if (currentView === 'flashcard' && searchInput.value.trim().length > 0) {
         switchView('table');
       } else {
         applyFilter();
+      }
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        updateSearchClearState();
+        applyFilter();
+        searchInput.blur();
+      }
+    });
+  }
+
+  if (btnSearchClear) {
+    btnSearchClear.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (searchInput) {
+        searchInput.value = '';
+        updateSearchClearState();
+        applyFilter();
+        searchInput.focus();
       }
     });
   }

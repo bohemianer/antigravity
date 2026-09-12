@@ -311,13 +311,18 @@
       font-weight: bold;
     }
 
+    .search-box-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
     .search-input {
       height: 35px;
       width: 210px;
       background: var(--bg-card);
       border: 1px solid var(--border-warm);
       color: var(--text-main);
-      padding: 0 12px;
+      padding: 0 28px 0 12px;
       border-radius: 8px;
       font-size: 12.5px;
       outline: none;
@@ -327,6 +332,44 @@
       box-sizing: border-box;
     }
     .search-input:focus { border-color: var(--claude-terracotta); box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.12); }
+    
+    .search-clear-btn {
+      position: absolute;
+      right: 7px;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-muted);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 10.5px;
+      font-weight: 700;
+      line-height: 1;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.15s ease, background 0.15s, color 0.15s;
+      user-select: none;
+      padding: 0;
+      z-index: 2;
+    }
+    /* 有输入时：鼠标移到搜索框区域或按钮上优雅浮现，获得焦点时也会浮现 */
+    .search-box-wrap.has-text:hover .search-clear-btn,
+    .search-box-wrap.has-text:focus-within .search-clear-btn {
+      opacity: 0.75;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .search-clear-btn:hover {
+      opacity: 1 !important;
+      background: var(--border-subtle);
+      color: var(--text-main);
+      transform: scale(1.12);
+    }
     
     .btn {
       height: 35px;
@@ -2119,7 +2162,10 @@
         </div>
       </div>
 
-      <input type="text" id="searchInput" class="search-input" placeholder="搜索单词、原汁例句、笔记...">
+      <div class="search-box-wrap" id="searchBoxWrap">
+        <input type="text" id="searchInput" class="search-input" placeholder="搜索单词、原汁例句、笔记...">
+        <button type="button" class="search-clear-btn" id="btnSearchClear" title="清除搜索内容" aria-label="清除搜索内容">✕</button>
+      </div>
       <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
 
       <!-- 整合后的统一“菜单”下拉按钮 -->
