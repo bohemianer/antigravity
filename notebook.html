@@ -222,9 +222,6 @@
       font-family: var(--font-sans);
       box-sizing: border-box;
     }
-    .theme-dropdown-btn {
-      width: 114px;
-    }
     .dropdown-btn:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-subtle);
@@ -236,6 +233,9 @@
       gap: 6px;
       overflow: hidden;
       white-space: nowrap;
+    }
+    .more-menu-btn {
+      width: 82px;
     }
     .dropdown-menu {
       position: absolute;
@@ -253,8 +253,23 @@
       z-index: 1000;
       animation: dropIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .theme-dropdown-menu {
-      width: 130px;
+    .more-dropdown-menu {
+      width: 172px;
+      right: 0;
+      left: auto;
+    }
+    .menu-section-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 5px 10px 3px;
+      letter-spacing: 0.3px;
+      user-select: none;
+    }
+    .menu-divider {
+      height: 1px;
+      background: var(--border-light);
+      margin: 4px 6px;
     }
     @keyframes dropIn {
       from { opacity: 0; transform: translateY(-4px); }
@@ -2012,27 +2027,47 @@
 
       <input type="text" id="searchInput" class="search-input" placeholder="搜索单词、原汁例句、笔记...">
       <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
-      <button class="btn" id="btnExportJson">📥 导出</button>
 
-      <!-- 主题外观选择器 (跟随系统 / 浅色模式 / 黑色模式) -->
-      <div class="dropdown-container" id="themeDropdownContainer">
-        <button class="dropdown-btn theme-dropdown-btn" id="themeDropdownBtn" title="切换主题外观">
+      <!-- 整合后的统一“菜单”下拉按钮 -->
+      <div class="dropdown-container" id="moreMenuContainer">
+        <button class="dropdown-btn more-menu-btn" id="btnMoreMenu" title="更多功能与设置">
           <div class="dropdown-btn-left">
-            <span id="currentThemeIcon">💻</span>
-            <span id="currentThemeLabel">跟随系统</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="19" cy="12" r="1"></circle>
+              <circle cx="5" cy="12" r="1"></circle>
+            </svg>
+            <span>菜单</span>
           </div>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
         </button>
-        <div class="dropdown-menu theme-dropdown-menu" id="themeDropdownMenu">
-          <div class="dropdown-item selected" data-theme-val="system">
+        <div class="dropdown-menu more-dropdown-menu" id="moreDropdownMenu">
+          <div class="menu-section-label">主题外观</div>
+          <div class="dropdown-item theme-item selected" data-theme-val="system">
             <span style="display:flex; align-items:center; gap:7px;"><span>💻</span>跟随系统</span>
             <span class="check-mark">✓</span>
           </div>
-          <div class="dropdown-item" data-theme-val="light">
+          <div class="dropdown-item theme-item" data-theme-val="light">
             <span style="display:flex; align-items:center; gap:7px;"><span>☀️</span>浅色模式</span>
           </div>
-          <div class="dropdown-item" data-theme-val="dark">
+          <div class="dropdown-item theme-item" data-theme-val="dark">
             <span style="display:flex; align-items:center; gap:7px;"><span>🌙</span>黑色模式</span>
+          </div>
+          
+          <div class="menu-divider"></div>
+          
+          <div class="menu-section-label">功能与数据</div>
+          <div class="dropdown-item" id="menuExportJson">
+            <span style="display:flex; align-items:center; gap:7px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>导出词库 (JSON)</span>
+            </span>
+          </div>
+          <div class="dropdown-item" id="menuOpenDavSettings">
+            <span style="display:flex; align-items:center; gap:7px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>坚果云同步设置</span>
+            </span>
           </div>
         </div>
       </div>

@@ -1582,35 +1582,16 @@ function applyThemeMode(mode) {
   document.documentElement.setAttribute('data-theme', currentThemeMode);
   document.documentElement.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
 
-  // 更新下拉菜单按钮与勾选 UI
-  const iconEl = document.getElementById('currentThemeIcon');
-  const labelEl = document.getElementById('currentThemeLabel');
-  if (iconEl && labelEl) {
-    if (currentThemeMode === 'system') {
-      iconEl.innerText = '💻';
-      labelEl.innerText = '跟随系统';
-    } else if (currentThemeMode === 'light') {
-      iconEl.innerText = '☀️';
-      labelEl.innerText = '浅色模式';
-    } else {
-      iconEl.innerText = '🌙';
-      labelEl.innerText = '黑色模式';
+  document.querySelectorAll('.theme-item').forEach(item => {
+    const val = item.getAttribute('data-theme-val');
+    const isSelected = val === currentThemeMode;
+    item.classList.toggle('selected', isSelected);
+    const ck = item.querySelector('.check-mark');
+    if (ck) ck.remove();
+    if (isSelected) {
+      item.insertAdjacentHTML('beforeend', '<span class="check-mark">✓</span>');
     }
-  }
-
-  const themeMenu = document.getElementById('themeDropdownMenu');
-  if (themeMenu) {
-    themeMenu.querySelectorAll('.dropdown-item').forEach(item => {
-      const val = item.getAttribute('data-theme-val');
-      const isSelected = val === currentThemeMode;
-      item.classList.toggle('selected', isSelected);
-      const ck = item.querySelector('.check-mark');
-      if (ck) ck.remove();
-      if (isSelected) {
-        item.insertAdjacentHTML('beforeend', '<span class="check-mark">✓</span>');
-      }
-    });
-  }
+  });
 }
 
 function initTheme() {
@@ -1632,29 +1613,29 @@ function initTheme() {
     }
   });
 
-  const themeDropdownBtn = document.getElementById('themeDropdownBtn');
-  const themeDropdownMenu = document.getElementById('themeDropdownMenu');
-  if (themeDropdownBtn && themeDropdownMenu) {
-    themeDropdownBtn.onclick = (e) => {
+  const btnMoreMenu = document.getElementById('btnMoreMenu');
+  const moreDropdownMenu = document.getElementById('moreDropdownMenu');
+  if (btnMoreMenu && moreDropdownMenu) {
+    btnMoreMenu.onclick = (e) => {
       e.stopPropagation();
-      const isOpen = themeDropdownMenu.style.display === 'flex';
+      const isOpen = moreDropdownMenu.style.display === 'flex';
       // 关闭其他可能打开的下拉浮层
       const srsMenu = document.getElementById('srsDropdownMenu');
       if (srsMenu) srsMenu.style.display = 'none';
-      themeDropdownMenu.style.display = isOpen ? 'none' : 'flex';
+      moreDropdownMenu.style.display = isOpen ? 'none' : 'flex';
     };
 
     document.addEventListener('click', () => {
-      themeDropdownMenu.style.display = 'none';
+      moreDropdownMenu.style.display = 'none';
     });
 
-    themeDropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    moreDropdownMenu.querySelectorAll('.theme-item').forEach(item => {
       item.onclick = (e) => {
         e.stopPropagation();
         const val = item.getAttribute('data-theme-val') || 'system';
         applyThemeMode(val);
         chrome.storage.sync.set({ themeMode: val });
-        themeDropdownMenu.style.display = 'none';
+        moreDropdownMenu.style.display = 'none';
       };
     });
   }
@@ -2244,9 +2225,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const exportBtn = document.getElementById('btnExportJson');
+  const exportBtn = document.getElementById('menuExportJson') || document.getElementById('btnExportJson');
   if (exportBtn) {
-    exportBtn.onclick = () => {
+    exportBtn.onclick = (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
       const blob = new Blob([JSON.stringify(getStandardJsonList(), null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2254,6 +2238,16 @@ document.addEventListener('DOMContentLoaded', () => {
       a.download = 'antigravity.json';
       a.click();
       URL.revokeObjectURL(url);
+    };
+  }
+
+  const menuOpenDavSettings = document.getElementById('menuOpenDavSettings');
+  if (menuOpenDavSettings) {
+    menuOpenDavSettings.onclick = (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
+      openDavModal();
     };
   }
 
@@ -2266,6 +2260,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (srsDropdownBtn && srsDropdownMenu) {
     srsDropdownBtn.onclick = (e) => {
       e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
       const isOpen = srsDropdownMenu.style.display === 'flex';
       srsDropdownMenu.style.display = isOpen ? 'none' : 'flex';
     };
