@@ -535,9 +535,9 @@ function getMasteryInfo(level, reviews = 0) {
   }
 }
 
-// 快速设置某个单词的熟练度
-function setWordMastery(targetWord, targetLevel) {
-  const item = currentWords.find(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+// 快速设置某个单词的熟练度 (精准定位到具体单条记录)
+function setWordMastery(targetUid, targetLevel) {
+  const item = currentWords.find(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetUid || "").toLowerCase().trim());
   if (!item) return;
 
   if (targetLevel === -1) {
@@ -579,7 +579,11 @@ function renderList(list) {
     const faviconUrl = getSourceFavicon(item);
     const masteryInfo = getMasteryInfo(item.srsLevel, item.srsReviews);
     
-    const realIndex = currentWords.findIndex(w => (w.text || w.word) === wordText);
+    // 确保每条记录拥有绝对唯一的标识符，杜绝同名重复词混淆
+    if (!item._uid) {
+      item._uid = 'w_' + (item.date || Date.now()) + '_' + Math.random().toString(36).slice(2, 9);
+    }
+    const uid = item._uid;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -603,34 +607,34 @@ function renderList(list) {
       <td style="vertical-align: middle !important;">
         <div class="action-group">
           <div class="mastery-wrap">
-            <button class="mastery-dot-btn btn-mastery-toggle" data-word="${wordText}" title="${masteryInfo.title}">
+            <button class="mastery-dot-btn btn-mastery-toggle" data-uid="${uid}" data-word="${wordText}" title="${masteryInfo.title}">
               <span class="mastery-dot-glow ${masteryInfo.class}"></span>
             </button>
             <div class="mastery-picker-popup">
-              <button class="candy-option btn-candy" data-word="${wordText}" data-level="-1" title="⚪ 设为未标记">
+              <button class="candy-option btn-candy" data-uid="${uid}" data-level="-1" title="⚪ 设为未标记">
                 <span class="candy-dot" style="border: 1.5px dashed #A8A29E; background: transparent;"></span>
               </button>
-              <button class="candy-option btn-candy" data-word="${wordText}" data-level="0" title="🔴 陌生 (Lv 0)">
+              <button class="candy-option btn-candy" data-uid="${uid}" data-level="0" title="🔴 陌生 (Lv 0)">
                 <span class="candy-dot" style="background: #EF4444; box-shadow: 0 0 5px rgba(239, 68, 68, 0.6);"></span>
               </button>
-              <button class="candy-option btn-candy" data-word="${wordText}" data-level="1" title="🟠 学习中 (Lv 1)">
+              <button class="candy-option btn-candy" data-uid="${uid}" data-level="1" title="🟠 学习中 (Lv 1)">
                 <span class="candy-dot" style="background: #F59E0B; box-shadow: 0 0 5px rgba(245, 158, 11, 0.6);"></span>
               </button>
-              <button class="candy-option btn-candy" data-word="${wordText}" data-level="3" title="🟢 已掌握 (Lv 3)">
+              <button class="candy-option btn-candy" data-uid="${uid}" data-level="3" title="🟢 已掌握 (Lv 3)">
                 <span class="candy-dot" style="background: #10B981; box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);"></span>
               </button>
-              <button class="candy-option btn-candy" data-word="${wordText}" data-level="5" title="🔵 已精通 (Lv 5)">
+              <button class="candy-option btn-candy" data-uid="${uid}" data-level="5" title="🔵 已精通 (Lv 5)">
                 <span class="candy-dot" style="background: #6366F1; box-shadow: 0 0 5px rgba(99, 102, 241, 0.6);"></span>
               </button>
             </div>
           </div>
-          <button class="apple-icon-btn btn-edit" data-word="${wordText}" title="编辑词条与笔记">
+          <button class="apple-icon-btn btn-edit" data-uid="${uid}" data-word="${wordText}" title="编辑词条与笔记">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9"></path>
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
             </svg>
           </button>
-          <button class="apple-icon-btn apple-icon-btn-del btn-del" data-word="${wordText}" title="删除词条">
+          <button class="apple-icon-btn apple-icon-btn-del btn-del" data-uid="${uid}" data-word="${wordText}" title="删除词条">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -664,10 +668,10 @@ function renderList(list) {
   tbody.querySelectorAll('.btn-candy').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
-      const targetWord = btn.getAttribute('data-word');
+      const targetUid = btn.getAttribute('data-uid');
       const targetLevel = parseInt(btn.getAttribute('data-level'));
       document.querySelectorAll('.mastery-picker-popup.open').forEach(p => p.classList.remove('open'));
-      setWordMastery(targetWord, targetLevel);
+      setWordMastery(targetUid, targetLevel);
     };
   });
 
@@ -681,8 +685,9 @@ function renderList(list) {
   tbody.querySelectorAll('.btn-edit').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
+      const targetUid = btn.getAttribute('data-uid');
       const targetWord = btn.getAttribute('data-word');
-      const idx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+      const idx = currentWords.findIndex(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
       if (idx !== -1) {
         openEditModal(idx);
       }
@@ -692,22 +697,32 @@ function renderList(list) {
   tbody.querySelectorAll('.btn-del').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
+      const targetUid = btn.getAttribute('data-uid');
       const targetWord = btn.getAttribute('data-word');
-      if (!targetWord) return;
-      if (confirm(`确定要从生词本中彻底删除「${targetWord}」吗？\n（将同时从本地、坚果云与欧路词典中同步删除）`)) {
-        currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== targetWord.toLowerCase().trim());
+      if (!targetUid) return;
+
+      const idx = currentWords.findIndex(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+      if (idx === -1) return;
+
+      if (confirm(`确定要从生词本中删除「${targetWord}」吗？`)) {
+        // 核心修复：精准仅删除被点击的那条单独记录！同名单词其他副本绝对完整保留
+        currentWords.splice(idx, 1);
+
         chrome.storage.local.set({ savedWords: currentWords }, () => {
-          doWebDAVOverwrite(); // 关键：立即用删除后的纯净数据覆盖坚果云端，彻底抹除云端该词！
-          
-          // 关键：同时从欧路词典生词本中同步删除该词
-          chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-            if (r.eudicToken) {
-              const engine = new EudicSyncEngine(r.eudicToken);
-              engine.deleteWord(targetWord).catch(err => {
-                console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
-              });
-            }
-          });
+          doWebDAVOverwrite(); // 立即用删除后的纯净数据覆盖坚果云端
+
+          // 关键：检查库中是否还存在其他同名单词；若无，才从欧路词典生词本中同步删除
+          const hasOtherSameWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+          if (!hasOtherSameWord) {
+            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+              if (r.eudicToken) {
+                const engine = new EudicSyncEngine(r.eudicToken);
+                engine.deleteWord(targetWord).catch(err => {
+                  console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
+                });
+              }
+            });
+          }
 
           applyFilter();
         });
@@ -1755,7 +1770,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = cardList[cardIndex];
       if (!item) return;
       const targetWord = item.text || item.word;
-      const realIdx = currentWords.findIndex(w => (w.text || w.word) === targetWord);
+      const realIdx = currentWords.findIndex(w => (w._uid && item._uid && w._uid === item._uid) || (w.date && item.date && w.date === item.date) || ((w.text || w.word || '').toLowerCase().trim() === (targetWord || '').toLowerCase().trim()));
       if (realIdx !== -1) {
         openEditModal(realIdx);
       }
@@ -2184,6 +2199,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isWordRenamed = oldWordText && oldWordText.toLowerCase().trim() !== word.toLowerCase().trim();
 
       const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
+      const originalUid = existingItem ? existingItem._uid : null;
       const updatedItem = {
         text: word,
         trans: trans,
@@ -2196,11 +2212,23 @@ document.addEventListener('DOMContentLoaded', () => {
         notes: notes,
         srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
         srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
-        srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0
+        srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0,
+        _uid: originalUid || ('w_' + originalDate + '_' + Math.random().toString(36).slice(2, 8))
       };
 
-      // 原地更新当前索引位置的词条
+      // 原地完全覆盖更新当前索引位置的词条 (按编辑后的内容直接覆盖原词条)
       currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
+
+      // 如果把单词修改为生词本中其他位置已存在的同名单词，合并去重：移除库中原有的那条重复词，由当前编辑后的条目直接覆盖替代！
+      if (isWordRenamed) {
+        const dupIdx = currentWords.findIndex((w, i) => i !== idx && (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
+        if (dupIdx !== -1) {
+          currentWords.splice(dupIdx, 1);
+          if (dupIdx < idx) {
+            idx--;
+          }
+        }
+      }
 
       closeModal();
 
@@ -2210,15 +2238,18 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.set({ savedWords: currentWords }, () => {
           // 2. 关键：立即执行 WebDAV 覆盖同步，彻底抹除云端的旧词 (如 girls)，防止云端拉取时双份合并！
           doWebDAVOverwrite();
-          // 3. 同时从欧路词典生词本中同步删除旧词
-          chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-            if (r.eudicToken) {
-              const engine = new EudicSyncEngine(r.eudicToken);
-              engine.deleteWord(oldWordText).catch(err => {
-                console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
-              });
-            }
-          });
+          // 3. 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
+          const hasOldWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === oldWordText.toLowerCase().trim());
+          if (!hasOldWord) {
+            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+              if (r.eudicToken) {
+                const engine = new EudicSyncEngine(r.eudicToken);
+                engine.deleteWord(oldWordText).catch(err => {
+                  console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
+                });
+              }
+            });
+          }
           applyFilter();
         });
       } else {
@@ -2232,7 +2263,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const wasRevealed = cardRevealed;
       const currentTarget = cardList[cardIndex];
       if (currentTarget) {
-        const found = currentWords[idx] || currentWords.find(w => (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
+        const found = currentWords[idx] || currentWords.find(w => (w._uid && currentTarget._uid && w._uid === currentTarget._uid) || (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
         if (found) {
           cardList[cardIndex] = Object.assign({}, cardList[cardIndex], found);
           renderFlashcard();
