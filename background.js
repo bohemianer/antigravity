@@ -5,6 +5,11 @@ function cleanIPA(s) {
   if (!s) return "";
   let str = s.trim().replace(/^[\/\[]+|[\/\]]+$/g, '').trim();
   
+  // 0. 若存在多种并列变体发音（分号/逗号分隔，如 dimension 返回 "daɪ'menʃn; dɪ'menʃn"），默认提取第一种首选标准音标
+  if (str.includes(';') || str.includes('；') || str.includes(',')) {
+    str = str.split(/[;；,]/)[0].trim().replace(/^[\/\[]+|[\/\]]+$/g, '').trim();
+  }
+
   // 1. 移除结合变音符及多余符号
   str = str.replace(/[\u0300-\u036f]/g, '');
   str = str.replace(/[\x00-\x1f\x7f-\x9f\ufffd]/g, '');
