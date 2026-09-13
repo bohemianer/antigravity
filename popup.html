@@ -15,47 +15,56 @@
   </script>
   <style>
     :root, [data-applied-theme="light"] {
-      --bg-warm: #FAF9F5;
-      --bg-card: #FFFFFF;
-      --bg-card-hover: #F5F3ED;
-      --border-warm: #E6E4DD;
-      --border-subtle: #D6D3CD;
-      --text-main: #1F1E1D;
-      --text-body: #383532;
-      --text-muted: #8C827A;
-      --claude-terracotta: #CC785C;
-      --claude-terracotta-hover: #BF684D;
-      --claude-green: #059669;
+      --bg-warm: #F6F7FA;
+      --bg-card: rgba(255, 255, 255, 0.78);
+      --bg-card-hover: rgba(255, 255, 255, 0.92);
+      --border-warm: rgba(0, 0, 0, 0.08);
+      --border-subtle: rgba(0, 0, 0, 0.14);
+      --border-glass: rgba(255, 255, 255, 0.85);
+      --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --glass-specular: inset 0 1px 1.2px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(0, 0, 0, 0.02);
+      --text-main: #1D1D1F;
+      --text-body: #3A3A3C;
+      --text-muted: #86868B;
+      --claude-terracotta: #E06D53;
+      --claude-terracotta-hover: #CC5B40;
+      --claude-green: #10B981;
       --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     }
 
     [data-applied-theme="dark"] {
-      --bg-warm: #131316;
-      --bg-card: #1C1C21;
-      --bg-card-hover: #26262E;
-      --border-warm: #33333E;
-      --border-subtle: #424250;
-      --text-main: #F4F4F7;
-      --text-body: #D3D3DB;
-      --text-muted: #9595A3;
-      --claude-terracotta: #E2886E;
-      --claude-terracotta-hover: #F09880;
+      --bg-warm: #0C0C0F;
+      --bg-card: rgba(28, 28, 34, 0.72);
+      --bg-card-hover: rgba(38, 38, 46, 0.85);
+      --border-warm: rgba(255, 255, 255, 0.10);
+      --border-subtle: rgba(255, 255, 255, 0.16);
+      --border-glass: rgba(255, 255, 255, 0.14);
+      --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      --glass-specular: inset 0 1px 1px rgba(255, 255, 255, 0.22), inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+      --text-main: #F5F5F7;
+      --text-body: #E2E2E8;
+      --text-muted: #9898A0;
+      --claude-terracotta: #FA7E64;
+      --claude-terracotta-hover: #FF957D;
       --claude-green: #34D399;
     }
 
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]):not([data-theme="dark"]) {
-        --bg-warm: #131316;
-        --bg-card: #1C1C21;
-        --bg-card-hover: #26262E;
-        --border-warm: #33333E;
-        --border-subtle: #424250;
-        --text-main: #F4F4F7;
-        --text-body: #D3D3DB;
-        --text-muted: #9595A3;
-        --claude-terracotta: #E2886E;
-        --claude-terracotta-hover: #F09880;
+        --bg-warm: #0C0C0F;
+        --bg-card: rgba(28, 28, 34, 0.72);
+        --bg-card-hover: rgba(38, 38, 46, 0.85);
+        --border-warm: rgba(255, 255, 255, 0.10);
+        --border-subtle: rgba(255, 255, 255, 0.16);
+        --border-glass: rgba(255, 255, 255, 0.14);
+        --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+        --glass-specular: inset 0 1px 1px rgba(255, 255, 255, 0.22), inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+        --text-main: #F5F5F7;
+        --text-body: #E2E2E8;
+        --text-muted: #9898A0;
+        --claude-terracotta: #FA7E64;
+        --claude-terracotta-hover: #FF957D;
         --claude-green: #34D399;
       }
     }
@@ -69,11 +78,50 @@
       font-family: var(--font-sans);
       -webkit-font-smoothing: antialiased;
       user-select: none;
-      transition: background-color 0.2s ease, color 0.2s ease;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 背景氛围光斑 */
+    .ambient-glow-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+      opacity: 0.5;
+    }
+    [data-applied-theme="dark"] .ambient-glow-layer {
+      opacity: 0.35;
+    }
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+    }
+    .orb-1 {
+      top: -20px;
+      left: 10px;
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, rgba(224, 109, 83, 0.3) 0%, rgba(224, 109, 83, 0) 70%);
+    }
+    .orb-2 {
+      bottom: -20px;
+      right: 10px;
+      width: 160px;
+      height: 160px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0) 70%);
     }
 
     /* 顶部导航 */
     .header {
+      position: relative;
+      z-index: 1;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -85,21 +133,22 @@
       gap: 8px;
     }
     .logo-icon {
-      width: 24px;
-      height: 24px;
-      background: linear-gradient(135deg, #CC785C, #D97706);
-      border-radius: 6px;
+      width: 25px;
+      height: 25px;
+      background: linear-gradient(135deg, #E06D53, #D97706);
+      border-radius: 7px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: var(--font-sans);
+      font-family: var(--font-serif);
       font-size: 14px;
       font-weight: 900;
       color: #FFFFFF;
-      box-shadow: 0 2px 5px rgba(204, 120, 92, 0.25);
+      box-shadow: 0 2px 6px rgba(224, 109, 83, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.25);
     }
     .title {
-      font-family: var(--font-sans);
+      font-family: var(--font-serif);
       font-size: 15px;
       font-weight: 700;
       letter-spacing: -0.2px;
@@ -117,9 +166,12 @@
       font-size: 11px;
       color: var(--text-muted);
       background: var(--bg-card);
-      border: 1px solid var(--border-warm);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-glass);
       padding: 3px 8px;
-      border-radius: 10px;
+      border-radius: 12px;
+      box-shadow: var(--glass-specular);
     }
     .sync-dot {
       width: 5px;
@@ -129,32 +181,40 @@
     }
     .sync-dot.active {
       background: var(--claude-green);
-      box-shadow: 0 0 5px rgba(5, 150, 105, 0.5);
+      box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
     }
     .theme-toggle-btn {
       width: 26px;
       height: 26px;
       border-radius: 8px;
-      border: 1px solid var(--border-warm);
+      border: 1px solid var(--border-glass);
       background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       color: var(--text-body);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       font-size: 13px;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       padding: 0;
+      box-shadow: var(--glass-specular);
     }
     .theme-toggle-btn:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-subtle);
       color: var(--text-main);
-      transform: scale(1.08);
+      transform: scale(1.12);
+    }
+    .theme-toggle-btn:active {
+      transform: scale(0.92);
     }
 
     /* 统计看板网格 (Apple Metrics Grid) */
     .stats-grid {
+      position: relative;
+      z-index: 1;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
@@ -162,13 +222,15 @@
     }
     .stat-card {
       background: var(--bg-card);
-      border: 1px solid var(--border-warm);
-      border-radius: 10px;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
       padding: 10px 12px;
       display: flex;
       flex-direction: column;
       gap: 2px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--glass-shadow), var(--glass-specular);
     }
     .stat-label {
       font-size: 11px;
@@ -188,6 +250,8 @@
 
     /* 快捷操作区 */
     .action-stack {
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -195,11 +259,11 @@
     }
     .btn-main {
       width: 100%;
-      height: 38px;
-      background: var(--claude-terracotta);
-      border: 1px solid #B8654A;
+      height: 40px;
+      background: linear-gradient(135deg, #E06D53, #D97706);
+      border: 1px solid rgba(255, 255, 255, 0.35);
       color: #FFFFFF;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
@@ -207,13 +271,16 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
-      box-shadow: 0 1px 3px rgba(204, 120, 92, 0.25);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 4px 12px rgba(224, 109, 83, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.4);
     }
     .btn-main:hover {
-      background: var(--claude-terracotta-hover);
+      background: linear-gradient(135deg, #CC5B40, #C26604);
       transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(204, 120, 92, 0.3);
+      box-shadow: 0 6px 16px rgba(224, 109, 83, 0.42), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    }
+    .btn-main:active {
+      transform: scale(0.95);
     }
     .btn-row {
       display: flex;
@@ -221,11 +288,13 @@
     }
     .btn-sub {
       flex: 1;
-      height: 32px;
+      height: 34px;
       background: var(--bg-card);
-      border: 1px solid var(--border-warm);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
       color: var(--text-body);
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
@@ -233,17 +302,24 @@
       align-items: center;
       justify-content: center;
       gap: 5px;
-      transition: all 0.15s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: var(--glass-specular), 0 1px 2px rgba(0,0,0,0.02);
     }
     .btn-sub:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-subtle);
       color: var(--text-main);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+    .btn-sub:active {
+      transform: scale(0.95);
     }
 
     /* 底部极简提示 */
     .footer-tip {
+      position: relative;
+      z-index: 1;
       font-size: 11px;
       color: var(--text-muted);
       text-align: center;
@@ -255,6 +331,10 @@
   </style>
 </head>
 <body>
+  <div class="ambient-glow-layer" aria-hidden="true">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
   <div class="header">
     <div class="logo-group">
       <div class="logo-icon">A</div>

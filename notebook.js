@@ -11,6 +11,232 @@ let cardRevealed = false;
 let currentView = 'table';
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
 
+// 原生零延迟 Web Audio API 物理微触感音效合成引擎 (Zero-Asset Synthetic Haptics)
+const SoundFx = {
+  ctx: null,
+  enabled: true,
+
+  init() {
+    try {
+      this.enabled = localStorage.getItem('antigravity_sound_enabled') !== 'false';
+    } catch (e) {
+      this.enabled = true;
+    }
+  },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    try {
+      localStorage.setItem('antigravity_sound_enabled', this.enabled ? 'true' : 'false');
+    } catch (e) {}
+    return this.enabled;
+  },
+
+  getCtx() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+    return this.ctx;
+  },
+
+  // 翻牌微气泡轻音 (Bubble Pop)
+  playBubble() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.045);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } catch (e) {}
+  },
+
+  // 按键轻微触控音 (Soft Click)
+  playClick() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1100, now);
+      osc.frequency.exponentialRampToValueAtTime(350, now + 0.025);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.03);
+    } catch (e) {}
+  },
+
+  // 「熟练」流光双音和弦 (Success Sparkle Chime)
+  playSuccess() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const notes = [1046.5, 1318.5, 1567.9]; // C6, E6, G6
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = now + idx * 0.055;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.12, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.24);
+      });
+    } catch (e) {}
+  },
+
+  // 「模糊」柔和微谐波 (Soft Harmonic Ping)
+  playHard() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
+      gain.gain.setValueAtTime(0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } catch (e) {}
+  },
+
+  // 「忘了」温润低频回弹 (Warm Cushion Thud)
+  playForgot() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(175, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } catch (e) {}
+  },
+
+  // 连击激励华丽琶音 (Streak Celebratory Chord)
+  playStreak() {
+    if (!this.enabled) return;
+    try {
+      const ctx = this.getCtx();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const chord = [783.99, 1046.5, 1318.51, 1567.98]; // G5, C6, E6, G6
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = now + idx * 0.048;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.15, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.32);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.35);
+      });
+    } catch (e) {}
+  }
+};
+
+// 多巴胺连续熟练连击体系 (Dopamine Streak & Combo System)
+let fcStreakCount = 0;
+
+function updateComboPill(increment) {
+  const pill = document.getElementById('fcComboPill');
+  const textEl = document.getElementById('fcComboText');
+  if (!pill || !textEl) return;
+
+  if (increment) {
+    fcStreakCount++;
+  } else {
+    fcStreakCount = 0;
+  }
+
+  if (fcStreakCount >= 2) {
+    let msg = `连击 ${fcStreakCount}`;
+    if (fcStreakCount >= 10) {
+      msg = `🏆 ${fcStreakCount} 连击 势不可挡！`;
+      SoundFx.playStreak();
+    } else if (fcStreakCount >= 5) {
+      msg = `⚡️ ${fcStreakCount} 连击 渐入佳境！`;
+      SoundFx.playStreak();
+    }
+    textEl.innerText = msg;
+    pill.style.display = 'inline-flex';
+    pill.style.animation = 'none';
+    void pill.offsetWidth;
+    pill.style.animation = 'comboBounce 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)';
+  } else {
+    pill.style.display = 'none';
+  }
+}
+
+// 多巴胺微粒子爆破反馈 (Sparkle Particle Burst on Good/Mastered)
+function createSparkleBurst(x, y) {
+  const colors = ['#FF5E3A', '#FF2A68', '#FFD200', '#10B981', '#007AFF', '#AF52DE'];
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'sparkle-particle';
+    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    const distance = Math.random() * 45 + 30;
+    const dx = Math.cos(angle) * distance;
+    const dy = Math.sin(angle) * distance;
+    const size = Math.random() * 5 + 4;
+    particle.style.width = `${size}px`;
+    particle.style.height = `${size}px`;
+    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
+    particle.style.setProperty('--dx', `${dx.toFixed(1)}px`);
+    particle.style.setProperty('--dy', `${dy.toFixed(1)}px`);
+    document.body.appendChild(particle);
+    setTimeout(() => {
+      particle.remove();
+    }, 620);
+  }
+}
+
 // 真人母语者高清原声发音引擎 (优先美音真人录音 MP3，离线自动降级 + 灵动声波微动效)
 let currentAudio = null;
 function speakWord(text, triggerEl = null) {
@@ -1364,7 +1590,8 @@ function showBatchSummary() {
     document.getElementById('statGoodCount').innerText = batchStats.good.toString();
     document.getElementById('summarySubtitle').innerText = `您已完成本组 ${batchTotalTarget} 个单词的艾宾浩斯强化自测！`;
 
-    // 绽放 Apple 级五彩礼花微动效
+    // 绽放 Apple 级五彩礼花微动效与连击庆祝音
+    SoundFx.playStreak();
     triggerConfetti();
   }
 }
@@ -1377,6 +1604,7 @@ function toggleCardReveal() {
   }
 
   cardRevealed = !cardRevealed;
+  SoundFx.playBubble();
   const ansBox = document.getElementById('fcAnswerBox');
   const hint = document.getElementById('cardHintText');
   const barUnrevealed = document.getElementById('smartBarUnrevealed');
@@ -1413,14 +1641,19 @@ function handleSRSFeedback(rating) {
     newLevel = 0;
     intervalDays = 0.5;
     batchStats.forgot++;
+    SoundFx.playForgot();
+    updateComboPill(false);
   } else if (rating === 2) { // 模糊
     newLevel = Math.max(1, currentLevel);
     intervalDays = 1;
     batchStats.hard++;
+    SoundFx.playHard();
   } else if (rating === 3) { // 熟练
     newLevel = Math.min(3, currentLevel + 1);
     intervalDays = newLevel === 3 ? 7 : (newLevel === 2 ? 3 : 1);
     batchStats.good++;
+    SoundFx.playSuccess();
+    updateComboPill(true);
   }
 
   batchStats.completedCount++;
@@ -1624,6 +1857,31 @@ function applyThemeMode(mode) {
   });
 }
 
+function initCard3DTilt() {
+  const card = document.getElementById('flashcardBox');
+  if (!card) return;
+
+  let isHovered = false;
+  card.addEventListener('mouseenter', () => {
+    isHovered = true;
+  });
+
+  card.addEventListener('mousemove', (e) => {
+    if (!isHovered) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    const rotX = -(y / (rect.height / 2)) * 4.5;
+    const rotY = (x / (rect.width / 2)) * 4.5;
+    card.style.transform = `perspective(1000px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(1.008, 1.008, 1.008)`;
+  });
+
+  card.addEventListener('mouseleave', () => {
+    isHovered = false;
+    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+  });
+}
+
 function initTheme() {
   chrome.storage.sync.get({ themeMode: 'system' }, (res) => {
     applyThemeMode(res.themeMode || 'system');
@@ -1668,11 +1926,37 @@ function initTheme() {
         moreDropdownMenu.style.display = 'none';
       };
     });
+
+    // 触感微音效开关初始化与绑定
+    const menuToggleSound = document.getElementById('menuToggleSound');
+    const soundMenuIcon = document.getElementById('soundMenuIcon');
+    const soundMenuCheck = document.getElementById('soundMenuCheck');
+
+    const updateSoundUI = () => {
+      const isEnabled = SoundFx.enabled;
+      if (soundMenuIcon) soundMenuIcon.innerText = isEnabled ? '🔊' : '🔇';
+      if (soundMenuCheck) soundMenuCheck.style.display = isEnabled ? 'inline' : 'none';
+    };
+
+    SoundFx.init();
+    updateSoundUI();
+
+    if (menuToggleSound) {
+      menuToggleSound.onclick = (e) => {
+        e.stopPropagation();
+        SoundFx.toggle();
+        updateSoundUI();
+        if (SoundFx.enabled) {
+          SoundFx.playSuccess();
+        }
+      };
+    }
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  initCard3DTilt();
 
   chrome.storage.sync.get({ webdavConfig: null }, (res) => {
     webdavConfig = res.webdavConfig;
@@ -1755,8 +2039,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Tab 切换事件 (笔记本 / 闪卡自测 纯净双模式)
-  document.getElementById('tabTableView').onclick = () => switchView('table');
-  document.getElementById('tabFlashcardView').onclick = () => switchView('flashcard');
+  document.getElementById('tabTableView').onclick = () => {
+    SoundFx.playClick();
+    switchView('table');
+  };
+  document.getElementById('tabFlashcardView').onclick = () => {
+    SoundFx.playClick();
+    switchView('flashcard');
+  };
 
   // 闪卡自测事件
   document.getElementById('flashcardBox').onclick = toggleCardReveal;
@@ -1766,6 +2056,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFcEdit) {
     btnFcEdit.onclick = (e) => {
       e.stopPropagation(); // 绝对阻止卡片翻转
+      SoundFx.playClick();
       if (cardList.length === 0) return;
       const item = cardList[cardIndex];
       if (!item) return;
@@ -1787,14 +2078,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btnCardNext').onclick = (e) => {
     e.stopPropagation();
+    SoundFx.playClick();
     nextCard();
   };
   document.getElementById('btnCardPrev').onclick = (e) => {
     e.stopPropagation();
+    SoundFx.playClick();
     prevCard();
   };
   document.getElementById('btnCardShuffle').onclick = (e) => {
     e.stopPropagation();
+    SoundFx.playClick();
     shuffleCards();
   };
   
@@ -1811,6 +2105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const batchTabs = document.querySelectorAll('.batch-tab');
   batchTabs.forEach(tab => {
     tab.onclick = () => {
+      SoundFx.playClick();
       batchTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentBatchSize = tab.getAttribute('data-size');
@@ -1821,6 +2116,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnRestartBatch = document.getElementById('btnRestartBatch');
   if (btnRestartBatch) {
     btnRestartBatch.onclick = () => {
+      SoundFx.playClick();
       updateFlashcardList(true);
     };
   }
@@ -1828,6 +2124,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnBackToTable = document.getElementById('btnBackToTable');
   if (btnBackToTable) {
     btnBackToTable.onclick = () => {
+      SoundFx.playClick();
       switchView('table');
     };
   }
@@ -1953,6 +2250,10 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   document.getElementById('btnSrsGood').onclick = (e) => {
     e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX || (rect.left + rect.width / 2);
+    const y = e.clientY || (rect.top + rect.height / 2);
+    createSparkleBurst(x, y);
     handleSRSFeedback(3);
   };
 
@@ -2027,6 +2328,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
         e.preventDefault();
         if (!cardRevealed) toggleCardReveal();
+        const goodBtn = document.getElementById('btnSrsGood');
+        if (goodBtn) {
+          const rect = goodBtn.getBoundingClientRect();
+          createSparkleBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
         handleSRSFeedback(3);
       } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
@@ -2424,6 +2730,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSearchClear.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      SoundFx.playClick();
       if (searchInput) {
         searchInput.value = '';
         updateSearchClearState();
