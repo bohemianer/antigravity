@@ -1858,28 +1858,11 @@ function applyThemeMode(mode) {
 }
 
 function initCard3DTilt() {
+  // 闪卡卡片保持绝对平稳，不随鼠标移动发生 3D 倾斜或上下位移
   const card = document.getElementById('flashcardBox');
-  if (!card) return;
-
-  let isHovered = false;
-  card.addEventListener('mouseenter', () => {
-    isHovered = true;
-  });
-
-  card.addEventListener('mousemove', (e) => {
-    if (!isHovered) return;
-    const rect = card.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    const rotX = -(y / (rect.height / 2)) * 4.5;
-    const rotY = (x / (rect.width / 2)) * 4.5;
-    card.style.transform = `perspective(1000px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(1.008, 1.008, 1.008)`;
-  });
-
-  card.addEventListener('mouseleave', () => {
-    isHovered = false;
-    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-  });
+  if (card) {
+    card.style.transform = 'none';
+  }
 }
 
 function initTheme() {
