@@ -113,7 +113,6 @@
       text-rendering: optimizeLegibility;
       transition: background-color 0.25s ease, color 0.25s ease;
       position: relative;
-      overflow-x: hidden;
     }
 
     /* 苹果液态极光流体背景氛围层 (Apple Ambient Liquid Glow Layer) */
@@ -184,13 +183,20 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       position: sticky;
       top: 0;
       z-index: 100;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
       transition: background-color 0.2s ease, border-color 0.2s ease;
     }
-    .logo-area { display: flex; align-items: center; gap: 14px; }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
     .logo-icon {
       width: 32px; height: 32px;
       background: linear-gradient(135deg, #E06D53, #D97706);
@@ -201,13 +207,16 @@
       font-weight: 900; color: #fff;
       box-shadow: 0 3px 10px rgba(224, 109, 83, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
     }
     .logo-title {
       font-family: var(--font-serif);
-      font-size: 19px;
+      font-size: 18.5px;
       font-weight: 700;
       letter-spacing: -0.3px;
       color: var(--text-main);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     
     .view-switcher {
@@ -222,6 +231,8 @@
       gap: 3px;
       height: 35px;
       box-sizing: border-box;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
     .view-tab {
       height: 27px;
@@ -241,6 +252,9 @@
       user-select: none;
       box-sizing: border-box;
       line-height: 1;
+      white-space: nowrap;
+      flex-shrink: 0;
+      word-break: keep-all;
     }
     .view-tab:active {
       background: rgba(255, 255, 255, 0.35);
@@ -267,6 +281,9 @@
       transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       user-select: none;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      white-space: nowrap;
+      flex-shrink: 0;
+      word-break: keep-all;
     }
     .sync-status-badge:hover {
       background: var(--bg-card-hover);
@@ -303,11 +320,18 @@
       to { transform: rotate(360deg); }
     }
 
-    .controls { display: flex; align-items: center; gap: 10px; }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
     
     /* 苹果风格自定义下拉菜单 (Apple Custom Dropdown) */
     .dropdown-container {
       position: relative;
+      flex-shrink: 0;
     }
     .dropdown-btn {
       height: 35px;
@@ -329,6 +353,9 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.02);
       font-family: var(--font-sans);
       box-sizing: border-box;
+      white-space: nowrap;
+      flex-shrink: 0;
+      word-break: keep-all;
     }
     .dropdown-btn:hover {
       background: var(--bg-card-hover);
@@ -435,10 +462,14 @@
       position: relative;
       display: inline-flex;
       align-items: center;
+      flex: 0 1 210px;
+      min-width: 120px;
     }
     .search-input {
       height: 35px;
-      width: 210px;
+      width: 100%;
+      min-width: 120px;
+      max-width: 210px;
       background: var(--bg-card);
       backdrop-filter: var(--glass-blur);
       -webkit-backdrop-filter: var(--glass-blur);
@@ -452,6 +483,7 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.02);
       font-family: var(--font-sans);
       box-sizing: border-box;
+      white-space: nowrap;
     }
     .search-input:focus {
       border-color: var(--claude-terracotta);
@@ -519,6 +551,9 @@
       font-family: var(--font-sans);
       box-sizing: border-box;
       user-select: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      word-break: keep-all;
     }
     .btn:hover {
       background: var(--bg-card-hover);
@@ -536,6 +571,9 @@
       border: 1px solid rgba(255, 255, 255, 0.35);
       color: #FFFFFF;
       box-shadow: 0 2px 8px rgba(224, 109, 83, 0.3);
+      white-space: nowrap;
+      flex-shrink: 0;
+      word-break: keep-all;
     }
     .btn-primary:hover {
       background: linear-gradient(135deg, #CC5B40, #C26604);
@@ -546,6 +584,94 @@
     .btn-primary:active {
       transform: none;
       filter: brightness(0.95);
+    }
+
+    /* 响应式顶栏适配：窄屏与小窗口绝不挤压扭曲 (Responsive Header Auto-Adaptation) */
+    @media (max-width: 1220px) {
+      header {
+        padding: 0 16px;
+        gap: 10px;
+      }
+      .logo-area {
+        gap: 10px;
+      }
+      .controls {
+        gap: 8px;
+      }
+      .logo-brand {
+        display: none; /* 自动折叠 "Antigravity"，仅保留 "Notebook"，立省 95px 宽度 */
+      }
+      .search-box-wrap {
+        flex: 0 1 180px;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      header {
+        padding: 0 12px;
+        gap: 8px;
+      }
+      .logo-area {
+        gap: 8px;
+      }
+      .controls {
+        gap: 6px;
+      }
+      .dropdown-btn {
+        width: 108px;
+        padding: 0 8px;
+        font-size: 12px;
+      }
+      .more-menu-btn {
+        width: 74px;
+      }
+      .search-box-wrap {
+        flex: 0 1 140px;
+        min-width: 100px;
+      }
+      .search-input {
+        padding: 0 24px 0 10px;
+        font-size: 12px;
+      }
+      .view-tab {
+        padding: 0 10px;
+        font-size: 12px;
+        gap: 4px;
+      }
+      .btn {
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      .sync-status-badge {
+        padding: 0 10px 0 8px;
+      }
+    }
+
+    @media (max-width: 880px) {
+      #syncText {
+        display: none; /* 超窄屏下同步徽标仅保留图标，化身圆角紧凑徽标 */
+      }
+      .sync-status-badge {
+        padding: 0;
+        width: 35px;
+        justify-content: center;
+      }
+      .dropdown-btn {
+        width: 98px;
+      }
+      .more-menu-btn {
+        width: 68px;
+      }
+      .search-box-wrap {
+        flex: 0 1 120px;
+        min-width: 90px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        min-width: 720px; /* 极端小窗下开启横向滚动，彻底防止任何挤压变形 */
+      }
     }
 
     main {
@@ -2389,7 +2515,7 @@
   <header>
     <div class="logo-area">
       <div class="logo-icon">A</div>
-      <div class="logo-title">Antigravity Notebook</div>
+      <div class="logo-title"><span class="logo-brand">Antigravity </span>Notebook</div>
       <div class="view-switcher">
         <button class="view-tab active" id="tabTableView">📋 笔记本</button>
         <button class="view-tab" id="tabFlashcardView">🎴 闪卡自测</button>
