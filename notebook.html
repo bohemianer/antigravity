@@ -176,7 +176,11 @@
       backdrop-filter: var(--glass-blur);
       -webkit-backdrop-filter: var(--glass-blur);
       border-bottom: 1px solid var(--border-glass);
-      padding: 12px 32px;
+      padding: 0 32px;
+      height: 60px;
+      min-height: 60px;
+      max-height: 60px;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -208,6 +212,7 @@
     
     .view-switcher {
       display: flex;
+      align-items: center;
       background: var(--bg-muted);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -215,11 +220,14 @@
       border-radius: 11px;
       border: 1px solid var(--border-warm);
       gap: 3px;
+      height: 35px;
+      box-sizing: border-box;
     }
     .view-tab {
+      height: 27px;
       background: transparent;
-      border: none;
-      padding: 6px 15px;
+      border: 1px solid transparent; /* 关键：未激活预留 1px 透明边框，杜绝切换时增加 2px 边框导致高度跳动 */
+      padding: 0 14px;
       border-radius: 8px;
       font-size: 12.5px;
       font-weight: 500;
@@ -227,12 +235,16 @@
       cursor: pointer;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
-      transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
       user-select: none;
+      box-sizing: border-box;
+      line-height: 1;
     }
     .view-tab:active {
-      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.35);
+      transform: none; /* 移除 scale 引起的尺寸扰动，避免点击微跳 */
     }
     .view-tab.active {
       background: var(--bg-card);
@@ -244,11 +256,13 @@
 
     .sync-status-badge {
       display: flex; align-items: center; gap: 7px;
+      height: 35px;
+      box-sizing: border-box;
       background: var(--bg-subtle);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--border-glass);
-      padding: 5px 13px 5px 11px; border-radius: 20px; font-size: 12px; color: var(--text-muted);
+      padding: 0 13px 0 11px; border-radius: 20px; font-size: 12px; color: var(--text-muted);
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
       user-select: none;
