@@ -1762,6 +1762,15 @@ function shuffleCards() {
 
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
 let isVariantFilterActive = false; // 是否处于词根变体检索筛选模式
+let isEudicFilterActive = false; // 是否处于欧路无例句词筛选模式
+
+// 判定词条是否来自欧路词典同步或缺少真实语境例句
+function isEudicNoContextWord(item) {
+  if (!item) return false;
+  const ctx = (item.context || item.sentence || "").trim();
+  const title = (item.title || "").trim();
+  return ctx === "来自欧路词典同步" || !ctx || ctx === "暂无上下文例句" || title.includes("欧路") || title.includes("Eudic");
+}
 
 // 词根屈折变体衍生词提取算法 (支持常规屈折变体与英美拼写互通)
 function getBaseForms(word) {
@@ -1945,6 +1954,14 @@ function exitVariantFilterMode() {
   applyFilter();
 }
 
+// 退出欧路无例句词筛选模式
+function exitEudicFilterMode() {
+  isEudicFilterActive = false;
+  const banner = document.getElementById('eudicFilterBanner');
+  if (banner) banner.style.display = 'none';
+  applyFilter();
+}
+
 function applyFilter() {
   if (isVariantFilterActive) {
     // 词根变体筛选模式：计算并展示所有变体列表
@@ -1960,12 +1977,31 @@ function applyFilter() {
       banner.style.display = 'flex';
       bannerText.innerHTML = `已检索到 <strong>${clusters.length}</strong> 组（共 <strong>${flattened.length}</strong> 词）词根重复变体`;
     }
+    const eudicBanner = document.getElementById('eudicFilterBanner');
+    if (eudicBanner) eudicBanner.style.display = 'none';
     renderList(flattened, "");
     return;
   }
 
-  const banner = document.getElementById('variantFilterBanner');
-  if (banner) banner.style.display = 'none';
+  const varBanner = document.getElementById('variantFilterBanner');
+  if (varBanner) varBanner.style.display = 'none';
+
+  if (isEudicFilterActive) {
+    // 欧路无例句词筛选模式
+    const eudicWords = currentWords.filter(item => isEudicNoContextWord(item));
+    filteredWords = eudicWords;
+    const banner = document.getElementById('eudicFilterBanner');
+    const bannerText = document.getElementById('eudicFilterText');
+    if (banner && bannerText) {
+      banner.style.display = 'flex';
+      bannerText.innerHTML = `已筛选出 <strong>${eudicWords.length}</strong> 个来自欧路/缺少例句的生词`;
+    }
+    renderList(eudicWords, "");
+    return;
+  }
+
+  const eudicBanner = document.getElementById('eudicFilterBanner');
+  if (eudicBanner) eudicBanner.style.display = 'none';
 
   const searchInput = document.getElementById('searchInput');
   const rawQ = searchInput ? searchInput.value : "";
@@ -3071,6 +3107,55 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // 📚 欧路无例句词筛选处理函数
+  function triggerEudicFilter() {
+    const eudicWords = currentWords.filter(item => isEudicNoContextWord(item));
+    if (!eudicWords || eudicWords.length === 0) {
+      showToast('🎉 词库检查完毕：所有生词均拥有完整真实语境例句！');
+      return;
+    }
+
+    if (currentView === 'flashcard') {
+      switchView('table');
+    }
+
+    isVariantFilterActive = false;
+    isEudicFilterActive = true;
+    applyFilter();
+  }
+
+  // 1. 右上角「⋯」菜单中的「筛选欧路无例句词」项
+  const menuFindEudicNoContext = document.getElementById('menuFindEudicNoContext');
+  if (menuFindEudicNoContext) {
+    menuFindEudicNoContext.onclick = (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
+      triggerEudicFilter();
+    };
+  }
+
+  // 2. 坚果云与欧路同步设置弹窗中的「筛选欧路无例句词」按钮
+  const btnFilterEudicNoContext = document.getElementById('btnFilterEudicNoContext');
+  if (btnFilterEudicNoContext) {
+    btnFilterEudicNoContext.onclick = (e) => {
+      if (e) e.stopPropagation();
+      SoundFx.playClick();
+      closeDavModal();
+      triggerEudicFilter();
+    };
+  }
+
+  // 3. 退出欧路无例句筛选模式
+  const btnCloseEudicFilter = document.getElementById('btnCloseEudicFilter');
+  if (btnCloseEudicFilter) {
+    btnCloseEudicFilter.onclick = (e) => {
+      if (e) e.stopPropagation();
+      SoundFx.playClick();
+      exitEudicFilterMode();
+    };
+  }
+
   // 苹果风格自定义多选下拉菜单交互 (宽度固定为 122px，绝不拉伸走形)
   const srsDropdownBtn = document.getElementById('srsDropdownBtn');
   const srsDropdownMenu = document.getElementById('srsDropdownMenu');
@@ -3168,6 +3253,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const banner = document.getElementById('variantFilterBanner');
         if (banner) banner.style.display = 'none';
       }
+      if (isEudicFilterActive) {
+        isEudicFilterActive = false;
+        const banner = document.getElementById('eudicFilterBanner');
+        if (banner) banner.style.display = 'none';
+      }
       updateSearchClearState();
       // 若用户在闪卡界面中在搜索框输入内容，智能自动切换到笔记本列表，方便直观查看单词检索结果
       if (currentView === 'flashcard' && searchInput.value.trim().length > 0) {
@@ -3182,6 +3272,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isVariantFilterActive) {
           isVariantFilterActive = false;
           const banner = document.getElementById('variantFilterBanner');
+          if (banner) banner.style.display = 'none';
+        }
+        if (isEudicFilterActive) {
+          isEudicFilterActive = false;
+          const banner = document.getElementById('eudicFilterBanner');
           if (banner) banner.style.display = 'none';
         }
         searchInput.value = '';
@@ -3200,6 +3295,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isVariantFilterActive) {
         isVariantFilterActive = false;
         const banner = document.getElementById('variantFilterBanner');
+        if (banner) banner.style.display = 'none';
+      }
+      if (isEudicFilterActive) {
+        isEudicFilterActive = false;
+        const banner = document.getElementById('eudicFilterBanner');
         if (banner) banner.style.display = 'none';
       }
       if (searchInput) {
