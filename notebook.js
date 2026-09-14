@@ -829,12 +829,14 @@ function renderList(list, query = "") {
     const uid = item._uid;
 
     const wordTitleHtml = highlightSearchMatch(wordText, q);
+    const dialect = getDialectLabel(wordText);
+    const dialectHtml = dialect ? `<span class="nb-dialect-badge dialect-${dialect === '英式' ? 'uk' : 'us'}" title="${wordText} 属于${dialect}拼写规范">${dialect}</span>` : '';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="vertical-align: middle !important; text-align: center;">
         <div class="word-cell-wrap">
-          <span class="word-title">${wordTitleHtml}</span>
+          <span class="word-title">${wordTitleHtml}${dialectHtml}</span>
           ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic}</span>` : ''}
         </div>
       </td>
@@ -1559,6 +1561,19 @@ function renderFlashcard() {
   const srs = getSrsInfo(item.srsLevel || 0);
 
   document.getElementById('fcWord').innerText = word;
+  const fcDialectTag = document.getElementById('fcDialectTag');
+  if (fcDialectTag) {
+    const dialect = getDialectLabel(word);
+    if (dialect) {
+      fcDialectTag.innerText = dialect;
+      fcDialectTag.className = `nb-dialect-badge dialect-${dialect === '英式' ? 'uk' : 'us'}`;
+      fcDialectTag.title = `${word} 属于${dialect}拼写规范`;
+      fcDialectTag.style.display = 'inline-block';
+    } else {
+      fcDialectTag.style.display = 'none';
+    }
+  }
+
   document.getElementById('fcPhonetic').innerText = phonetic;
   document.getElementById('fcContext').innerHTML = context;
   document.getElementById('fcTrans').innerHTML = formatTransHtml(item.trans || item.definition || "");
@@ -1833,6 +1848,53 @@ function getBaseForms(word) {
   }
 
   return [...new Set(forms)];
+}
+
+// 智能英式/美式拼写感知提取
+function getDialectLabel(word) {
+  const w = (word || "").toLowerCase().trim();
+  if (!w) return "";
+  
+  // 1. -l- 动词英式双写 ll (fuelled/fuelling)，美式单写 l (fueled/fueling)
+  const singleLStems = ["fuel", "travel", "cancel", "signal", "dial", "model", "label", "rival", "equal", "rebel", "marvel", "patrol", "jewel", "initial", "total", "distil", "fulfil"];
+  for (const stem of singleLStems) {
+    if (w === stem + "ed" || w === stem + "ing") return "美式";
+    if (w === stem + "led" || w === stem + "ling") return "英式";
+  }
+
+  // 2. -our (英) vs -or (美)
+  if (w.endsWith("our") && w.length > 4) return "英式";
+  if (w.endsWith("or") && ["color", "flavor", "honor", "labor", "rumor", "armor", "behavior", "humor", "neighbor", "favor", "harbor", "vigor"].includes(w)) return "美式";
+
+  // 3. -re (英) vs -er (美)
+  if (w.endsWith("re") && ["theatre", "centre", "metre", "fibre", "litre", "calibre", "sombre", "lustre"].includes(w)) return "英式";
+  if (w.endsWith("er") && ["theater", "center", "meter", "fiber", "liter", "caliber", "somber", "luster"].includes(w)) return "美式";
+
+  // 4. -ise / -ised / -ising (英) vs -ize / -ized / -izing (美)
+  if (/(?:ised|ising|ise)$/.test(w) && w.length > 4) {
+    if (!["promise", "surprise", "exercise", "advise", "devise", "rise", "wise", "praise"].includes(w)) {
+      return "英式";
+    }
+  }
+  if (/(?:ized|izing|ize)$/.test(w) && w.length > 4) {
+    if (!["size", "prize", "seize", "capsize"].includes(w)) {
+      return "美式";
+    }
+  }
+
+  // 5. -ogue (英) vs -og (美)
+  if (w.endsWith("ogue") && ["catalogue", "dialogue", "monologue", "prologue", "analogue"].includes(w)) return "英式";
+  if (w.endsWith("og") && ["catalog", "dialog", "monolog", "prolog", "analog"].includes(w)) return "美式";
+
+  // 6. -programme (英) vs -program (美)
+  if (w === "programme" || w === "programmes") return "英式";
+  if (w === "program" || w === "programs") return "美式";
+
+  // 7. -ence (英) vs -ense (美)
+  if (["defence", "offence", "licence", "pretence"].includes(w)) return "英式";
+  if (["defense", "offense", "license", "pretense"].includes(w)) return "美式";
+
+  return "";
 }
 
 // 扫描全库找出所有词根重复变体群组

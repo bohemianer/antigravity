@@ -136,6 +136,52 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+function getDialectLabel(word) {
+  const w = (word || "").toLowerCase().trim();
+  if (!w) return "";
+  
+  // 1. -l- 动词英式双写 ll (fuelled/fuelling)，美式单写 l (fueled/fueling)
+  const singleLStems = ["fuel", "travel", "cancel", "signal", "dial", "model", "label", "rival", "equal", "rebel", "marvel", "patrol", "jewel", "initial", "total", "distil", "fulfil"];
+  for (const stem of singleLStems) {
+    if (w === stem + "ed" || w === stem + "ing") return "美式";
+    if (w === stem + "led" || w === stem + "ling") return "英式";
+  }
+
+  // 2. -our (英) vs -or (美)
+  if (w.endsWith("our") && w.length > 4) return "英式";
+  if (w.endsWith("or") && ["color", "flavor", "honor", "labor", "rumor", "armor", "behavior", "humor", "neighbor", "favor", "harbor", "vigor"].includes(w)) return "美式";
+
+  // 3. -re (英) vs -er (美)
+  if (w.endsWith("re") && ["theatre", "centre", "metre", "fibre", "litre", "calibre", "sombre", "lustre"].includes(w)) return "英式";
+  if (w.endsWith("er") && ["theater", "center", "meter", "fiber", "liter", "caliber", "somber", "luster"].includes(w)) return "美式";
+
+  // 4. -ise / -ised / -ising (英) vs -ize / -ized / -izing (美)
+  if (/(?:ised|ising|ise)$/.test(w) && w.length > 4) {
+    if (!["promise", "surprise", "exercise", "advise", "devise", "rise", "wise", "praise"].includes(w)) {
+      return "英式";
+    }
+  }
+  if (/(?:ized|izing|ize)$/.test(w) && w.length > 4) {
+    if (!["size", "prize", "seize", "capsize"].includes(w)) {
+      return "美式";
+    }
+  }
+
+  // 5. -ogue (英) vs -og (美)
+  if (w.endsWith("ogue") && ["catalogue", "dialogue", "monologue", "prologue", "analogue"].includes(w)) return "英式";
+  if (w.endsWith("og") && ["catalog", "dialog", "monolog", "prolog", "analog"].includes(w)) return "美式";
+
+  // 6. -programme (英) vs -program (美)
+  if (w === "programme" || w === "programmes") return "英式";
+  if (w === "program" || w === "programs") return "美式";
+
+  // 7. -ence (英) vs -ense (美)
+  if (["defence", "offence", "licence", "pretence"].includes(w)) return "英式";
+  if (["defense", "offense", "license", "pretense"].includes(w)) return "美式";
+
+  return "";
+}
+
 function formatDefinition(def) {
   if (!def) return "";
   let str = String(def).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
@@ -234,6 +280,7 @@ function showCard(rect, text, sentence) {
         <div class="agy-header">
           <div class="agy-word-group">
             <span class="agy-word">${safeText}</span>
+            <span class="agy-dialect-tag" id="agy-dialect-tag" style="display:none;"></span>
             <span class="agy-root-badge" id="agy-root-badge" style="display:none;" title="词库已收录该词的原型"></span>
             <div class="agy-phonetic-pill" id="agy-btn-speak" title="点击朗读发音" style="display:none;">
               <span class="agy-phonetic" id="agy-phonetic"></span>
@@ -347,6 +394,20 @@ function showCard(rect, text, sentence) {
     const rawResult = res.definition || res.translation || "暂无释义";
     defEl.innerHTML = formatDefinition(rawResult);
     defEl.style.display = 'block';
+
+    // 智能英式/美式拼写感知标签
+    const dialectTag = document.getElementById('agy-dialect-tag');
+    if (dialectTag && isWordMode) {
+      const dialect = getDialectLabel(text);
+      if (dialect) {
+        dialectTag.innerText = dialect;
+        dialectTag.className = `agy-dialect-tag dialect-${dialect === '英式' ? 'uk' : 'us'}`;
+        dialectTag.title = `${text} 属于${dialect}英语常见拼写规范`;
+        dialectTag.style.display = 'inline-block';
+      } else {
+        dialectTag.style.display = 'none';
+      }
+    }
 
     // 智能词根原型感知：若当前划词为复数/过去式，且词库中已收录原型
     const rootBadge = document.getElementById('agy-root-badge');
