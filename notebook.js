@@ -1739,16 +1739,9 @@ function applyFilter() {
   const q = (document.getElementById('searchInput') ? document.getElementById('searchInput').value : "").toLowerCase().trim();
 
   const filtered = currentWords.filter(item => {
-    // 文本匹配：精准匹配生词本身、中文释义、心得笔记，坚决不搜例句 context，杜绝同一例句带出多个词
+    // 文本匹配：仅搜索生词本身 (Word Only)
     const wordText = (item.text || item.word || '').toLowerCase();
-    const transText = (item.trans || item.definition || '').toLowerCase();
-    const notesText = (item.notes || '').toLowerCase();
-
-    const matchText = !q || (
-      wordText.includes(q) ||
-      transText.includes(q) ||
-      notesText.includes(q)
-    );
+    const matchText = !q || wordText.includes(q);
 
     // 熟练度多选匹配
     let matchSrs = true;
