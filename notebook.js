@@ -1762,14 +1762,13 @@ function shuffleCards() {
 
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
 let isVariantFilterActive = false; // 是否处于词根变体检索筛选模式
-let isEudicFilterActive = false; // 是否处于欧路无例句词筛选模式
+let isNoContextFilterActive = false; // 是否处于无例句生词筛选模式
 
-// 判定词条是否来自欧路词典同步或缺少真实语境例句
-function isEudicNoContextWord(item) {
+// 判定词条是否缺少真实语境例句（为空、仅空白、或为系统占位默认文本）
+function isNoContextWord(item) {
   if (!item) return false;
   const ctx = (item.context || item.sentence || "").trim();
-  const title = (item.title || "").trim();
-  return ctx === "来自欧路词典同步" || !ctx || ctx === "暂无上下文例句" || title.includes("欧路") || title.includes("Eudic");
+  return !ctx || ctx === "来自欧路词典同步" || ctx === "暂无上下文例句";
 }
 
 // 词根屈折变体衍生词提取算法 (支持常规屈折变体与英美拼写互通)
@@ -1954,10 +1953,10 @@ function exitVariantFilterMode() {
   applyFilter();
 }
 
-// 退出欧路无例句词筛选模式
-function exitEudicFilterMode() {
-  isEudicFilterActive = false;
-  const banner = document.getElementById('eudicFilterBanner');
+// 退出无例句生词筛选模式
+function exitNoContextFilterMode() {
+  isNoContextFilterActive = false;
+  const banner = document.getElementById('noContextFilterBanner');
   if (banner) banner.style.display = 'none';
   applyFilter();
 }
@@ -1977,8 +1976,8 @@ function applyFilter() {
       banner.style.display = 'flex';
       bannerText.innerHTML = `已检索到 <strong>${clusters.length}</strong> 组（共 <strong>${flattened.length}</strong> 词）词根重复变体`;
     }
-    const eudicBanner = document.getElementById('eudicFilterBanner');
-    if (eudicBanner) eudicBanner.style.display = 'none';
+    const noCtxBanner = document.getElementById('noContextFilterBanner');
+    if (noCtxBanner) noCtxBanner.style.display = 'none';
     renderList(flattened, "");
     return;
   }
@@ -1986,22 +1985,22 @@ function applyFilter() {
   const varBanner = document.getElementById('variantFilterBanner');
   if (varBanner) varBanner.style.display = 'none';
 
-  if (isEudicFilterActive) {
-    // 欧路无例句词筛选模式
-    const eudicWords = currentWords.filter(item => isEudicNoContextWord(item));
-    filteredWords = eudicWords;
-    const banner = document.getElementById('eudicFilterBanner');
-    const bannerText = document.getElementById('eudicFilterText');
+  if (isNoContextFilterActive) {
+    // 无例句词筛选模式
+    const noCtxWords = currentWords.filter(item => isNoContextWord(item));
+    filteredWords = noCtxWords;
+    const banner = document.getElementById('noContextFilterBanner');
+    const bannerText = document.getElementById('noContextFilterText');
     if (banner && bannerText) {
       banner.style.display = 'flex';
-      bannerText.innerHTML = `已筛选出 <strong>${eudicWords.length}</strong> 个来自欧路/缺少例句的生词`;
+      bannerText.innerHTML = `已筛选出 <strong>${noCtxWords.length}</strong> 个缺少语境例句的生词`;
     }
-    renderList(eudicWords, "");
+    renderList(noCtxWords, "");
     return;
   }
 
-  const eudicBanner = document.getElementById('eudicFilterBanner');
-  if (eudicBanner) eudicBanner.style.display = 'none';
+  const noCtxBanner = document.getElementById('noContextFilterBanner');
+  if (noCtxBanner) noCtxBanner.style.display = 'none';
 
   const searchInput = document.getElementById('searchInput');
   const rawQ = searchInput ? searchInput.value : "";
@@ -3107,10 +3106,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // 📚 欧路无例句词筛选处理函数
-  function triggerEudicFilter() {
-    const eudicWords = currentWords.filter(item => isEudicNoContextWord(item));
-    if (!eudicWords || eudicWords.length === 0) {
+  // 📚 无例句生词筛选处理函数 (快速筛选出所有缺少真实语境例句的单词)
+  function triggerNoContextFilter() {
+    const noCtxWords = currentWords.filter(item => isNoContextWord(item));
+    if (!noCtxWords || noCtxWords.length === 0) {
       showToast('🎉 词库检查完毕：所有生词均拥有完整真实语境例句！');
       return;
     }
@@ -3120,39 +3119,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     isVariantFilterActive = false;
-    isEudicFilterActive = true;
+    isNoContextFilterActive = true;
     applyFilter();
   }
 
-  // 1. 右上角「⋯」菜单中的「筛选欧路无例句词」项
-  const menuFindEudicNoContext = document.getElementById('menuFindEudicNoContext');
-  if (menuFindEudicNoContext) {
-    menuFindEudicNoContext.onclick = (e) => {
+  // 1. 右上角「⋯」菜单中的「筛选无例句单词」项
+  const menuFindNoContext = document.getElementById('menuFindNoContext') || document.getElementById('menuFindEudicNoContext');
+  if (menuFindNoContext) {
+    menuFindNoContext.onclick = (e) => {
       if (e) e.stopPropagation();
       const moreMenu = document.getElementById('moreDropdownMenu');
       if (moreMenu) moreMenu.style.display = 'none';
-      triggerEudicFilter();
+      triggerNoContextFilter();
     };
   }
 
-  // 2. 坚果云与欧路同步设置弹窗中的「筛选欧路无例句词」按钮
-  const btnFilterEudicNoContext = document.getElementById('btnFilterEudicNoContext');
-  if (btnFilterEudicNoContext) {
-    btnFilterEudicNoContext.onclick = (e) => {
+  // 2. 坚果云与欧路同步设置弹窗中的「筛选无例句单词」按钮
+  const btnFilterNoContext = document.getElementById('btnFilterNoContext') || document.getElementById('btnFilterEudicNoContext');
+  if (btnFilterNoContext) {
+    btnFilterNoContext.onclick = (e) => {
       if (e) e.stopPropagation();
       SoundFx.playClick();
       closeDavModal();
-      triggerEudicFilter();
+      triggerNoContextFilter();
     };
   }
 
-  // 3. 退出欧路无例句筛选模式
-  const btnCloseEudicFilter = document.getElementById('btnCloseEudicFilter');
-  if (btnCloseEudicFilter) {
-    btnCloseEudicFilter.onclick = (e) => {
+  // 3. 退出无例句筛选模式
+  const btnCloseNoContextFilter = document.getElementById('btnCloseNoContextFilter') || document.getElementById('btnCloseEudicFilter');
+  if (btnCloseNoContextFilter) {
+    btnCloseNoContextFilter.onclick = (e) => {
       if (e) e.stopPropagation();
       SoundFx.playClick();
-      exitEudicFilterMode();
+      exitNoContextFilterMode();
     };
   }
 
@@ -3253,9 +3252,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const banner = document.getElementById('variantFilterBanner');
         if (banner) banner.style.display = 'none';
       }
-      if (isEudicFilterActive) {
-        isEudicFilterActive = false;
-        const banner = document.getElementById('eudicFilterBanner');
+      if (isNoContextFilterActive) {
+        isNoContextFilterActive = false;
+        const banner = document.getElementById('noContextFilterBanner');
         if (banner) banner.style.display = 'none';
       }
       updateSearchClearState();
@@ -3274,9 +3273,9 @@ document.addEventListener('DOMContentLoaded', () => {
           const banner = document.getElementById('variantFilterBanner');
           if (banner) banner.style.display = 'none';
         }
-        if (isEudicFilterActive) {
-          isEudicFilterActive = false;
-          const banner = document.getElementById('eudicFilterBanner');
+        if (isNoContextFilterActive) {
+          isNoContextFilterActive = false;
+          const banner = document.getElementById('noContextFilterBanner');
           if (banner) banner.style.display = 'none';
         }
         searchInput.value = '';
@@ -3297,9 +3296,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const banner = document.getElementById('variantFilterBanner');
         if (banner) banner.style.display = 'none';
       }
-      if (isEudicFilterActive) {
-        isEudicFilterActive = false;
-        const banner = document.getElementById('eudicFilterBanner');
+      if (isNoContextFilterActive) {
+        isNoContextFilterActive = false;
+        const banner = document.getElementById('noContextFilterBanner');
         if (banner) banner.style.display = 'none';
       }
       if (searchInput) {

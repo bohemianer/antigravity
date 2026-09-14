@@ -2577,10 +2577,10 @@
             </span>
           </div>
 
-          <div class="dropdown-item" id="menuFindEudicNoContext" title="筛选来自欧路词典或缺少例句的生词">
+          <div class="dropdown-item" id="menuFindNoContext" title="筛选全库中缺少语境例句的生词">
             <span style="display:flex; align-items:center; gap:7px;">
-              <span style="font-size: 13px;">📚</span>
-              <span>筛选欧路无例句词</span>
+              <span style="font-size: 13px;">📝</span>
+              <span>筛选无例句单词</span>
             </span>
           </div>
 
@@ -2608,13 +2608,13 @@
           <button id="btnCloseVariantFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
         </div>
       </div>
-      <div id="eudicFilterBanner" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border-radius: 9px; background: var(--bg-muted); border: 1px solid var(--border-warm); font-size: 13px; color: var(--text-main); box-shadow: var(--glass-shadow);">
+      <div id="noContextFilterBanner" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border-radius: 9px; background: var(--bg-muted); border: 1px solid var(--border-warm); font-size: 13px; color: var(--text-main); box-shadow: var(--glass-shadow);">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 15px;">📚</span>
-          <span id="eudicFilterText">已筛选出 <strong>0</strong> 个来自欧路/缺少例句的生词</span>
+          <span style="font-size: 15px;">📝</span>
+          <span id="noContextFilterText">已筛选出 <strong>0</strong> 个缺少语境例句的生词</span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <button id="btnCloseEudicFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
+          <button id="btnCloseNoContextFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
         </div>
       </div>
       <div class="table-container">
@@ -2832,8 +2832,8 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
           <span id="eudicSyncStatus" style="font-size: 11.5px; color: var(--text-muted);"></span>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn" id="btnFilterEudicNoContext" style="font-size: 12px; height: 32px; background: var(--bg-card); border: 1px solid var(--border-warm); color: var(--text-main);">
-              🔍 筛选欧路无例句词
+            <button type="button" class="btn" id="btnFilterNoContext" style="font-size: 12px; height: 32px; background: var(--bg-card); border: 1px solid var(--border-warm); color: var(--text-main);">
+              📝 筛选无例句单词
             </button>
             <button type="button" class="btn btn-primary" id="btnEudicSync" style="font-size: 12px; height: 32px; background: #059669; border-color: #047857;">
               📥 立即从欧路词典拉取合并
