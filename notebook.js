@@ -178,38 +178,8 @@ const SoundFx = {
   }
 };
 
-// 多巴胺连续熟练连击体系 (Dopamine Streak & Combo System)
-let fcStreakCount = 0;
-
-function updateComboPill(increment) {
-  const pill = document.getElementById('fcComboPill');
-  const textEl = document.getElementById('fcComboText');
-  if (!pill || !textEl) return;
-
-  if (increment) {
-    fcStreakCount++;
-  } else {
-    fcStreakCount = 0;
-  }
-
-  if (fcStreakCount >= 2) {
-    let msg = `连击 ${fcStreakCount}`;
-    if (fcStreakCount >= 10) {
-      msg = `🏆 ${fcStreakCount} 连击 势不可挡！`;
-      SoundFx.playStreak();
-    } else if (fcStreakCount >= 5) {
-      msg = `⚡️ ${fcStreakCount} 连击 渐入佳境！`;
-      SoundFx.playStreak();
-    }
-    textEl.innerText = msg;
-    pill.style.display = 'inline-flex';
-    pill.style.animation = 'none';
-    void pill.offsetWidth;
-    pill.style.animation = 'comboBounce 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)';
-  } else {
-    pill.style.display = 'none';
-  }
-}
+// 连击激励已根据用户需求彻底移除
+function updateComboPill() {}
 
 // 多巴胺微粒子爆破反馈 (Sparkle Particle Burst on Good/Mastered)
 function createSparkleBurst(x, y) {
@@ -1691,7 +1661,6 @@ function handleSRSFeedback(rating) {
     intervalDays = 0.5;
     batchStats.forgot++;
     SoundFx.playForgot();
-    updateComboPill(false);
   } else if (rating === 2) { // 模糊
     newLevel = Math.max(1, currentLevel);
     intervalDays = 1;
@@ -1702,7 +1671,6 @@ function handleSRSFeedback(rating) {
     intervalDays = newLevel === 3 ? 7 : (newLevel === 2 ? 3 : 1);
     batchStats.good++;
     SoundFx.playSuccess();
-    updateComboPill(true);
   }
 
   batchStats.completedCount++;

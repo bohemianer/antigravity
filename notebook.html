@@ -1485,37 +1485,6 @@
       box-shadow: 0 6px 18px rgba(16, 185, 129, 0.25);
     }
 
-    /* 多巴胺连击激励徽标 (Dopamine Streak & Combo Pill) */
-    .fc-combo-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #FFFFFF;
-      background: linear-gradient(135deg, #FF5E3A, #FF2A68);
-      box-shadow: 0 4px 12px rgba(255, 42, 104, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.4);
-      user-select: none;
-      animation: comboBounce 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    @keyframes comboBounce {
-      0% { transform: scale(0.65) rotate(-5deg); opacity: 0; }
-      70% { transform: scale(1.15) rotate(2deg); opacity: 1; }
-      100% { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-    .combo-icon {
-      font-size: 13px;
-      display: inline-block;
-      animation: flamePulse 1.2s ease-in-out infinite alternate;
-    }
-    @keyframes flamePulse {
-      0% { transform: scale(1); }
-      100% { transform: scale(1.25) rotate(3deg); }
-    }
-
     /* 多巴胺微粒子爆破 (Sparkle Particles) */
     .sparkle-particle {
       position: fixed;
@@ -2613,12 +2582,6 @@
         </div>
 
         <div style="display: flex; align-items: center; gap: 14px;">
-          <!-- 多巴胺连击激励胶囊 (Dopamine Streak & Combo Pill) -->
-          <div class="fc-combo-pill" id="fcComboPill" style="display: none;" title="连续熟练连击激励">
-            <span class="combo-icon">🔥</span>
-            <span class="combo-text" id="fcComboText">连击 2</span>
-          </div>
-
           <div class="flashcard-progress-box">
             <span>当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
             <div class="flashcard-progress-bar">
