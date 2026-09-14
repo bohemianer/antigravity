@@ -1748,22 +1748,90 @@ function shuffleCards() {
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
 let isVariantFilterActive = false; // 是否处于词根变体检索筛选模式
 
-// 词根屈折变体衍生词提取算法
+// 词根屈折变体衍生词提取算法 (支持常规屈折变体与英美拼写互通)
 function getBaseForms(word) {
   const w = (word || "").toLowerCase().trim();
   if (!w) return [];
   const forms = [w];
+  
+  // 1. 英美拼写系统规则归一 (UK <-> US Spelling)
+  // -our <-> -or (colour <-> color, flavour <-> flavor, honour <-> honor, labour <-> labor, rumour <-> rumor, etc.)
+  if (w.endsWith("our") && w.length > 4) forms.push(w.slice(0, -3) + "or");
+  if (w.endsWith("or") && w.length > 3) forms.push(w.slice(0, -2) + "our");
+  
+  // -ise / -ising / -ised <-> -ize / -izing / -ized (organise <-> organize, realise <-> realize)
+  if (w.endsWith("ise") && w.length > 4) forms.push(w.slice(0, -3) + "ize");
+  if (w.endsWith("ize") && w.length > 4) forms.push(w.slice(0, -3) + "ise");
+  if (w.endsWith("ised") && w.length > 5) {
+    forms.push(w.slice(0, -4) + "ized");
+    forms.push(w.slice(0, -4) + "ise");
+    forms.push(w.slice(0, -4) + "ize");
+  }
+  if (w.endsWith("ized") && w.length > 5) {
+    forms.push(w.slice(0, -4) + "ised");
+    forms.push(w.slice(0, -4) + "ize");
+    forms.push(w.slice(0, -4) + "ise");
+  }
+  if (w.endsWith("ising") && w.length > 6) {
+    forms.push(w.slice(0, -5) + "izing");
+    forms.push(w.slice(0, -5) + "ise");
+    forms.push(w.slice(0, -5) + "ize");
+  }
+  if (w.endsWith("izing") && w.length > 6) {
+    forms.push(w.slice(0, -5) + "ising");
+    forms.push(w.slice(0, -5) + "ize");
+    forms.push(w.slice(0, -5) + "ise");
+  }
+
+  // -re <-> -er (theatre <-> theater, centre <-> center, metre <-> meter, fibre <-> fiber)
+  if (w.endsWith("tre") && w.length > 4) forms.push(w.slice(0, -3) + "ter");
+  if (w.endsWith("ter") && w.length > 4) forms.push(w.slice(0, -3) + "tre");
+  if (w.endsWith("bre") && w.length > 4) forms.push(w.slice(0, -3) + "ber");
+  if (w.endsWith("ber") && w.length > 4) forms.push(w.slice(0, -3) + "bre");
+
+  // -ogue <-> -og (catalogue <-> catalog, dialogue <-> dialog)
+  if (w.endsWith("ogue") && w.length > 5) forms.push(w.slice(0, -4) + "og");
+  if (w.endsWith("og") && w.length > 3) forms.push(w.slice(0, -2) + "ogue");
+
+  // 2. 屈折词尾变换与英美重叠双辅音还原 (如 fuel -> fuelled / fueled, travel -> travelled / traveled)
+  // 复数与第三人称单数
   if (w.endsWith("ies") && w.length > 3) forms.push(w.slice(0, -3) + "y");
   if (w.endsWith("es") && w.length > 3) forms.push(w.slice(0, -2));
   if (w.endsWith("s") && !w.endsWith("ss") && w.length > 2) forms.push(w.slice(0, -1));
+
+  // 过去式 / 过去分词 (-ed)
   if (w.endsWith("ed") && w.length > 3) {
-    forms.push(w.slice(0, -2));
-    forms.push(w.slice(0, -1));
+    const stemEd = w.slice(0, -2);
+    forms.push(stemEd); // played -> play, traveled -> travel
+    forms.push(w.slice(0, -1)); // smiled -> smile (stem + e)
+
+    // 检测英式重叠双辅音脱落 (如 fuelled -> fuel, cancelled -> cancel, stopped -> stop, planned -> plan)
+    if (stemEd.length >= 3) {
+      const lastChar = stemEd[stemEd.length - 1];
+      const secondLastChar = stemEd[stemEd.length - 2];
+      if (lastChar === secondLastChar && /[b-df-hj-np-tv-z]/.test(lastChar)) {
+        forms.push(stemEd.slice(0, -1)); // fuelled -> fuel, stopped -> stop
+      }
+    }
   }
+
+  // 现在分词 / 动名词 (-ing)
   if (w.endsWith("ing") && w.length > 4) {
-    forms.push(w.slice(0, -3));
-    forms.push(w.slice(0, -3) + "e");
+    const stemIng = w.slice(0, -3);
+    forms.push(stemIng); // traveling -> travel, playing -> play
+    forms.push(stemIng + "e"); // writing -> write, wiping -> wipe
+    if (stemIng.endsWith("y")) forms.push(stemIng.slice(0, -1) + "ie");
+
+    // 检测英式重叠双辅音脱落 (如 fuelling -> fuel, travelling -> travel, stopping -> stop)
+    if (stemIng.length >= 3) {
+      const lastChar = stemIng[stemIng.length - 1];
+      const secondLastChar = stemIng[stemIng.length - 2];
+      if (lastChar === secondLastChar && /[b-df-hj-np-tv-z]/.test(lastChar)) {
+        forms.push(stemIng.slice(0, -1)); // fuelling -> fuel, stopping -> stop
+      }
+    }
   }
+
   return [...new Set(forms)];
 }
 
