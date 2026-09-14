@@ -706,6 +706,15 @@
       color: var(--text-title);
       line-height: 1.2;
     }
+    .word-title mark.search-match {
+      background: var(--highlight-bg);
+      color: var(--highlight-text);
+      font-weight: 700;
+      padding: 1px 3px;
+      border-radius: 3px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
     
     /* 纯净交互式音标：无图标，直接点击音标本身朗读发音 */
     .word-phonetic {
@@ -772,6 +781,17 @@
       font-weight: 600;
       padding: 1px 4px;
       border-radius: 3px;
+      transition: all 0.15s ease;
+    }
+
+    /* 方案 1：检索模式下，例句锚点高亮优雅降权，让位于第一列检索关键词焦点 */
+    .is-searching .salad-sentence .highlight {
+      background: rgba(204, 120, 92, 0.12);
+      color: var(--claude-terracotta);
+      font-weight: 500;
+      border-bottom: 1.5px solid var(--claude-terracotta);
+      padding: 0 2px;
+      border-radius: 2px;
     }
     
     .trans-text,

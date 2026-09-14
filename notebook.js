@@ -401,6 +401,16 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // 常见不规则动词变化表（支持原型与过去式/分词双向智能联想）
 const IRREGULAR_VERBS = {
   'be': ['am', 'is', 'are', 'was', 'were', 'been', 'being'],
@@ -788,15 +798,47 @@ function setWordMastery(targetUid, targetLevel) {
   });
 }
 
+// 方案 1: 单词关键词精准高亮辅助函数
+function highlightSearchMatch(text, query) {
+  if (!text) return "";
+  if (!query) return escapeHtml(text);
+  const q = query.trim();
+  if (!q) return escapeHtml(text);
+  try {
+    const escapedQ = escapeRegex(q);
+    const regex = new RegExp(escapedQ, 'gi');
+    let result = '';
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      result += escapeHtml(text.substring(lastIndex, match.index));
+      result += `<mark class="search-match">${escapeHtml(match[0])}</mark>`;
+      lastIndex = regex.lastIndex;
+      if (!regex.global) break;
+    }
+    result += escapeHtml(text.substring(lastIndex));
+    return result;
+  } catch (e) {
+    return escapeHtml(text);
+  }
+}
+
 // 渲染主表格列表
-function renderList(list) {
+function renderList(list, query = "") {
   filteredWords = list;
   const tbody = document.getElementById('tableBody');
   if (!tbody) return;
   tbody.innerHTML = '';
   
+  const searchInput = document.getElementById('searchInput');
+  const q = typeof query === 'string' ? query.trim() : (searchInput ? searchInput.value.trim() : "");
+  
   if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
+    if (q) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
+    }
     return;
   }
   
@@ -816,11 +858,13 @@ function renderList(list) {
     }
     const uid = item._uid;
 
+    const wordTitleHtml = highlightSearchMatch(wordText, q);
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="vertical-align: middle !important; text-align: center;">
         <div class="word-cell-wrap">
-          <span class="word-title">${wordText}</span>
+          <span class="word-title">${wordTitleHtml}</span>
           ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic}</span>` : ''}
         </div>
       </td>
@@ -1736,7 +1780,15 @@ function shuffleCards() {
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
 
 function applyFilter() {
-  const q = (document.getElementById('searchInput') ? document.getElementById('searchInput').value : "").toLowerCase().trim();
+  const searchInput = document.getElementById('searchInput');
+  const rawQ = searchInput ? searchInput.value : "";
+  const q = rawQ.toLowerCase().trim();
+
+  // 方案 1: 检索状态下为表格容器添加 .is-searching 类名，例句高亮优雅降权
+  const viewTableContainer = document.getElementById('viewTableContainer');
+  if (viewTableContainer) {
+    viewTableContainer.classList.toggle('is-searching', q.length > 0);
+  }
 
   const filtered = currentWords.filter(item => {
     // 文本匹配：仅搜索生词本身 (Word Only)
@@ -1754,7 +1806,7 @@ function applyFilter() {
   });
 
   filteredWords = filtered;
-  renderList(filtered);
+  renderList(filtered, rawQ.trim());
 }
 
 function saveAndRefresh() {
