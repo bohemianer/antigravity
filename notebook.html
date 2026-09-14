@@ -2546,6 +2546,13 @@
             </span>
           </div>
 
+          <div class="dropdown-item" id="menuFindVariants" title="检索词库中的复数、过去式等词根重复变体">
+            <span style="display:flex; align-items:center; gap:7px;">
+              <span style="font-size: 13px;">🔍</span>
+              <span>词根变体检索</span>
+            </span>
+          </div>
+
           <div class="dropdown-item" id="menuExportJson">
             <span style="display:flex; align-items:center; gap:7px;">
               <span style="font-size: 13px;">📥</span>
@@ -2560,6 +2567,16 @@
   <main>
     <!-- 视图 1: 笔记本列表 -->
     <div id="viewTableContainer">
+      <div id="variantFilterBanner" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border-radius: 9px; background: var(--bg-muted); border: 1px solid var(--border-warm); font-size: 13px; color: var(--text-main); box-shadow: var(--glass-shadow);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 15px;">🔍</span>
+          <span id="variantFilterText">已检索到 <strong>0</strong> 组词根重复变体</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="btnMergeAllVariants" type="button" class="btn" style="height: 28px; padding: 0 12px; font-size: 12px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #CC785C, #D97706); border: none; border-radius: 6px; cursor: pointer; transition: transform 0.15s, opacity 0.15s;">🪄 一键合并到原型</button>
+          <button id="btnCloseVariantFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
+        </div>
+      </div>
       <div class="table-container">
         <table>
           <thead>

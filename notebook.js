@@ -1746,8 +1746,97 @@ function shuffleCards() {
 }
 
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
+let isVariantFilterActive = false; // 是否处于词根变体检索筛选模式
+
+// 词根屈折变体衍生词提取算法
+function getBaseForms(word) {
+  const w = (word || "").toLowerCase().trim();
+  if (!w) return [];
+  const forms = [w];
+  if (w.endsWith("ies") && w.length > 3) forms.push(w.slice(0, -3) + "y");
+  if (w.endsWith("es") && w.length > 3) forms.push(w.slice(0, -2));
+  if (w.endsWith("s") && !w.endsWith("ss") && w.length > 2) forms.push(w.slice(0, -1));
+  if (w.endsWith("ed") && w.length > 3) {
+    forms.push(w.slice(0, -2));
+    forms.push(w.slice(0, -1));
+  }
+  if (w.endsWith("ing") && w.length > 4) {
+    forms.push(w.slice(0, -3));
+    forms.push(w.slice(0, -3) + "e");
+  }
+  return [...new Set(forms)];
+}
+
+// 扫描全库找出所有词根重复变体群组
+function findWordVariantClusters(list) {
+  const clusters = [];
+  const visitedIndices = new Set();
+
+  list.forEach((item, i) => {
+    if (visitedIndices.has(i)) return;
+    const w = (item.text || item.word || "").toLowerCase().trim();
+    if (!w) return;
+
+    const matchedIndices = [i];
+    const forms = getBaseForms(w);
+
+    list.forEach((other, oIdx) => {
+      if (oIdx === i || visitedIndices.has(oIdx)) return;
+      const ow = (other.text || other.word || "").toLowerCase().trim();
+      if (!ow) return;
+      const oForms = getBaseForms(ow);
+      const isRelated = forms.some(f => oForms.includes(f) || ow === f || w === oForms[0]);
+      if (isRelated) {
+        matchedIndices.push(oIdx);
+      }
+    });
+
+    if (matchedIndices.length > 1) {
+      matchedIndices.forEach(idx => visitedIndices.add(idx));
+      // 将群组内的词按照词长或词根匹配进行排序：词根原型在前，变体在后
+      const groupWords = matchedIndices.map(idx => list[idx]);
+      groupWords.sort((a, b) => {
+        const wa = (a.text || a.word || '').toLowerCase();
+        const wb = (b.text || b.word || '').toLowerCase();
+        return wa.length - wb.length || wa.localeCompare(wb);
+      });
+      clusters.push(groupWords);
+    }
+  });
+
+  return clusters;
+}
+
+// 退出词根变体筛选模式
+function exitVariantFilterMode() {
+  isVariantFilterActive = false;
+  const banner = document.getElementById('variantFilterBanner');
+  if (banner) banner.style.display = 'none';
+  applyFilter();
+}
 
 function applyFilter() {
+  if (isVariantFilterActive) {
+    // 词根变体筛选模式：计算并展示所有变体列表
+    const clusters = findWordVariantClusters(currentWords);
+    const flattened = [];
+    clusters.forEach(cluster => {
+      cluster.forEach(item => flattened.push(item));
+    });
+    filteredWords = flattened;
+    const banner = document.getElementById('variantFilterBanner');
+    const bannerText = document.getElementById('variantFilterText');
+    if (banner && bannerText) {
+      banner.style.display = 'flex';
+      bannerText.innerHTML = `已检索到 <strong>${clusters.length}</strong> 组（共 <strong>${flattened.length}</strong> 词）词根重复变体`;
+    }
+    renderList(flattened, "");
+    return;
+  }
+
+  const banner = document.getElementById('variantFilterBanner');
+  if (banner) banner.style.display = 'none';
+
   const searchInput = document.getElementById('searchInput');
   const rawQ = searchInput ? searchInput.value : "";
   const q = rawQ.toLowerCase().trim();
@@ -2651,6 +2740,114 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // 🔍 词根变体检索菜单项与合并处理
+  const menuFindVariants = document.getElementById('menuFindVariants');
+  if (menuFindVariants) {
+    menuFindVariants.onclick = (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
+
+      const clusters = findWordVariantClusters(currentWords);
+      if (!clusters || clusters.length === 0) {
+        showToast('🎉 词库检查完毕：未发现任何词根重复变体，词库极其纯净！');
+        return;
+      }
+
+      // 切换至列表视图
+      if (currentView === 'flashcard') {
+        switchView('table');
+      }
+
+      isVariantFilterActive = true;
+      applyFilter();
+    };
+  }
+
+  // 退出词根变体筛选
+  const btnCloseVariantFilter = document.getElementById('btnCloseVariantFilter');
+  if (btnCloseVariantFilter) {
+    btnCloseVariantFilter.onclick = (e) => {
+      if (e) e.stopPropagation();
+      SoundFx.playClick();
+      exitVariantFilterMode();
+    };
+  }
+
+  // 一键合并所有词根变体到原型
+  const btnMergeAllVariants = document.getElementById('btnMergeAllVariants');
+  if (btnMergeAllVariants) {
+    btnMergeAllVariants.onclick = (e) => {
+      if (e) e.stopPropagation();
+      SoundFx.playClick();
+
+      const clusters = findWordVariantClusters(currentWords);
+      if (!clusters || clusters.length === 0) {
+        showToast('未发现需要合并的变体');
+        exitVariantFilterMode();
+        return;
+      }
+
+      const totalItems = clusters.reduce((acc, c) => acc + c.length, 0);
+      const msg = `确定将检索到的 ${clusters.length} 组（共 ${totalItems} 词）词根变体智能合并到原型中吗？\n\n` +
+        `• 原型词将完整保留并智能吸收变体中更丰富的例句语境与笔记\n` +
+        `• 艾宾浩斯熟练度将保留群组中的最高级别\n` +
+        `• 冗余变体词将被清理并自动同步至本地与云端`;
+
+      if (!confirm(msg)) return;
+
+      // 执行智能合并
+      const uidsToRemove = new Set();
+      let mergedCount = 0;
+
+      clusters.forEach(cluster => {
+        // cluster[0] 为排序后的原型词
+        const baseItem = cluster[0];
+        const baseWord = (baseItem.text || baseItem.word || "").toLowerCase();
+
+        // 收集群组中所有例句与笔记
+        const contexts = cluster.map(c => (c.context || "").trim()).filter(Boolean);
+        const notes = cluster.map(c => (c.notes || "").trim()).filter(Boolean);
+        const maxSrs = Math.max(...cluster.map(c => parseInt(c.srsLevel) || 0));
+
+        // 如果原型的 context 为空或变体有更长的非空 context，优先选用
+        if (contexts.length > 0) {
+          // 挑选一个包含关键词的最完整例句
+          const bestContext = contexts.find(c => c.toLowerCase().includes(baseWord)) || contexts[0];
+          baseItem.context = bestContext;
+        }
+
+        // 合并笔记（去重）
+        if (notes.length > 0) {
+          const uniqueNotes = [...new Set(notes)];
+          baseItem.notes = uniqueNotes.join("；");
+        }
+
+        baseItem.srsLevel = maxSrs;
+
+        // 其余变体标记为待移除
+        for (let i = 1; i < cluster.length; i++) {
+          const v = cluster[i];
+          const uid = v._uid || `${v.text || v.word}_${v.dateAdded}`;
+          uidsToRemove.add(uid);
+          mergedCount++;
+        }
+      });
+
+      // 从 currentWords 中滤除冗余变体
+      currentWords = currentWords.filter(item => {
+        const uid = item._uid || `${item.text || item.word}_${item.dateAdded}`;
+        return !uidsToRemove.has(uid);
+      });
+
+      // 保存并退出变体模式
+      exitVariantFilterMode();
+      saveAndRefresh();
+      SoundFx.playSuccess();
+      showToast(`✨ 成功合并 ${clusters.length} 组词根变体，清理了 ${mergedCount} 个冗余词！`);
+    };
+  }
+
   // 苹果风格自定义多选下拉菜单交互 (宽度固定为 122px，绝不拉伸走形)
   const srsDropdownBtn = document.getElementById('srsDropdownBtn');
   const srsDropdownMenu = document.getElementById('srsDropdownMenu');
@@ -2743,6 +2940,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (searchInput) {
     searchInput.addEventListener('input', () => {
+      if (isVariantFilterActive) {
+        isVariantFilterActive = false;
+        const banner = document.getElementById('variantFilterBanner');
+        if (banner) banner.style.display = 'none';
+      }
       updateSearchClearState();
       // 若用户在闪卡界面中在搜索框输入内容，智能自动切换到笔记本列表，方便直观查看单词检索结果
       if (currentView === 'flashcard' && searchInput.value.trim().length > 0) {
@@ -2754,6 +2956,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (isVariantFilterActive) {
+          isVariantFilterActive = false;
+          const banner = document.getElementById('variantFilterBanner');
+          if (banner) banner.style.display = 'none';
+        }
         searchInput.value = '';
         updateSearchClearState();
         applyFilter();
@@ -2767,6 +2974,11 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       e.stopPropagation();
       SoundFx.playClick();
+      if (isVariantFilterActive) {
+        isVariantFilterActive = false;
+        const banner = document.getElementById('variantFilterBanner');
+        if (banner) banner.style.display = 'none';
+      }
       if (searchInput) {
         searchInput.value = '';
         updateSearchClearState();
