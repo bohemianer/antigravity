@@ -463,7 +463,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     chrome.storage.local.get({ savedWords: [] }, (result) => {
       const list = result.savedWords || [];
-      const existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
+      // 智能词形关联检测：优先完全匹配 cleanWord；若未命中，自动检索是否已收录该词的原型词条 (如 deficits -> deficit, halted -> halt)
+      let existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
+      const baseForms = getBaseForms(cleanWord);
+      let canonicalWord = cleanWord;
+
+      if (existsIndex === -1 && baseForms.length > 1) {
+        for (const bf of baseForms) {
+          if (bf === cleanWord.toLowerCase()) continue;
+          const bIdx = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === bf.toLowerCase());
+          if (bIdx !== -1) {
+            existsIndex = bIdx;
+            canonicalWord = list[bIdx].text || list[bIdx].word || bf;
+            break;
+          }
+        }
+      }
       
       let prevItem = existsIndex !== -1 ? list[existsIndex] : null;
 
@@ -475,7 +490,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const newDate = Math.max(Date.now(), maxExistingDate + 1);
 
       const item = {
-        text: cleanWord,
+        text: canonicalWord,
         trans: payload.trans || payload.definition || (prevItem ? prevItem.trans : ""),
         phonetic: cleanIPA(payload.phonetic || (prevItem ? prevItem.phonetic : "")),
         context: payload.context || payload.sentence || (prevItem ? prevItem.context : ""),
