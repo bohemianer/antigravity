@@ -234,6 +234,7 @@ function showCard(rect, text, sentence) {
         <div class="agy-header">
           <div class="agy-word-group">
             <span class="agy-word">${safeText}</span>
+            <span class="agy-root-badge" id="agy-root-badge" style="display:none;" title="词库已收录该词的原型"></span>
             <div class="agy-phonetic-pill" id="agy-btn-speak" title="点击朗读发音" style="display:none;">
               <span class="agy-phonetic" id="agy-phonetic"></span>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -347,14 +348,26 @@ function showCard(rect, text, sentence) {
     defEl.innerHTML = formatDefinition(rawResult);
     defEl.style.display = 'block';
 
+    // 智能词根原型感知：若当前划词为复数/过去式，且词库中已收录原型
+    const rootBadge = document.getElementById('agy-root-badge');
+    if (rootBadge && res.isRootSaved && res.canonicalRoot) {
+      rootBadge.innerText = `原型: ${res.canonicalRoot}`;
+      rootBadge.style.display = 'inline-block';
+    }
+
     const saveBtn = document.getElementById('agy-btn-save');
     if (saveBtn) {
       let isSavedState = !!res.isSaved;
+      let isRootSavedState = !!res.isRootSaved;
 
       if (isSavedState) {
         saveBtn.classList.add('agy-saved');
         saveBtn.innerHTML = `<span class="agy-star">✓</span> 已收藏`;
         saveBtn.title = "该词已在生词本中 (点击可更新例句)";
+      } else if (isRootSavedState && res.canonicalRoot) {
+        saveBtn.classList.add('agy-root-saved');
+        saveBtn.innerHTML = `<span class="agy-star">✓</span> 原型已在库`;
+        saveBtn.title = `词库中已收录原型「${res.canonicalRoot}」(点击将当前语境例句融合更新至原型词)`;
       }
 
       saveBtn.onclick = () => {
@@ -375,9 +388,15 @@ function showCard(rect, text, sentence) {
           }
         }, () => {
           saveBtn.disabled = false;
+          saveBtn.classList.remove('agy-root-saved');
           saveBtn.classList.add('agy-saved');
-          saveBtn.innerHTML = `<span class="agy-star">✓</span> 已收藏`;
-          saveBtn.title = "已成功存入生词本并同步云端";
+          if (isRootSavedState && res.canonicalRoot) {
+            saveBtn.innerHTML = `<span class="agy-star">✓</span> 已融合原型`;
+            saveBtn.title = `已将例句成功融合更新至原型「${res.canonicalRoot}」`;
+          } else {
+            saveBtn.innerHTML = `<span class="agy-star">✓</span> 已收藏`;
+            saveBtn.title = "已成功存入生词本并同步云端";
+          }
         });
       };
     }

@@ -1895,6 +1895,8 @@ function openAddModal() {
   originalEditingWord = "";
   vocabForm.reset();
   if (autoFillStatus) autoFillStatus.style.display = "none";
+  const variantWarn = document.getElementById('wordVariantWarning');
+  if (variantWarn) variantWarn.style.display = "none";
   modal.style.display = "flex";
   document.getElementById('inputWord').focus();
 }
@@ -1905,6 +1907,9 @@ function openEditModal(idx) {
   editIndexInput.value = idx.toString();
   const item = currentWords[idx];
   if (!item) return;
+
+  const variantWarn = document.getElementById('wordVariantWarning');
+  if (variantWarn) variantWarn.style.display = "none";
 
   const editUidInput = document.getElementById('editUid');
   if (editUidInput) editUidInput.value = item._uid || "";
@@ -2105,6 +2110,45 @@ document.addEventListener('DOMContentLoaded', () => {
       autoFillStatus.style.display = 'inline';
     }
 
+    // 智能词根原型感知检测 (仅在“添加新词条”模式下生效)
+    const variantWarn = document.getElementById('wordVariantWarning');
+    const variantWarnText = document.getElementById('variantWarningText');
+    const btnSwitchToRoot = document.getElementById('btnSwitchToRootEdit');
+
+    if (editIndexInput.value === "-1") {
+      const lowerWord = text.toLowerCase();
+      const forms = getBaseForms(lowerWord);
+      let foundRootItem = null;
+      let foundRootIdx = -1;
+
+      for (const f of forms) {
+        if (f === lowerWord) continue;
+        const idx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === f);
+        if (idx !== -1) {
+          foundRootItem = currentWords[idx];
+          foundRootIdx = idx;
+          break;
+        }
+      }
+
+      if (foundRootItem && variantWarn && variantWarnText && btnSwitchToRoot) {
+        const rootWord = foundRootItem.text || foundRootItem.word || "";
+        const srsLv = foundRootItem.srsLevel !== undefined ? foundRootItem.srsLevel : 0;
+        const lvName = ["生疏待背", "初识阶段", "巩固阶段", "熟练掌握"][srsLv] || `Lv.${srsLv}`;
+        variantWarnText.innerHTML = `检测到词库中已存在原型词条 <strong>「${rootWord}」</strong> (${lvName})`;
+        variantWarn.style.display = 'block';
+
+        btnSwitchToRoot.onclick = () => {
+          SoundFx.playClick();
+          openEditModal(foundRootIdx);
+        };
+      } else if (variantWarn) {
+        variantWarn.style.display = 'none';
+      }
+    } else if (variantWarn) {
+      variantWarn.style.display = 'none';
+    }
+
     chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (res) => {
       if (!res) {
         if (autoFillStatus) autoFillStatus.style.display = 'none';
@@ -2134,7 +2178,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearTimeout(autoLookupTimeout);
       autoLookupTimeout = setTimeout(() => {
         handleWordInputAutoFill(e.target.value);
-      }, 400);
+      }, 300);
     });
     inputWordEl.addEventListener('blur', (e) => {
       handleWordInputAutoFill(e.target.value);
@@ -2591,7 +2635,55 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (idx === -1) {
-        // 1. 手动添加新词条：计算全库最高时间戳，确保新加入的词必定排在最顶端（第 1 位）
+        // 1. 手动添加新词条：检测词库中是否已存在该词的同名词或词根原型 (如输入 deficits，库中已有 deficit)
+        const lowerWord = word.toLowerCase().trim();
+        const forms = getBaseForms(lowerWord);
+        let rootIdx = -1;
+        
+        for (const f of forms) {
+          if (f === lowerWord) continue;
+          const found = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === f);
+          if (found !== -1) {
+            rootIdx = found;
+            break;
+          }
+        }
+
+        if (rootIdx !== -1) {
+          const rootItem = currentWords[rootIdx];
+          const rootWord = rootItem.text || rootItem.word || forms[1];
+          const shouldMerge = confirm(
+            `💡 智能词根归一提醒：\n\n` +
+            `词库中已收录该词的原型「${rootWord}」！\n\n` +
+            `点击【确定】：将本次录入的例句、笔记与释义自动融合更新到原型「${rootWord}」中（推荐，避免重复冗余）；\n` +
+            `点击【取消】：仍将「${word}」作为独立条目录入。`
+          );
+
+          if (shouldMerge) {
+            // 将新例句与笔记融合进原型词条
+            if (context) {
+              rootItem.context = rootItem.context ? (rootItem.context + "\n" + context) : context;
+            }
+            if (notes) {
+              rootItem.notes = rootItem.notes ? (rootItem.notes + "；" + notes) : notes;
+            }
+            if (!rootItem.trans && trans) {
+              rootItem.trans = trans;
+            }
+            if (!rootItem.phonetic && phonetic) {
+              rootItem.phonetic = cleanIPA(phonetic);
+            }
+            rootItem.updatedAt = Date.now();
+
+            closeModal();
+            saveAndRefresh();
+            SoundFx.playSuccess();
+            showToast(`✨ 已成功将内容智能融合更新至原型「${rootWord}」！`);
+            return;
+          }
+        }
+
+        // 手动添加独立新词条：计算全库最高时间戳，确保新加入的词必定排在最顶端（第 1 位）
         const maxExistingDate = currentWords.reduce((max, w) => {
           const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
           return Math.max(max, t);
@@ -2619,6 +2711,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentWords.unshift(newItem);
         closeModal();
         saveAndRefresh();
+        showToast(`✨ 生词「${word}」已成功收录入库！`);
       } else {
         // 2. 编辑修改已有单词（即便修改了单词本体拼写，如 halted 改为 halt）：原地更新原词条，严格保留原有 date 创建时间，顺序绝对不变
         const oldWordText = originalEditingWord || (existingItem ? (existingItem.text || existingItem.word) : "");

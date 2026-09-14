@@ -417,18 +417,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "LOOKUP_WORD") {
     const cleanWord = (request.word || "").trim().toLowerCase();
     
-    // 并行检查本地数据库是否已收录
+    // 并行检查本地数据库是否已收录（包括精确词或词根原型）
     chrome.storage.local.get({ savedWords: [] }, (localRes) => {
       const savedList = (localRes && localRes.savedWords) || [];
-      const existingItem = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord);
-      const isSaved = !!existingItem;
-      const existingNotes = existingItem ? (existingItem.notes || "") : "";
+      const exactItem = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord);
+      const isSaved = !!exactItem;
+      const existingNotes = exactItem ? (exactItem.notes || "") : "";
+
+      // 词根原型检测：若用户划了复数/过去式/进行时等变体词，检索词库中是否已收录其词根原型
+      const baseForms = getBaseForms(cleanWord);
+      let canonicalRootItem = null;
+      if (!exactItem && baseForms.length > 1) {
+        for (const bf of baseForms) {
+          if (bf === cleanWord) continue;
+          const found = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === bf);
+          if (found) {
+            canonicalRootItem = found;
+            break;
+          }
+        }
+      }
 
       smartLookup(request.word)
         .then(result => {
           const safeResult = result || { word: request.word, phonetic: "", definition: "暂无释义" };
           safeResult.isSaved = isSaved;
           safeResult.savedNotes = existingNotes;
+          if (canonicalRootItem) {
+            safeResult.canonicalRoot = canonicalRootItem.text || canonicalRootItem.word;
+            safeResult.isRootSaved = true;
+            safeResult.canonicalItem = canonicalRootItem;
+          } else {
+            safeResult.isRootSaved = false;
+          }
           sendResponse(safeResult);
         })
         .catch(err => {
@@ -437,7 +458,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             phonetic: "",
             definition: "查询超时，请重试",
             isSaved: isSaved,
-            savedNotes: existingNotes
+            savedNotes: existingNotes,
+            isRootSaved: !!canonicalRootItem,
+            canonicalRoot: canonicalRootItem ? (canonicalRootItem.text || canonicalRootItem.word) : null
           });
         });
     });

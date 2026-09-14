@@ -2812,6 +2812,15 @@
             <span id="wordAutoFillStatus" style="font-size: 11.5px; color: var(--claude-terracotta); display: none;">✨ 正在智能联想音标与释义...</span>
           </div>
           <input type="text" id="inputWord" class="form-input" required placeholder="输入英文单词或短语 (自动补全音标与释义)" autocomplete="off">
+          <div id="wordVariantWarning" style="display:none; margin-top: 8px; padding: 8px 12px; background: rgba(217, 119, 6, 0.1); border: 1px solid rgba(217, 119, 6, 0.3); border-radius: 7px; font-size: 12px; color: var(--text-main); line-height: 1.45;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span>💡</span>
+                <span id="variantWarningText">词库中已存在原型词条</span>
+              </div>
+              <button type="button" id="btnSwitchToRootEdit" class="btn" style="height: 24px; padding: 0 8px; font-size: 11px; font-weight: 600; color: #fff; background: #D97706; border: none; border-radius: 5px; cursor: pointer;">改为编辑已有原型</button>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">国际标准音标</label>
