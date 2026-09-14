@@ -1833,6 +1833,8 @@ function openAddModal() {
   modalTitle.innerText = "添加新词条";
   if (modalSubmitBtn) modalSubmitBtn.innerText = "保存入库";
   editIndexInput.value = "-1";
+  const editUidInput = document.getElementById('editUid');
+  if (editUidInput) editUidInput.value = "";
   originalEditingWord = "";
   vocabForm.reset();
   if (autoFillStatus) autoFillStatus.style.display = "none";
@@ -1846,6 +1848,9 @@ function openEditModal(idx) {
   editIndexInput.value = idx.toString();
   const item = currentWords[idx];
   if (!item) return;
+
+  const editUidInput = document.getElementById('editUid');
+  if (editUidInput) editUidInput.value = item._uid || "";
 
   originalEditingWord = (item.text || item.word || "").trim();
   document.getElementById('inputWord').value = item.text || item.word || "";
@@ -2501,129 +2506,154 @@ document.addEventListener('DOMContentLoaded', () => {
 
   vocabForm.onsubmit = (e) => {
     e.preventDefault();
-    const idx = parseInt(editIndexInput.value);
-    const word = document.getElementById('inputWord').value.trim();
-    const phonetic = document.getElementById('inputPhonetic').value.trim();
-    const trans = document.getElementById('inputTrans').value.trim();
-    const context = document.getElementById('inputContext').value.trim();
-    const notes = document.getElementById('inputNotes').value.trim();
-    const existingItem = (idx >= 0 && currentWords[idx]) ? currentWords[idx] : null;
-
-    if (idx === -1) {
-      // 1. 手动添加新词条：计算全库最高时间戳，确保新加入的词必定排在最顶端（第 1 位）
-      const maxExistingDate = currentWords.reduce((max, w) => {
-        const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
-        return Math.max(max, t);
-      }, 0);
-      const newDate = Math.max(Date.now(), maxExistingDate + 1);
-
-      const newItem = {
-        text: word,
-        trans: trans,
-        phonetic: cleanIPA(phonetic),
-        context: context,
-        title: "手动录入",
-        url: "",
-        date: newDate,
-        updatedAt: Date.now(),
-        notes: notes,
-        srsLevel: 0,
-        srsNextReview: 0,
-        srsReviews: 0
-      };
-
-      // 若库中已存在同名单词，先完全清理旧记录再置顶更新 (防止重复条目堆积)
-      currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== word.toLowerCase().trim());
-      currentWords.unshift(newItem);
-      closeModal();
-      saveAndRefresh();
-    } else {
-      // 2. 编辑修改已有单词（即便修改了单词本体拼写，如 girls 改为 girl）：原地更新原词条，严格保留原有 date 创建时间，顺序绝对不变
-      const oldWordText = originalEditingWord || (existingItem ? (existingItem.text || existingItem.word) : "");
-      const isWordRenamed = oldWordText && oldWordText.toLowerCase().trim() !== word.toLowerCase().trim();
-
-      const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
-      const originalUid = existingItem ? existingItem._uid : null;
-      const updatedItem = {
-        text: word,
-        trans: trans,
-        phonetic: cleanIPA(phonetic),
-        context: context,
-        title: existingItem ? (existingItem.title || "") : "",
-        url: existingItem ? (existingItem.url || "") : "",
-        date: originalDate, // 核心：保持原创建时间戳，牢牢锁定在原有位置！
-        updatedAt: Date.now(),
-        notes: notes,
-        srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
-        srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
-        srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0,
-        _uid: originalUid || ('w_' + originalDate + '_' + Math.random().toString(36).slice(2, 8))
-      };
-
-      // 原地完全覆盖更新当前索引位置的词条 (按编辑后的内容直接覆盖原词条)
-      currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
-
-      // 如果把单词修改为生词本中其他位置已存在的同名单词，合并去重：移除库中原有的那条重复词，由当前编辑后的条目直接覆盖替代！
-      if (isWordRenamed) {
-        const dupIdx = currentWords.findIndex((w, i) => i !== idx && (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
-        if (dupIdx !== -1) {
-          currentWords.splice(dupIdx, 1);
-          if (dupIdx < idx) {
-            idx--;
-          }
+    try {
+      let idx = parseInt(editIndexInput.value);
+      const editUidEl = document.getElementById('editUid');
+      const editUid = editUidEl ? editUidEl.value : "";
+      if (editUid && idx >= 0) {
+        const foundIdx = currentWords.findIndex(w => w._uid === editUid);
+        if (foundIdx !== -1) {
+          idx = foundIdx;
         }
       }
 
-      closeModal();
+      const word = document.getElementById('inputWord').value.trim();
+      const phonetic = document.getElementById('inputPhonetic').value.trim();
+      const trans = document.getElementById('inputTrans').value.trim();
+      const context = document.getElementById('inputContext').value.trim();
+      const notes = document.getElementById('inputNotes').value.trim();
+      const existingItem = (idx >= 0 && currentWords[idx]) ? currentWords[idx] : null;
 
-      if (isWordRenamed) {
-        // 单词本体被重命名：
-        // 1. 保存本地更新
-        chrome.storage.local.set({ savedWords: currentWords }, () => {
-          // 2. 关键：立即执行 WebDAV 覆盖同步，彻底抹除云端的旧词 (如 girls)，防止云端拉取时双份合并！
-          doWebDAVOverwrite();
-          // 3. 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
-          const hasOldWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === oldWordText.toLowerCase().trim());
-          if (!hasOldWord) {
-            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-              if (r.eudicToken) {
-                const engine = new EudicSyncEngine(r.eudicToken);
-                engine.deleteWord(oldWordText).catch(err => {
-                  console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
-                });
-              }
-            });
-          }
-          applyFilter();
-        });
-      } else {
+      if (!word) {
+        alert('请输入单词或短语');
+        return;
+      }
+      if (!trans) {
+        alert('请输入释义');
+        return;
+      }
+
+      if (idx === -1) {
+        // 1. 手动添加新词条：计算全库最高时间戳，确保新加入的词必定排在最顶端（第 1 位）
+        const maxExistingDate = currentWords.reduce((max, w) => {
+          const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
+          return Math.max(max, t);
+        }, 0);
+        const newDate = Math.max(Date.now(), maxExistingDate + 1);
+
+        const newItem = {
+          text: word,
+          trans: trans,
+          phonetic: cleanIPA(phonetic),
+          context: context,
+          title: "手动录入",
+          url: "",
+          date: newDate,
+          updatedAt: Date.now(),
+          notes: notes,
+          srsLevel: 0,
+          srsNextReview: 0,
+          srsReviews: 0,
+          _uid: 'w_' + newDate + '_' + Math.random().toString(36).slice(2, 9)
+        };
+
+        // 若库中已存在同名单词，先完全清理旧记录再置顶更新 (防止重复条目堆积)
+        currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== word.toLowerCase().trim());
+        currentWords.unshift(newItem);
+        closeModal();
         saveAndRefresh();
-      }
-    }
+      } else {
+        // 2. 编辑修改已有单词（即便修改了单词本体拼写，如 halted 改为 halt）：原地更新原词条，严格保留原有 date 创建时间，顺序绝对不变
+        const oldWordText = originalEditingWord || (existingItem ? (existingItem.text || existingItem.word) : "");
+        const isWordRenamed = oldWordText && oldWordText.toLowerCase().trim() !== word.toLowerCase().trim();
 
-    // 只有在【显式编辑当前闪卡单词】(idx >= 0) 时，才即时更新并重绘当前卡片；
-    // 若是在闪卡界面点击右上角「➕ 添加新词」(idx === -1)，只存入生词库，绝不覆盖当前正在测试的闪卡词条！
-    if (idx >= 0 && currentView === 'flashcard' && cardList.length > 0) {
-      const wasRevealed = cardRevealed;
-      const currentTarget = cardList[cardIndex];
-      if (currentTarget) {
-        const found = currentWords[idx] || currentWords.find(w => (w._uid && currentTarget._uid && w._uid === currentTarget._uid) || (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
-        if (found) {
-          cardList[cardIndex] = Object.assign({}, cardList[cardIndex], found);
-          renderFlashcard();
-          if (wasRevealed) {
-            cardRevealed = true;
-            const ansBox = document.getElementById('fcAnswerBox');
-            const hint = document.getElementById('cardHintText');
-            const barUnrevealed = document.getElementById('smartBarUnrevealed');
-            const barRevealed = document.getElementById('smartBarRevealed');
-            if (ansBox) ansBox.style.display = 'block';
-            if (hint) hint.innerText = "请根据记忆情况进行反馈";
-            if (barUnrevealed) barUnrevealed.style.display = 'none';
-            if (barRevealed) barRevealed.style.display = 'flex';
+        const originalDate = existingItem ? (existingItem.date || Date.now()) : Date.now();
+        const originalUid = existingItem ? existingItem._uid : (editUid || ('w_' + originalDate + '_' + Math.random().toString(36).slice(2, 9)));
+        const updatedItem = {
+          text: word,
+          trans: trans,
+          phonetic: cleanIPA(phonetic),
+          context: context,
+          title: existingItem ? (existingItem.title || "") : "",
+          url: existingItem ? (existingItem.url || "") : "",
+          date: originalDate, // 核心：保持原创建时间戳，牢牢锁定在原有位置！
+          updatedAt: Date.now(),
+          notes: notes,
+          srsLevel: existingItem ? (existingItem.srsLevel || 0) : 0,
+          srsNextReview: existingItem ? (existingItem.srsNextReview || 0) : 0,
+          srsReviews: existingItem ? (existingItem.srsReviews || 0) : 0,
+          _uid: originalUid
+        };
+
+        // 原地完全覆盖更新当前索引位置的词条 (按编辑后的内容直接覆盖原词条)
+        currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
+
+        // 如果把单词修改为生词本中其他位置已存在的同名单词，合并去重：移除库中原有的那条重复词，由当前编辑后的条目直接覆盖替代！
+        if (isWordRenamed) {
+          const dupIdx = currentWords.findIndex((w, i) => i !== idx && (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
+          if (dupIdx !== -1) {
+            currentWords.splice(dupIdx, 1);
+            if (dupIdx < idx) {
+              idx--;
+            }
+          }
+        }
+
+        closeModal();
+
+        if (isWordRenamed) {
+          // 单词本体被重命名：
+          // 1. 保存本地更新
+          chrome.storage.local.set({ savedWords: currentWords }, () => {
+            // 2. 关键：立即执行 WebDAV 覆盖同步，彻底抹除云端的旧词 (如 girls)，防止云端拉取时双份合并！
+            doWebDAVOverwrite();
+            // 3. 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
+            const hasOldWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === oldWordText.toLowerCase().trim());
+            if (!hasOldWord) {
+              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+                if (r.eudicToken) {
+                  const engine = new EudicSyncEngine(r.eudicToken);
+                  engine.deleteWord(oldWordText).catch(err => {
+                    console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
+                  });
+                }
+              });
+            }
+            applyFilter();
+            updateStats();
+          });
+        } else {
+          saveAndRefresh();
+        }
+      }
+
+      // 只有在【显式编辑当前闪卡单词】(idx >= 0) 时，才即时更新并重绘当前卡片；
+      // 若是在闪卡界面点击右上角「➕ 添加新词」(idx === -1)，只存入生词库，绝不覆盖当前正在测试的闪卡词条！
+      if (idx >= 0 && currentView === 'flashcard' && cardList.length > 0) {
+        const wasRevealed = cardRevealed;
+        const currentTarget = cardList[cardIndex];
+        if (currentTarget) {
+          const found = currentWords[idx] || currentWords.find(w => (w._uid && currentTarget._uid && w._uid === currentTarget._uid) || (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
+          if (found) {
+            cardList[cardIndex] = Object.assign({}, cardList[cardIndex], found);
+            renderFlashcard();
+            if (wasRevealed) {
+              cardRevealed = true;
+              const ansBox = document.getElementById('fcAnswerBox');
+              const hint = document.getElementById('cardHintText');
+              const barUnrevealed = document.getElementById('smartBarUnrevealed');
+              const barRevealed = document.getElementById('smartBarRevealed');
+              if (ansBox) ansBox.style.display = 'block';
+              if (hint) hint.innerText = "请根据记忆情况进行反馈";
+              if (barUnrevealed) barUnrevealed.style.display = 'none';
+              if (barRevealed) barRevealed.style.display = 'flex';
+            }
           }
         }
       }
+    } catch (err) {
+      console.error('保存词条失败:', err);
+      alert('保存词条失败: ' + (err && err.message ? err.message : String(err)));
     }
   };
 
