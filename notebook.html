@@ -18,16 +18,16 @@
     :root, [data-applied-theme="light"] {
       --bg-warm: #FFF1E5; /* FT 经典金融时报暖黄报纸底色 (Financial Times Paper) */
       --bg-card: #FFFFFF; /* 实体纯白卡片，与 FT 黄底形成鲜明层次且 0 穿透重影 */
-      --bg-card-hover: #FDF6EE;
+      --bg-card-hover: #FAF7F2;
       --bg-header: #FFF1E5; /* 顶栏与 FT 暖黄报纸底色浑然一体 */
-      --bg-muted: #F2DFCE; /* FT Wheat 暖麦色 (用于切换器滑轨、输入框微底色) */
-      --bg-subtle: #F6E5D5; /* FT Subtle 暖纸过渡色 (用于 thead 表头与统计卡片) */
-      --border-warm: #EBD8C7; /* FT 暖调边框 */
-      --border-light: #F4E7DB;
-      --border-subtle: #DFCBBA;
-      --border-glass: #EBD8C7;
+      --bg-muted: #F8EFE6; /* 极轻柔暖槽色 (用于切换器滑轨，温润低对比度，彻底消除原深褐色割裂感) */
+      --bg-subtle: #FAF8F5; /* 极轻柔暖白过渡色 (用于 thead 表头，与白底表格轻柔衔接，彻底消除原深褐色压迫感) */
+      --border-warm: #EFE5DB; /* 极细淡暖调边框 */
+      --border-light: #F5EEE6;
+      --border-subtle: #E5D9CD;
+      --border-glass: #EFE5DB;
       --glass-blur: none;
-      --glass-shadow: 0 4px 16px rgba(120, 70, 30, 0.05), 0 1px 3px rgba(120, 70, 30, 0.03);
+      --glass-shadow: 0 4px 16px rgba(120, 70, 30, 0.04), 0 1px 3px rgba(120, 70, 30, 0.02);
       --glass-specular: 0 0 0 0 transparent;
       --text-main: #1D1D1F;
       --text-title: #111113;
@@ -675,7 +675,7 @@
     table { width: 100%; border-collapse: collapse; text-align: left; }
     thead tr {
       background: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-warm);
+      border-bottom: 1px solid var(--border-light);
     }
     th {
       padding: 14px 20px;
