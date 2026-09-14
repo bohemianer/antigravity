@@ -486,7 +486,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         notes: payload.notes !== undefined ? payload.notes : (prevItem ? prevItem.notes : ""),
         srsLevel: (prevItem && prevItem.srsLevel !== undefined) ? prevItem.srsLevel : (payload.srsLevel !== undefined ? payload.srsLevel : 0),
         srsNextReview: (prevItem && prevItem.srsNextReview !== undefined) ? prevItem.srsNextReview : (payload.srsNextReview || 0),
-        srsReviews: (prevItem && prevItem.srsReviews !== undefined) ? prevItem.srsReviews : (payload.srsReviews || 0)
+        srsReviews: (prevItem && prevItem.srsReviews !== undefined) ? prevItem.srsReviews : (payload.srsReviews || 0),
+        _uid: (prevItem && prevItem._uid) ? prevItem._uid : ('w_' + newDate + '_' + Math.random().toString(36).slice(2, 9))
       };
 
       if (existsIndex !== -1) {

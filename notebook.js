@@ -768,7 +768,7 @@ function getMasteryInfo(level, reviews = 0) {
 
 // 快速设置某个单词的熟练度 (精准定位到具体单条记录)
 function setWordMastery(targetUid, targetLevel) {
-  const item = currentWords.find(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetUid || "").toLowerCase().trim());
+  const item = currentWords.find(w => (targetUid && w._uid) ? w._uid === targetUid : (w.text || w.word || "").toLowerCase().trim() === (targetUid || "").toLowerCase().trim());
   if (!item) return;
 
   if (targetLevel === -1) {
@@ -918,7 +918,7 @@ function renderList(list) {
       e.stopPropagation();
       const targetUid = btn.getAttribute('data-uid');
       const targetWord = btn.getAttribute('data-word');
-      const idx = currentWords.findIndex(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+      const idx = currentWords.findIndex(w => (targetUid && w._uid) ? w._uid === targetUid : (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
       if (idx !== -1) {
         openEditModal(idx);
       }
@@ -930,9 +930,9 @@ function renderList(list) {
       e.stopPropagation();
       const targetUid = btn.getAttribute('data-uid');
       const targetWord = btn.getAttribute('data-word');
-      if (!targetUid) return;
+      if (!targetUid && !targetWord) return;
 
-      const idx = currentWords.findIndex(w => (w._uid && w._uid === targetUid) || (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
+      const idx = currentWords.findIndex(w => (targetUid && w._uid) ? w._uid === targetUid : (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
       if (idx === -1) return;
 
       if (confirm(`确定要从生词本中删除「${targetWord}」吗？`)) {
@@ -1957,12 +1957,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // 读取本地生词库 (默认空白 [])
   chrome.storage.local.get({ savedWords: [] }, (res) => {
     const list = res.savedWords || [];
+    let needSave = false;
     currentWords = list.map(item => {
       item.notes = cleanNotes(item.notes);
       if (item.phonetic) item.phonetic = cleanIPA(item.phonetic);
       if (typeof item.srsLevel === 'undefined') item.srsLevel = 0;
+      if (!item._uid) {
+        item._uid = 'w_' + (item.date || Date.now()) + '_' + Math.random().toString(36).slice(2, 9);
+        needSave = true;
+      }
       return item;
     });
+    if (needSave) {
+      chrome.storage.local.set({ savedWords: currentWords });
+    }
     
     applyFilter();
   });
@@ -2479,11 +2487,8 @@ document.addEventListener('DOMContentLoaded', () => {
         srsReviews: 0
       };
 
-      // 若库中已存在同名单词，先移除旧记录再置顶更新
-      const existIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
-      if (existIdx !== -1) {
-        currentWords.splice(existIdx, 1);
-      }
+      // 若库中已存在同名单词，先完全清理旧记录再置顶更新 (防止重复条目堆积)
+      currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== word.toLowerCase().trim());
       currentWords.unshift(newItem);
       closeModal();
       saveAndRefresh();
