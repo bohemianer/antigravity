@@ -2825,64 +2825,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  const btnForcePull = document.getElementById('davForcePullBtn');
-  if (btnForcePull) {
-    btnForcePull.onclick = () => {
-      const cfg = {
-        serverUrl: document.getElementById('davServer').value.trim(),
-        username: document.getElementById('davUsername').value.trim(),
-        password: document.getElementById('davPassword').value.trim(),
-        filePath: document.getElementById('davPath').value.trim(),
-        enabled: document.getElementById('davEnable').checked
-      };
-      if (!cfg.username || !cfg.password) {
-        showToast('请先填写坚果云账户与应用密码！', 'warning');
-        return;
-      }
-      if (!confirm("⚠️ 确定要从坚果云强制拉取云端数据覆盖当前电脑本地数据吗？\n\n这常用于公司电脑完全与家中电脑的最新云端数据对齐。")) return;
-      webdavConfig = cfg;
-      chrome.storage.sync.set({ webdavConfig: cfg }, () => {
-        doWebDAVPullForce((res) => {
-          if (res && res.success) {
-            closeDavModal();
-            showToast(`🎉 已成功从坚果云拉取云端全量数据 (${res.count} 词) 覆盖本地！`, 'success');
-          } else {
-            showToast(`❌ 拉取失败: ${res ? res.error : '网络错误'}`, 'error');
-          }
-        });
-      });
-    };
-  }
-
-  const btnForcePush = document.getElementById('davForcePushBtn');
-  if (btnForcePush) {
-    btnForcePush.onclick = () => {
-      const cfg = {
-        serverUrl: document.getElementById('davServer').value.trim(),
-        username: document.getElementById('davUsername').value.trim(),
-        password: document.getElementById('davPassword').value.trim(),
-        filePath: document.getElementById('davPath').value.trim(),
-        enabled: document.getElementById('davEnable').checked
-      };
-      if (!cfg.username || !cfg.password) {
-        showToast('请先填写坚果云账户与应用密码！', 'warning');
-        return;
-      }
-      if (!confirm(`⚠️ 确定要将当前电脑的生词库 (${currentWords.length} 词) 完整覆盖重写至坚果云吗？\n\n云端原有词库将被当前电脑的数据完全覆盖替代。`)) return;
-      webdavConfig = cfg;
-      chrome.storage.sync.set({ webdavConfig: cfg }, () => {
-        doWebDAVOverwrite((res) => {
-          if (res && res.success) {
-            closeDavModal();
-            showToast(`🎉 已成功将当前电脑词库 (${res.count} 词) 完整覆盖重写至坚果云！`, 'success');
-          } else {
-            showToast(`❌ 覆盖上传失败: ${res ? res.error : '网络错误'}`, 'error');
-          }
-        });
-      });
-    };
-  }
-
   document.getElementById('davTestBtn').onclick = () => {
     const cfg = {
       serverUrl: document.getElementById('davServer').value.trim(),

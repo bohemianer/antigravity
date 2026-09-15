@@ -472,10 +472,14 @@ async function autoSyncWebDAV(wordsList) {
     const cfg = res.webdavConfig;
     if (cfg && cfg.enabled && cfg.username && cfg.password) {
       try {
-        chrome.storage.local.get({ deletedWords: {} }, async (delRes) => {
+        chrome.storage.local.get({ deletedWords: {}, lastWebDAVSyncTime: 0 }, async (delRes) => {
           const client = new WebDAVClient(cfg);
-          const { mergedList, mergedDeletions } = await client.performSync(wordsList, delRes.deletedWords || {});
-          chrome.storage.local.set({ savedWords: mergedList, deletedWords: mergedDeletions });
+          const { mergedList, mergedDeletions, syncTime } = await client.performSync(wordsList, delRes.deletedWords || {}, delRes.lastWebDAVSyncTime || 0);
+          chrome.storage.local.set({
+            savedWords: mergedList,
+            deletedWords: mergedDeletions,
+            lastWebDAVSyncTime: syncTime || Date.now()
+          });
         });
       } catch (err) {
         console.warn("WebDAV Auto Sync warning:", err);
@@ -632,13 +636,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "MANUAL_WEBDAV_SYNC") {
-    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, async (localRes) => {
       const list = localRes.savedWords || [];
       const deletions = localRes.deletedWords || {};
+      const lastSync = localRes.lastWebDAVSyncTime || 0;
       try {
         const client = new WebDAVClient(request.config);
-        const { mergedList, mergedDeletions } = await client.performSync(list, deletions);
-        chrome.storage.local.set({ savedWords: mergedList, deletedWords: mergedDeletions }, () => {
+        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+        chrome.storage.local.set({
+          savedWords: mergedList,
+          deletedWords: mergedDeletions,
+          lastWebDAVSyncTime: syncTime || Date.now()
+        }, () => {
           sendResponse({ success: true, count: mergedList.length });
         });
       } catch (err) {

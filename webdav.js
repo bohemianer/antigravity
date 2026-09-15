@@ -151,8 +151,8 @@ class WebDAVClient {
     return cleanMap;
   }
 
-  // 4. 双向智能逐词深度合并 (Two-way Deep Word-by-Word Merge with Deletion Tombstones)
-  mergeWords(localList = [], remoteList = [], deletionsMap = {}) {
+  // 4. 双向智能逐词深度合并 (Two-way Deep Word-by-Word Merge with Deletion Tombstones & Timeline)
+  mergeWords(localList = [], remoteList = [], deletionsMap = {}, lastSyncTime = 0) {
     const map = new Map();
 
     // 1. 先存入云端所有词 (遵从删除墓碑判断)
@@ -170,7 +170,7 @@ class WebDAVClient {
       map.set(k, Object.assign({}, rItem));
     });
 
-    // 2. 逐词比对并合并本地词 (遵从删除墓碑判断)
+    // 2. 逐词比对并合并本地词 (遵从删除墓碑与同步时间线判断)
     localList.forEach(lItem => {
       const k = (lItem.text || lItem.word || "").toLowerCase().trim();
       if (!k) return;
@@ -183,8 +183,15 @@ class WebDAVClient {
       }
 
       if (!map.has(k)) {
-        // 云端没有且未被删除，把本地的新词补充进去
-        map.set(k, Object.assign({}, lItem));
+        // 云端没有该词：
+        // 关键智能判定：该词是离线期间本地新增的？还是在其他设备上已被删除？
+        // 如果此设备曾经成功同步过 (lastSyncTime > 0)，且此词的创建/修改时间早于上次同步时间，
+        // 说明此词在上次同步时就已存在，但在云端却消失了 -> 这表明该词已被其他设备在云端删除！
+        // 此时绝不能将其当成新词传回云端复活，而应当从本地顺应删除！
+        const isOfflineNewAddition = (!lastSyncTime || lastSyncTime <= 0) ? true : (lUpdate > lastSyncTime);
+        if (isOfflineNewAddition) {
+          map.set(k, Object.assign({}, lItem));
+        }
       } else {
         // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
         const rItem = map.get(k);
@@ -227,8 +234,8 @@ class WebDAVClient {
     return result;
   }
 
-  // 5. 执行一次完整的遵从墓碑规则的双向增量同步 (Sync)
-  async performSync(localList = [], localDeletions = {}) {
+  // 5. 执行一次完整的遵从墓碑规则与增量时间线的双向增量同步 (Sync)
+  async performSync(localList = [], localDeletions = {}, lastSyncTime = 0) {
     // 1. 先安全拉取云端已有词库与删除墓碑表
     const remoteList = await this.downloadWords();
     const remoteDeletions = await this.downloadDeletions();
@@ -239,8 +246,8 @@ class WebDAVClient {
       mergedDeletions[k] = Math.max(mergedDeletions[k] || 0, ts || 0);
     }
 
-    // 3. 遵从墓碑规则的双向字段级深度合并
-    const mergedList = this.mergeWords(localList || [], remoteList || [], mergedDeletions);
+    // 3. 遵从墓碑规则与时间线的双向字段级深度合并
+    const mergedList = this.mergeWords(localList || [], remoteList || [], mergedDeletions, lastSyncTime);
 
     // 4. 上传合并后的全集与墓碑表到云端
     await this.uploadWords(mergedList);
@@ -248,7 +255,8 @@ class WebDAVClient {
 
     return {
       mergedList,
-      mergedDeletions: cleanedDeletions
+      mergedDeletions: cleanedDeletions,
+      syncTime: Date.now()
     };
   }
 }
