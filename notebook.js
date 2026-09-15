@@ -235,15 +235,8 @@ const SoundFx = {
 // 连击激励已根据用户需求彻底移除
 function updateComboPill() {}
 
-function updateStats() {
-  try {
-    if (typeof updateFlashcardList === 'function' && typeof currentView !== 'undefined' && currentView === 'flashcard') {
-      updateFlashcardList();
-    }
-  } catch (e) {
-    console.warn("updateStats error:", e);
-  }
-}
+// 词库与同步统计辅助函数（安全兜底，绝不打断当前进行中的闪卡批次复习）
+function updateStats() {}
 
 // 多巴胺微粒子爆破反馈 (Sparkle Particle Burst on Good/Mastered)
 function createSparkleBurst(x, y) {
