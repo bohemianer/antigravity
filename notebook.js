@@ -11,6 +11,60 @@ let cardRevealed = false;
 let currentView = 'table';
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
 
+// 全局 Apple 风格优雅悬浮 Toast 消息组件
+let agyToastTimer = null;
+function showToast(msg, type = 'info', duration = 2800) {
+  let toastEl = document.getElementById('agyGlobalToast');
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.id = 'agyGlobalToast';
+    toastEl.style.cssText = `
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      z-index: 999999;
+      background: rgba(26, 26, 26, 0.94);
+      color: #f5f5f7;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 9999px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: pre-wrap;
+      text-align: center;
+      max-width: 90vw;
+      line-height: 1.4;
+    `;
+    document.body.appendChild(toastEl);
+  }
+
+  // 根据类型定制微边框高亮
+  let borderHighlight = 'rgba(255, 255, 255, 0.16)';
+  if (type === 'error') borderHighlight = 'rgba(239, 68, 68, 0.5)';
+  else if (type === 'success') borderHighlight = 'rgba(16, 185, 129, 0.5)';
+  else if (type === 'warning') borderHighlight = 'rgba(245, 158, 11, 0.5)';
+
+  toastEl.style.borderColor = borderHighlight;
+  toastEl.innerHTML = msg;
+  toastEl.style.opacity = '1';
+  toastEl.style.transform = 'translateX(-50%) translateY(0)';
+
+  if (agyToastTimer) clearTimeout(agyToastTimer);
+  agyToastTimer = setTimeout(() => {
+    toastEl.style.opacity = '0';
+    toastEl.style.transform = 'translateX(-50%) translateY(-20px)';
+  }, duration);
+}
+
 // 原生零延迟 Web Audio API 物理微触感音效合成引擎 (Zero-Asset Synthetic Haptics)
 const SoundFx = {
   ctx: null,
@@ -622,7 +676,7 @@ function updateSyncBadge(status, text) {
 }
 
 // 全量多端融合同步引擎：欧路词典 OpenAPI 增量拉取 + 坚果云 WebDAV 双向合并
-async function doFullSync(showToast = false) {
+async function doFullSync(notifyUser = false) {
   updateSyncBadge('syncing', '正在同步中...');
 
   let eudicNewCount = 0;
@@ -658,7 +712,7 @@ async function doFullSync(showToast = false) {
     }
   }
 
-  // 2. 紧接着执行坚果云 WebDAV 双向同步
+  // 2. 紧接着执行坚果云 WebDAV 双向同步（遵从墓碑规则）
   if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
     chrome.runtime.sendMessage({
       action: "MANUAL_WEBDAV_SYNC",
@@ -671,58 +725,85 @@ async function doFullSync(showToast = false) {
           if (currentView !== 'flashcard') {
             applyFilter();
           }
+          updateStats();
         });
-        if (showToast) {
-          let msg = `🎉 同步完成！当前生词库共 ${res.count} 词。`;
+        if (notifyUser) {
+          let msg = `🎉 同步完成！词库共 ${res.count} 词。`;
           if (token && eudicNewCount > 0) {
-            msg += `\n\n• 成功从欧路词典新增入库: ${eudicNewCount} 个生词`;
-          } else if (token) {
-            msg += `\n\n• 欧路词典已扫描 (${eudicTotalScanned} 词)，暂无未收录新词`;
+            msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
           }
           if (eudicError) {
-            msg += `\n\n⚠️ 欧路词典同步提示: ${eudicError}`;
+            msg += `\n⚠️ 欧路提示: ${eudicError}`;
           }
-          alert(msg);
+          showToast(msg, 'success', 3500);
         }
       } else {
         updateSyncBadge('disconnected', "同步失败 (请检查密码)");
-        if (showToast) alert(`❌ WebDAV 同步失败: ${res ? res.error : '网络超时或密码错误'}`);
+        if (notifyUser) showToast(`❌ WebDAV 同步失败: ${res ? res.error : '网络超时或密码错误'}`, 'error', 4000);
       }
     });
   } else {
     // 仅欧路模式
     if (token) {
       updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
-      if (showToast) {
+      if (notifyUser) {
         if (eudicError) {
-          alert(`❌ 欧路同步失败: ${eudicError}`);
+          showToast(`❌ 欧路同步失败: ${eudicError}`, 'error', 4000);
         } else {
-          alert(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 个未收录单词。`);
+          showToast(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 词。`, 'success', 3500);
         }
       }
     } else {
       updateSyncBadge('disconnected', '未配置同步');
-      if (showToast) alert("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！");
+      if (notifyUser) showToast("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！", 'warning');
     }
   }
 }
 
-async function doWebDAVSync(showToast = false) {
-  return doFullSync(showToast);
+async function doWebDAVSync(notifyUser = false) {
+  return doFullSync(notifyUser);
 }
 
-function doWebDAVOverwrite() {
+function doWebDAVOverwrite(callback = null) {
   if (!webdavConfig || !webdavConfig.enabled || !webdavConfig.username || !webdavConfig.password) {
+    if (callback) callback({ success: false, error: '未配置坚果云' });
     return;
   }
-  updateSyncBadge('syncing');
+  updateSyncBadge('syncing', '正在覆盖上传...');
   chrome.runtime.sendMessage({
     action: "OVERWRITE_WEBDAV_SYNC",
     config: webdavConfig
   }, (res) => {
     if (res && res.success) {
       updateSyncBadge('connected', `坚果云已同步 (${res.count} 词)`);
+    } else {
+      updateSyncBadge('disconnected', "同步失败");
     }
+    if (callback) callback(res);
+  });
+}
+
+function doWebDAVPullForce(callback = null) {
+  if (!webdavConfig || !webdavConfig.enabled || !webdavConfig.username || !webdavConfig.password) {
+    if (callback) callback({ success: false, error: '未配置坚果云' });
+    return;
+  }
+  updateSyncBadge('syncing', '正在拉取云端全量...');
+  chrome.runtime.sendMessage({
+    action: "PULL_WEBDAV_FORCE",
+    config: webdavConfig
+  }, (res) => {
+    if (res && res.success) {
+      updateSyncBadge('connected', `云端已拉取 (${res.count} 词)`);
+      chrome.storage.local.get({ savedWords: [] }, (r) => {
+        currentWords = r.savedWords || [];
+        applyFilter();
+        updateStats();
+      });
+    } else {
+      updateSyncBadge('disconnected', "拉取失败");
+    }
+    if (callback) callback(res);
   });
 }
 
@@ -955,23 +1036,31 @@ function renderList(list, query = "") {
         // 核心修复：精准仅删除被点击的那条单独记录！同名单词其他副本绝对完整保留
         currentWords.splice(idx, 1);
 
-        chrome.storage.local.set({ savedWords: currentWords }, () => {
-          doWebDAVOverwrite(); // 立即用删除后的纯净数据覆盖坚果云端
+        const cleanTarget = (targetWord || "").toLowerCase().trim();
+        chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
+          const delMap = Object.assign({}, rDel.deletedWords || {});
+          if (cleanTarget) delMap[cleanTarget] = Date.now();
 
-          // 关键：检查库中是否还存在其他同名单词；若无，才从欧路词典生词本中同步删除
-          const hasOtherSameWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === (targetWord || "").toLowerCase().trim());
-          if (!hasOtherSameWord) {
-            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-              if (r.eudicToken) {
-                const engine = new EudicSyncEngine(r.eudicToken);
-                engine.deleteWord(targetWord).catch(err => {
-                  console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
-                });
-              }
-            });
-          }
+          chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+            doWebDAVOverwrite(); // 立即用删除后的纯净数据覆盖坚果云端并同步上传墓碑
 
-          applyFilter();
+            // 关键：检查库中是否还存在其他同名单词；若无，才从欧路词典生词本中同步删除
+            const hasOtherSameWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === cleanTarget);
+            if (!hasOtherSameWord) {
+              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+                if (r.eudicToken) {
+                  const engine = new EudicSyncEngine(r.eudicToken);
+                  engine.deleteWord(targetWord).catch(err => {
+                    console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
+                  });
+                }
+              });
+            }
+
+            applyFilter();
+            updateStats();
+            showToast(`🗑️ 已删除「${targetWord}」`, 'info');
+          });
         });
       }
     };
@@ -2736,6 +2825,64 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  const btnForcePull = document.getElementById('davForcePullBtn');
+  if (btnForcePull) {
+    btnForcePull.onclick = () => {
+      const cfg = {
+        serverUrl: document.getElementById('davServer').value.trim(),
+        username: document.getElementById('davUsername').value.trim(),
+        password: document.getElementById('davPassword').value.trim(),
+        filePath: document.getElementById('davPath').value.trim(),
+        enabled: document.getElementById('davEnable').checked
+      };
+      if (!cfg.username || !cfg.password) {
+        showToast('请先填写坚果云账户与应用密码！', 'warning');
+        return;
+      }
+      if (!confirm("⚠️ 确定要从坚果云强制拉取云端数据覆盖当前电脑本地数据吗？\n\n这常用于公司电脑完全与家中电脑的最新云端数据对齐。")) return;
+      webdavConfig = cfg;
+      chrome.storage.sync.set({ webdavConfig: cfg }, () => {
+        doWebDAVPullForce((res) => {
+          if (res && res.success) {
+            closeDavModal();
+            showToast(`🎉 已成功从坚果云拉取云端全量数据 (${res.count} 词) 覆盖本地！`, 'success');
+          } else {
+            showToast(`❌ 拉取失败: ${res ? res.error : '网络错误'}`, 'error');
+          }
+        });
+      });
+    };
+  }
+
+  const btnForcePush = document.getElementById('davForcePushBtn');
+  if (btnForcePush) {
+    btnForcePush.onclick = () => {
+      const cfg = {
+        serverUrl: document.getElementById('davServer').value.trim(),
+        username: document.getElementById('davUsername').value.trim(),
+        password: document.getElementById('davPassword').value.trim(),
+        filePath: document.getElementById('davPath').value.trim(),
+        enabled: document.getElementById('davEnable').checked
+      };
+      if (!cfg.username || !cfg.password) {
+        showToast('请先填写坚果云账户与应用密码！', 'warning');
+        return;
+      }
+      if (!confirm(`⚠️ 确定要将当前电脑的生词库 (${currentWords.length} 词) 完整覆盖重写至坚果云吗？\n\n云端原有词库将被当前电脑的数据完全覆盖替代。`)) return;
+      webdavConfig = cfg;
+      chrome.storage.sync.set({ webdavConfig: cfg }, () => {
+        doWebDAVOverwrite((res) => {
+          if (res && res.success) {
+            closeDavModal();
+            showToast(`🎉 已成功将当前电脑词库 (${res.count} 词) 完整覆盖重写至坚果云！`, 'success');
+          } else {
+            showToast(`❌ 覆盖上传失败: ${res ? res.error : '网络错误'}`, 'error');
+          }
+        });
+      });
+    };
+  }
+
   document.getElementById('davTestBtn').onclick = () => {
     const cfg = {
       serverUrl: document.getElementById('davServer').value.trim(),
@@ -2872,11 +3019,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // 若库中已存在同名单词，先完全清理旧记录再置顶更新 (防止重复条目堆积)
-        currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== word.toLowerCase().trim());
-        currentWords.unshift(newItem);
-        closeModal();
-        saveAndRefresh();
-        showToast(`✨ 生词「${word}」已成功收录入库！`);
+        const cleanWord = word.toLowerCase().trim();
+        chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
+          const delMap = Object.assign({}, rDel.deletedWords || {});
+          if (delMap[cleanWord]) {
+            delete delMap[cleanWord]; // 重新收录时移除历史删除标记
+          }
+          currentWords = currentWords.filter(w => (w.text || w.word || "").toLowerCase().trim() !== cleanWord);
+          currentWords.unshift(newItem);
+          chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+            closeModal();
+            saveAndRefresh();
+            showToast(`✨ 生词「${word}」已成功收录入库！`, 'success');
+          });
+        });
       } else {
         // 2. 编辑修改已有单词（即便修改了单词本体拼写，如 halted 改为 halt）：原地更新原词条，严格保留原有 date 创建时间，顺序绝对不变
         const oldWordText = originalEditingWord || (existingItem ? (existingItem.text || existingItem.word) : "");
@@ -2918,27 +3074,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isWordRenamed) {
           // 单词本体被重命名：
-          // 1. 保存本地更新
-          chrome.storage.local.set({ savedWords: currentWords }, () => {
-            // 2. 关键：立即执行 WebDAV 覆盖同步，彻底抹除云端的旧词 (如 girls)，防止云端拉取时双份合并！
-            doWebDAVOverwrite();
-            // 3. 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
-            const hasOldWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === oldWordText.toLowerCase().trim());
-            if (!hasOldWord) {
-              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-                if (r.eudicToken) {
-                  const engine = new EudicSyncEngine(r.eudicToken);
-                  engine.deleteWord(oldWordText).catch(err => {
-                    console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
-                  });
-                }
-              });
-            }
-            applyFilter();
-            updateStats();
+          const cleanOld = (oldWordText || "").toLowerCase().trim();
+          chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
+            const delMap = Object.assign({}, rDel.deletedWords || {});
+            if (cleanOld) delMap[cleanOld] = Date.now();
+
+            chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+              // 关键：立即执行 WebDAV 覆盖同步与墓碑上传，彻底抹除云端的旧词，防止云端拉取时双份合并！
+              doWebDAVOverwrite();
+              // 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
+              const hasOldWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === cleanOld);
+              if (!hasOldWord) {
+                chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+                  if (r.eudicToken) {
+                    const engine = new EudicSyncEngine(r.eudicToken);
+                    engine.deleteWord(oldWordText).catch(err => {
+                      console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
+                    });
+                  }
+                });
+              }
+              applyFilter();
+              updateStats();
+              showToast(`✨ 已成功将「${oldWordText}」修改为「${word}」`, 'success');
+            });
           });
         } else {
           saveAndRefresh();
+          showToast(`✨ 词条「${word}」修改已保存！`, 'success');
         }
       }
 
@@ -3084,10 +3247,13 @@ document.addEventListener('DOMContentLoaded', () => {
         baseItem.srsLevel = maxSrs;
 
         // 其余变体标记为待移除
+        const wordsToDelete = [];
         for (let i = 1; i < cluster.length; i++) {
           const v = cluster[i];
           const uid = v._uid || `${v.text || v.word}_${v.dateAdded}`;
           uidsToRemove.add(uid);
+          const wName = (v.text || v.word || "").toLowerCase().trim();
+          if (wName) wordsToDelete.push(wName);
           mergedCount++;
         }
       });
@@ -3098,11 +3264,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return !uidsToRemove.has(uid);
       });
 
-      // 保存并退出变体模式
-      exitVariantFilterMode();
-      saveAndRefresh();
-      SoundFx.playSuccess();
-      showToast(`✨ 成功合并 ${clusters.length} 组词根变体，清理了 ${mergedCount} 个冗余词！`);
+      // 保存删除墓碑并权威覆盖坚果云端，确保其他电脑绝对不再复活旧变体
+      chrome.storage.local.get({ deletedWords: {} }, (res) => {
+        const delMap = Object.assign({}, res.deletedWords || {});
+        const now = Date.now();
+        wordsToDelete.forEach(w => { delMap[w] = now; });
+
+        chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+          doWebDAVOverwrite(); // 关键：权威覆盖坚果云并同步上传删除墓碑
+          exitVariantFilterMode();
+          applyFilter();
+          updateStats();
+          SoundFx.playSuccess();
+          showToast(`✨ 成功合并 ${clusters.length} 组词根变体，清理了 ${mergedCount} 个冗余词！`, 'success');
+        });
+      });
     };
   }
 

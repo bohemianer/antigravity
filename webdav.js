@@ -45,6 +45,11 @@ class WebDAVClient {
     }
   }
 
+  getDeletionsUrl() {
+    const delPath = this.filePath.replace(/\.json$/i, '_deleted.json');
+    return this.serverUrl + (delPath === this.filePath ? this.filePath + '.deleted.json' : delPath);
+  }
+
   // 2. 从云端拉取已有数据 (GET)
   async downloadWords() {
     const url = this.getFullUrl();
@@ -73,6 +78,29 @@ class WebDAVClient {
     }
   }
 
+  // 2.1 从云端拉取删除墓碑记录 (Tombstones GET)
+  async downloadDeletions() {
+    const url = this.getDeletionsUrl();
+    try {
+      const resp = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Authorization": this.getAuthHeader(),
+          "Cache-Control": "no-cache"
+        }
+      });
+      if (resp.status === 404) return {};
+      if (!resp.ok) return {};
+      const text = await resp.text();
+      if (!text || !text.trim()) return {};
+      const parsed = JSON.parse(text);
+      return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch (e) {
+      console.warn("downloadDeletions warning:", e);
+      return {};
+    }
+  }
+
   // 3. 上传全量数据到云端 (PUT)
   async uploadWords(wordsList) {
     await this.ensureDirectory();
@@ -94,28 +122,72 @@ class WebDAVClient {
     throw new Error(`WebDAV PUT failed (${resp.status}): ${resp.statusText}`);
   }
 
-  // 4. 双向智能逐词深度合并 (Two-way Deep Word-by-Word Merge)
-  mergeWords(localList = [], remoteList = []) {
+  // 3.1 上传删除墓碑记录到云端 (Tombstones PUT)
+  async uploadDeletions(deletionsMap = {}) {
+    await this.ensureDirectory();
+    const url = this.getDeletionsUrl();
+    // 自动清理超过 60 天的过期墓碑，防止删除列表无限膨胀
+    const cleanMap = {};
+    const now = Date.now();
+    const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000;
+    for (const [k, ts] of Object.entries(deletionsMap || {})) {
+      if (typeof ts === 'number' && (now - ts < SIXTY_DAYS)) {
+        cleanMap[k] = ts;
+      }
+    }
+    const jsonStr = JSON.stringify(cleanMap, null, 2);
+    try {
+      await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Authorization": this.getAuthHeader(),
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        body: jsonStr
+      });
+    } catch (e) {
+      console.warn("uploadDeletions warning:", e);
+    }
+    return cleanMap;
+  }
+
+  // 4. 双向智能逐词深度合并 (Two-way Deep Word-by-Word Merge with Deletion Tombstones)
+  mergeWords(localList = [], remoteList = [], deletionsMap = {}) {
     const map = new Map();
 
-    // 先存入云端所有词
+    // 1. 先存入云端所有词 (遵从删除墓碑判断)
     remoteList.forEach(rItem => {
       const k = (rItem.text || rItem.word || "").toLowerCase().trim();
-      if (k) map.set(k, Object.assign({}, rItem));
+      if (!k) return;
+
+      const delTime = deletionsMap[k] || 0;
+      const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
+      if (delTime > 0 && rUpdate <= delTime) {
+        // 该词已被标记删除，且在删除后未被重新添加，云端旧词予以抹除
+        return;
+      }
+
+      map.set(k, Object.assign({}, rItem));
     });
 
-    // 逐词比对并合并本地词
+    // 2. 逐词比对并合并本地词 (遵从删除墓碑判断)
     localList.forEach(lItem => {
       const k = (lItem.text || lItem.word || "").toLowerCase().trim();
       if (!k) return;
 
+      const delTime = deletionsMap[k] || 0;
+      const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
+      if (delTime > 0 && lUpdate <= delTime) {
+        // 该词已被标记删除，本地旧记录予以抹除，绝不复活
+        return;
+      }
+
       if (!map.has(k)) {
-        // 云端没有，把本地的补充进去
+        // 云端没有且未被删除，把本地的新词补充进去
         map.set(k, Object.assign({}, lItem));
       } else {
         // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
         const rItem = map.get(k);
-        const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
         const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
 
         const isLocalNewer = lUpdate >= rUpdate;
@@ -137,7 +209,8 @@ class WebDAVClient {
           notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
           srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),
           srsNextReview: Math.max(lItem.srsNextReview || 0, rItem.srsNextReview || 0),
-          srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0)
+          srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0),
+          _uid: lItem._uid || rItem._uid || ('w_' + targetDate + '_' + Math.random().toString(36).slice(2, 9))
         };
 
         map.set(k, mergedWord);
@@ -154,18 +227,29 @@ class WebDAVClient {
     return result;
   }
 
-  // 5. 执行一次完整的双向增量同步 (Sync)
-  async performSync(localList) {
-    // 1. 先安全拉取云端，下载失败会直接抛错中止，绝不会发生本地空列表覆盖云端大词库
+  // 5. 执行一次完整的遵从墓碑规则的双向增量同步 (Sync)
+  async performSync(localList = [], localDeletions = {}) {
+    // 1. 先安全拉取云端已有词库与删除墓碑表
     const remoteList = await this.downloadWords();
+    const remoteDeletions = await this.downloadDeletions();
 
-    // 2. 双向字段级深度合并
-    const mergedList = this.mergeWords(localList || [], remoteList || []);
+    // 2. 双向合并删除墓碑表（保留最新删除时间戳）
+    const mergedDeletions = Object.assign({}, remoteDeletions);
+    for (const [k, ts] of Object.entries(localDeletions || {})) {
+      mergedDeletions[k] = Math.max(mergedDeletions[k] || 0, ts || 0);
+    }
 
-    // 3. 上传合并后的全集到云端
+    // 3. 遵从墓碑规则的双向字段级深度合并
+    const mergedList = this.mergeWords(localList || [], remoteList || [], mergedDeletions);
+
+    // 4. 上传合并后的全集与墓碑表到云端
     await this.uploadWords(mergedList);
+    const cleanedDeletions = await this.uploadDeletions(mergedDeletions);
 
-    return mergedList;
+    return {
+      mergedList,
+      mergedDeletions: cleanedDeletions
+    };
   }
 }
 

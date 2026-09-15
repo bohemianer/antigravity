@@ -472,9 +472,11 @@ async function autoSyncWebDAV(wordsList) {
     const cfg = res.webdavConfig;
     if (cfg && cfg.enabled && cfg.username && cfg.password) {
       try {
-        const client = new WebDAVClient(cfg);
-        const merged = await client.performSync(wordsList);
-        chrome.storage.local.set({ savedWords: merged });
+        chrome.storage.local.get({ deletedWords: {} }, async (delRes) => {
+          const client = new WebDAVClient(cfg);
+          const { mergedList, mergedDeletions } = await client.performSync(wordsList, delRes.deletedWords || {});
+          chrome.storage.local.set({ savedWords: mergedList, deletedWords: mergedDeletions });
+        });
       } catch (err) {
         console.warn("WebDAV Auto Sync warning:", err);
       }
@@ -630,13 +632,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "MANUAL_WEBDAV_SYNC") {
-    chrome.storage.local.get({ savedWords: [] }, async (localRes) => {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
       const list = localRes.savedWords || [];
+      const deletions = localRes.deletedWords || {};
       try {
         const client = new WebDAVClient(request.config);
-        const merged = await client.performSync(list);
-        chrome.storage.local.set({ savedWords: merged }, () => {
-          sendResponse({ success: true, count: merged.length });
+        const { mergedList, mergedDeletions } = await client.performSync(list, deletions);
+        chrome.storage.local.set({ savedWords: mergedList, deletedWords: mergedDeletions }, () => {
+          sendResponse({ success: true, count: mergedList.length });
         });
       } catch (err) {
         sendResponse({ success: false, error: err.message });
@@ -646,16 +649,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "OVERWRITE_WEBDAV_SYNC") {
-    chrome.storage.local.get({ savedWords: [] }, async (localRes) => {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
       const list = localRes.savedWords || [];
+      const deletions = localRes.deletedWords || {};
       try {
         const client = new WebDAVClient(request.config);
         await client.uploadWords(list);
+        await client.uploadDeletions(deletions);
         sendResponse({ success: true, count: list.length });
       } catch (err) {
         sendResponse({ success: false, error: err.message });
       }
     });
+    return true;
+  }
+
+  if (request.action === "PULL_WEBDAV_FORCE") {
+    try {
+      const client = new WebDAVClient(request.config);
+      const remoteList = await client.downloadWords();
+      const remoteDeletions = await client.downloadDeletions();
+      chrome.storage.local.set({ savedWords: remoteList, deletedWords: remoteDeletions }, () => {
+        sendResponse({ success: true, count: remoteList.length });
+      });
+    } catch (err) {
+      sendResponse({ success: false, error: err.message });
+    }
     return true;
   }
 });
