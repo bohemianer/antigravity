@@ -3093,16 +3093,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  const menuOpenDavSettings = document.getElementById('menuOpenDavSettings');
-  if (menuOpenDavSettings) {
-    menuOpenDavSettings.onclick = (e) => {
-      if (e) e.stopPropagation();
-      const moreMenu = document.getElementById('moreDropdownMenu');
-      if (moreMenu) moreMenu.style.display = 'none';
-      openDavModal();
-    };
-  }
-
   // 🔍 词根变体检索菜单项与合并处理
   const menuFindVariants = document.getElementById('menuFindVariants');
   if (menuFindVariants) {
