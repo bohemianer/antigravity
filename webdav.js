@@ -23,9 +23,9 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
 class WebDAVClient {
   constructor(config = {}) {
     this.serverUrl = (config.serverUrl || "https://dav.jianguoyun.com/dav/").replace(/\/+$/, '') + '/';
-    this.username = config.username || "";
-    this.password = config.password || "";
-    this.filePath = (config.filePath || "antigravity/antigravity.json").replace(/^\/+/, '');
+    this.username = (config.username || "").trim();
+    this.password = (config.password || "").trim();
+    this.filePath = (config.filePath || "antigravity/antigravity.json").replace(/^\/+/, '').trim();
   }
 
   getAuthHeader() {

@@ -658,20 +658,26 @@ function getStandardJsonList() {
   }));
 }
 
-function updateSyncBadge(status, text) {
+let lastSyncDetailError = "";
+
+function updateSyncBadge(status, text, tooltip = "") {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncText');
+  const btn = document.getElementById('btnSyncStatus');
   if (!dot || !txt) return;
 
   if (status === 'connected') {
     dot.className = "sync-icon-dot active";
     txt.innerText = text || "已同步";
+    if (btn) btn.title = tooltip || "坚果云 / 欧路已连接，点击打开同步设置";
   } else if (status === 'syncing') {
     dot.className = "sync-icon-dot active rotating";
-    txt.innerText = "正在同步中...";
+    txt.innerText = text || "正在同步中...";
+    if (btn) btn.title = tooltip || "正在与云端交换数据...";
   } else {
     dot.className = "sync-icon-dot";
     txt.innerText = text || "未同步";
+    if (btn) btn.title = tooltip || (lastSyncDetailError ? `同步异常原因: ${lastSyncDetailError} (点击打开设置)` : "点击打开同步设置");
   }
 }
 
@@ -789,10 +795,25 @@ async function doFullSync(notifyUser = false) {
     }
   } catch (err) {
     console.error("同步异常:", err);
-    updateSyncBadge('disconnected', "同步失败");
-    if (notifyUser) {
-      showToast(`❌ 同步失败: ${err.message || '网络连接超时'}`, 'error', 4000);
+    let errMsg = err.message || '网络连接异常';
+    let shortTxt = "同步失败";
+    let detailAdvice = errMsg;
+
+    if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
+      shortTxt = "密码错误(401)";
+      detailAdvice = "坚果云授权失败 (401)：请检查坚果云用户名与「应用专用密码」是否正确（注意必须在坚果云官网生成“第三方应用密码”，不能使用主账号登录密码）！";
+    } else if (errMsg.includes('403') || errMsg.includes('404') || errMsg.includes('409')) {
+      shortTxt = "路径错误";
+      const folderName = (webdavConfig && webdavConfig.filePath) ? webdavConfig.filePath.split('/')[0] : 'antigravity';
+      detailAdvice = `坚果云路径错误 (${errMsg})：坚果云必须先存在该同步文件夹。请在坚果云网页版中新建「${folderName}」文件夹，或在设置中将文件路径改为「我的坚果云/antigravity.json」！`;
+    } else if (errMsg.includes('超时') || errMsg.toLowerCase().includes('timeout')) {
+      shortTxt = "网络超时";
+      detailAdvice = "连接坚果云服务器超时，请检查网络连接或系统代理设置！";
     }
+
+    lastSyncDetailError = detailAdvice;
+    updateSyncBadge('disconnected', shortTxt, detailAdvice);
+    showToast(`❌ 同步异常: ${detailAdvice}`, 'error', 6000);
   } finally {
     clearTimeout(watchdogTimer);
     isFullSyncing = false;
@@ -2826,7 +2847,7 @@ document.addEventListener('DOMContentLoaded', () => {
     syncDotEl.onclick = (e) => {
       e.stopPropagation();
       syncDotEl.classList.add('rotating');
-      doWebDAVSync(false).then(() => {
+      doWebDAVSync(true).then(() => {
         setTimeout(() => {
           syncDotEl.classList.remove('rotating');
         }, 800);
