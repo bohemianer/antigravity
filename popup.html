@@ -17,33 +17,29 @@
     :root, [data-applied-theme="light"] {
       --bg-warm: #FAF9F5;
       --bg-card: #FFFFFF;
-      --bg-card-hover: #F5F3ED;
-      --border-warm: #E6E4DD;
-      --border-subtle: #D6D3CD;
-      --border-glass: #E6E4DD;
-      --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-      --glass-specular: 0 0 0 0 transparent;
-      --text-main: #1F1E1D;
-      --text-body: #383532;
-      --text-muted: #8C827A;
-      --claude-terracotta: #CC785C;
-      --claude-terracotta-hover: #BF684D;
-      --claude-green: #059669;
-      --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --bg-card-hover: #F6F4EE;
+      --border-glass: rgba(0, 0, 0, 0.08);
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --text-main: #1D1D1F;
+      --text-body: #424245;
+      --text-muted: #86868B;
+      --claude-terracotta: #D96B43;
+      --claude-terracotta-hover: #C65A34;
+      --claude-green: #10B981;
+      --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     }
 
     [data-applied-theme="dark"] {
-      --bg-warm: #0C0C0F;
-      --bg-card: rgba(28, 28, 34, 0.72);
-      --bg-card-hover: rgba(38, 38, 46, 0.85);
-      --border-warm: rgba(255, 255, 255, 0.10);
-      --border-subtle: rgba(255, 255, 255, 0.16);
-      --border-glass: rgba(255, 255, 255, 0.14);
-      --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-      --glass-specular: 0 0 0 0 transparent;
+      --bg-warm: #0E0E12;
+      --bg-card: rgba(26, 26, 32, 0.78);
+      --bg-card-hover: rgba(36, 36, 44, 0.90);
+      --border-glass: rgba(255, 255, 255, 0.10);
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --glass-shadow: 0 14px 34px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(255, 255, 255, 0.06);
       --text-main: #F5F5F7;
-      --text-body: #E2E2E8;
+      --text-body: #E5E5EA;
       --text-muted: #9898A0;
       --claude-terracotta: #FA7E64;
       --claude-terracotta-hover: #FF957D;
@@ -52,16 +48,14 @@
 
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]):not([data-theme="dark"]) {
-        --bg-warm: #0C0C0F;
-        --bg-card: rgba(28, 28, 34, 0.72);
-        --bg-card-hover: rgba(38, 38, 46, 0.85);
-        --border-warm: rgba(255, 255, 255, 0.10);
-        --border-subtle: rgba(255, 255, 255, 0.16);
-        --border-glass: rgba(255, 255, 255, 0.14);
-        --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-        --glass-specular: 0 0 0 0 transparent;
+        --bg-warm: #0E0E12;
+        --bg-card: rgba(26, 26, 32, 0.78);
+        --bg-card-hover: rgba(36, 36, 44, 0.90);
+        --border-glass: rgba(255, 255, 255, 0.10);
+        --border-subtle: rgba(255, 255, 255, 0.07);
+        --glass-shadow: 0 14px 34px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(255, 255, 255, 0.06);
         --text-main: #F5F5F7;
-        --text-body: #E2E2E8;
+        --text-body: #E5E5EA;
         --text-muted: #9898A0;
         --claude-terracotta: #FA7E64;
         --claude-terracotta-hover: #FF957D;
@@ -71,8 +65,8 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 290px;
-      padding: 16px;
+      width: 316px;
+      padding: 16px 16px 14px 16px;
       background-color: var(--bg-warm);
       color: var(--text-main);
       font-family: var(--font-sans);
@@ -83,7 +77,7 @@
       overflow: hidden;
     }
 
-    /* 背景氛围光斑 */
+    /* 苹果微发光氛围层 */
     .ambient-glow-layer {
       position: absolute;
       top: 0;
@@ -93,32 +87,32 @@
       pointer-events: none;
       z-index: 0;
       overflow: hidden;
-      opacity: 0.5;
+      opacity: 0.42;
     }
     [data-applied-theme="dark"] .ambient-glow-layer {
-      opacity: 0.35;
+      opacity: 0.32;
     }
     .glow-orb {
       position: absolute;
       border-radius: 50%;
-      filter: blur(40px);
+      filter: blur(42px);
     }
     .orb-1 {
-      top: -20px;
-      left: 10px;
-      width: 140px;
-      height: 140px;
-      background: radial-gradient(circle, rgba(224, 109, 83, 0.3) 0%, rgba(224, 109, 83, 0) 70%);
+      top: -24px;
+      left: 6px;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(224, 109, 83, 0.35) 0%, rgba(224, 109, 83, 0) 70%);
     }
     .orb-2 {
-      bottom: -20px;
-      right: 10px;
+      bottom: -30px;
+      right: 6px;
       width: 160px;
       height: 160px;
-      background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0) 70%);
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%);
     }
 
-    /* 顶部导航 */
+    /* 顶部导航 Header */
     .header {
       position: relative;
       z-index: 1;
@@ -130,13 +124,14 @@
     .logo-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
+      cursor: pointer;
     }
     .logo-icon {
-      width: 25px;
-      height: 25px;
+      width: 26px;
+      height: 26px;
       background: linear-gradient(135deg, #E06D53, #D97706);
-      border-radius: 7px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -144,15 +139,27 @@
       font-size: 14px;
       font-weight: 900;
       color: #FFFFFF;
-      box-shadow: 0 2px 6px rgba(224, 109, 83, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 2px 8px rgba(224, 109, 83, 0.36);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      flex-shrink: 0;
+    }
+    .logo-titles {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
     }
     .title {
       font-family: var(--font-serif);
       font-size: 15px;
       font-weight: 700;
-      letter-spacing: -0.2px;
+      letter-spacing: -0.3px;
       color: var(--text-main);
+    }
+    .subtitle {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.1px;
     }
     .header-right {
       display: flex;
@@ -163,125 +170,174 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-muted);
       background: var(--bg-card);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--border-glass);
       padding: 3px 8px;
-      border-radius: 12px;
-      box-shadow: var(--glass-specular);
+      border-radius: 9999px;
+      box-shadow: var(--glass-shadow);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .sync-status:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-main);
     }
     .sync-dot {
       width: 5px;
       height: 5px;
       border-radius: 50%;
       background: var(--text-muted);
+      transition: all 0.25s ease;
+      flex-shrink: 0;
     }
     .sync-dot.active {
       background: var(--claude-green);
-      box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
     }
     .theme-toggle-btn {
       width: 26px;
       height: 26px;
-      border-radius: 8px;
+      border-radius: 9999px;
       border: 1px solid var(--border-glass);
       background: var(--bg-card);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      color: var(--text-body);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: var(--text-muted);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       padding: 0;
-      box-shadow: var(--glass-specular);
+      box-shadow: var(--glass-shadow);
     }
     .theme-toggle-btn:hover {
       background: var(--bg-card-hover);
-      border-color: var(--border-subtle);
       color: var(--text-main);
-      transform: scale(1.12);
+      transform: scale(1.08);
     }
     .theme-toggle-btn:active {
       transform: scale(0.92);
     }
 
-    /* 统计看板网格 (Apple Metrics Grid) */
-    .stats-grid {
+    /* 一体化数据看板 Widget (Unified Metrics Widget) */
+    .metrics-widget {
       position: relative;
       z-index: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .stat-card {
+      display: flex;
+      align-items: stretch;
       background: var(--bg-card);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
       border: 1px solid var(--border-glass);
       border-radius: 14px;
-      padding: 10px 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--glass-shadow);
+    }
+    .metric-col {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      box-shadow: var(--glass-shadow), var(--glass-specular);
+      gap: 3px;
     }
-    .stat-label {
+    .metric-header {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .metric-icon {
+      font-size: 11px;
+    }
+    .metric-label {
       font-size: 11px;
       color: var(--text-muted);
       font-weight: 500;
     }
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+      margin: 1px 0;
+    }
     .stat-num {
       font-family: var(--font-serif);
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--text-main);
-      line-height: 1.2;
+      line-height: 1;
+      letter-spacing: -0.5px;
     }
     .stat-num.highlight {
       color: var(--claude-terracotta);
     }
+    .metric-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .metric-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      opacity: 0.85;
+    }
+    .metric-divider {
+      width: 1px;
+      background: var(--border-subtle);
+      margin: 2px 14px;
+      opacity: 0.85;
+    }
 
-    /* 快捷操作区 */
+    /* 操作按钮组 Action Stack */
     .action-stack {
       position: relative;
       z-index: 1;
       display: flex;
       flex-direction: column;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 11px;
     }
     .btn-main {
       width: 100%;
-      height: 40px;
+      height: 39px;
       background: linear-gradient(135deg, #E06D53, #D97706);
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.28);
       color: #FFFFFF;
-      border-radius: 12px;
+      border-radius: 11px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 4px 12px rgba(224, 109, 83, 0.32);
+      justify-content: space-between;
+      padding: 0 14px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 14px rgba(224, 109, 83, 0.30);
+    }
+    .btn-main-left {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn-main .arrow-icon {
+      transition: transform 0.2s ease;
+      opacity: 0.85;
     }
     .btn-main:hover {
       background: linear-gradient(135deg, #CC5B40, #C26604);
-      transform: none;
-      box-shadow: 0 6px 16px rgba(224, 109, 83, 0.42);
+      box-shadow: 0 6px 18px rgba(224, 109, 83, 0.38);
+    }
+    .btn-main:hover .arrow-icon {
+      transform: translateX(3px);
+      opacity: 1;
     }
     .btn-main:active {
-      transform: none;
       filter: brightness(0.95);
+      transform: scale(0.99);
     }
     .btn-row {
       display: flex;
@@ -289,7 +345,7 @@
     }
     .btn-sub {
       flex: 1;
-      height: 34px;
+      height: 33px;
       background: var(--bg-card);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -302,88 +358,118 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: var(--glass-specular), 0 1px 2px rgba(0,0,0,0.02);
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--glass-shadow);
     }
     .btn-sub:hover {
       background: var(--bg-card-hover);
-      border-color: var(--border-subtle);
       color: var(--text-main);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     }
     .btn-sub:active {
-      transform: scale(0.95);
+      transform: scale(0.97);
     }
 
-    /* 底部极简提示 */
+    /* 底部微提示栏 Footer */
     .footer-tip {
       position: relative;
       z-index: 1;
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--text-muted);
       text-align: center;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 5px;
+      padding-top: 2px;
+    }
+    .footer-icon {
+      font-size: 11px;
     }
   </style>
 </head>
 <body>
+  <!-- 柔和微光斑氛围层 -->
   <div class="ambient-glow-layer" aria-hidden="true">
     <div class="glow-orb orb-1"></div>
     <div class="glow-orb orb-2"></div>
   </div>
+
+  <!-- 顶部导航栏 -->
   <div class="header">
-    <div class="logo-group">
+    <div class="logo-group" id="btnLogoHeader" title="打开生词笔记本">
       <div class="logo-icon">A</div>
-      <span class="title">Antigravity</span>
+      <div class="logo-titles">
+        <span class="title">Antigravity</span>
+        <span class="subtitle">Reading Vocabulary</span>
+      </div>
     </div>
     <div class="header-right">
-      <div class="sync-status" id="syncBadge">
+      <div class="sync-status" id="syncBadge" title="点击打开云同步设置">
         <span class="sync-dot" id="syncDot"></span>
         <span id="syncText">未同步</span>
       </div>
-      <button class="theme-toggle-btn" id="popupThemeBtn" title="切换主题外观 (跟随系统 / 浅色 / 黑色)">
-        <span id="popupThemeIcon">💻</span>
+      <button class="theme-toggle-btn" id="popupThemeBtn" title="切换外观主题">
+        <span id="popupThemeIcon"></span>
       </button>
     </div>
   </div>
 
-  <!-- 概览数据看板 -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="stat-label">词库总量</span>
-      <span class="stat-num" id="totalWordsCount">0</span>
+  <!-- 一体化数据看板 Widget -->
+  <div class="metrics-widget">
+    <div class="metric-col">
+      <div class="metric-header">
+        <span class="metric-icon">📚</span>
+        <span class="metric-label">词库总量</span>
+      </div>
+      <div class="metric-value-row">
+        <span class="stat-num" id="totalWordsCount">0</span>
+        <span class="metric-unit">词</span>
+      </div>
+      <span class="metric-sub">多端云端漫游中</span>
     </div>
-    <div class="stat-card">
-      <span class="stat-label">今日到期复习</span>
-      <span class="stat-num highlight" id="reviewWordsCount">0</span>
+
+    <div class="metric-divider"></div>
+
+    <div class="metric-col">
+      <div class="metric-header">
+        <span class="metric-icon">⚡</span>
+        <span class="metric-label">今日待复习</span>
+      </div>
+      <div class="metric-value-row">
+        <span class="stat-num highlight" id="reviewWordsCount">0</span>
+        <span class="metric-unit">词</span>
+      </div>
+      <span class="metric-sub">艾宾浩斯智能排期</span>
     </div>
   </div>
 
-  <!-- 快捷操作入口 -->
+  <!-- 快捷操作区 -->
   <div class="action-stack">
-    <button class="btn-main" id="btnOpenNotebook">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      <span>打开生词笔记本</span>
+    <button class="btn-main" id="btnOpenNotebook" title="进入完整生词管理与阅读记录">
+      <div class="btn-main-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>打开生词笔记本</span>
+      </div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="arrow-icon"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
     </button>
     <div class="btn-row">
-      <button class="btn-sub" id="btnOpenFlashcard">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <button class="btn-sub" id="btnOpenFlashcard" title="开始翻牌交互自测">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         <span>闪卡自测</span>
       </button>
-      <button class="btn-sub" id="btnOpenSettings">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>WebDAV 设置</span>
+      <button class="btn-sub" id="btnOpenSettings" title="配置坚果云与欧路词典同步">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        <span>云同步设置</span>
       </button>
     </div>
   </div>
 
+  <!-- 底部微提示 -->
   <div class="footer-tip">
-    <span>💡 双击单词或划选短语，即时查词收藏</span>
+    <span class="footer-icon">✨</span>
+    <span>划选或双击网页单词，即时原声收藏</span>
   </div>
 
   <script src="popup.js"></script>
