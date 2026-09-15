@@ -675,88 +675,127 @@ function updateSyncBadge(status, text) {
   }
 }
 
+let isFullSyncing = false;
+
 // 全量多端融合同步引擎：欧路词典 OpenAPI 增量拉取 + 坚果云 WebDAV 双向合并
 async function doFullSync(notifyUser = false) {
+  if (isFullSyncing) {
+    console.log("已有同步任务正在进行中，跳过重复触发");
+    return;
+  }
+  isFullSyncing = true;
   updateSyncBadge('syncing', '正在同步中...');
+
+  // 看门狗超时保护：即使遇到极端断网或服务器假死，最多 15 秒后强制重置状态，绝不永久卡在「正在同步中」
+  const watchdogTimer = setTimeout(() => {
+    if (isFullSyncing) {
+      console.warn("同步超时触发，重置状态");
+      isFullSyncing = false;
+      updateSyncBadge('disconnected', '同步超时');
+      if (notifyUser) showToast('⚠️ 网络请求超时，请检查网络或坚果云配置', 'warning', 4000);
+    }
+  }, 15000);
 
   let eudicNewCount = 0;
   let eudicTotalScanned = 0;
   let eudicError = null;
+  let hasWebDAV = false;
+  let webdavSuccessCount = 0;
 
-  // 1. 若配置了欧路 Token，自动拉取欧路全部分类生词
-  const storageData = await new Promise(resolve => {
-    chrome.storage.sync.get({ eudicToken: '' }, resolve);
-  });
+  try {
+    // 1. 若配置了欧路 Token，自动拉取欧路全部分类生词（传入 currentWords 开启极速早停加速）
+    const storageData = await new Promise(resolve => {
+      chrome.storage.sync.get({ eudicToken: '' }, resolve);
+    });
 
-  const token = (storageData.eudicToken || "").trim();
-  if (token) {
-    try {
-      const engine = new EudicSyncEngine(token);
-      const eudicWords = await engine.fetchAllCategoriesAndWords();
-      eudicTotalScanned = eudicWords.length;
-      
-      const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords);
-      eudicNewCount = newAddedCount;
-      if (newAddedCount > 0) {
-        currentWords = mergedList;
-        await new Promise(resolve => {
-          chrome.storage.local.set({ savedWords: currentWords }, resolve);
-        });
-        if (currentView !== 'flashcard') {
-          applyFilter();
-        }
-      }
-    } catch (err) {
-      console.warn("欧路词典自动拉取失败:", err);
-      eudicError = err.message;
-    }
-  }
-
-  // 2. 紧接着执行坚果云 WebDAV 双向同步（遵从墓碑规则）
-  if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
-    chrome.runtime.sendMessage({
-      action: "MANUAL_WEBDAV_SYNC",
-      config: webdavConfig
-    }, (res) => {
-      if (res && res.success) {
-        updateSyncBadge('connected', `已同步 (${res.count} 词)`);
-        chrome.storage.local.get({ savedWords: [] }, (r) => {
-          currentWords = r.savedWords || [];
+    const token = (storageData.eudicToken || "").trim();
+    if (token) {
+      try {
+        const engine = new EudicSyncEngine(token);
+        const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
+        eudicTotalScanned = eudicWords.length;
+        
+        const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords);
+        eudicNewCount = newAddedCount;
+        if (newAddedCount > 0) {
+          currentWords = mergedList;
+          await new Promise(resolve => {
+            chrome.storage.local.set({ savedWords: currentWords }, resolve);
+          });
           if (currentView !== 'flashcard') {
             applyFilter();
           }
-          updateStats();
-        });
-        if (notifyUser) {
-          let msg = `🎉 同步完成！词库共 ${res.count} 词。`;
-          if (token && eudicNewCount > 0) {
-            msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
-          }
-          if (eudicError) {
-            msg += `\n⚠️ 欧路提示: ${eudicError}`;
-          }
-          showToast(msg, 'success', 3500);
         }
-      } else {
-        updateSyncBadge('disconnected', "同步失败 (请检查密码)");
-        if (notifyUser) showToast(`❌ WebDAV 同步失败: ${res ? res.error : '网络超时或密码错误'}`, 'error', 4000);
+      } catch (err) {
+        console.warn("欧路词典自动拉取失败:", err);
+        eudicError = err.message;
       }
-    });
-  } else {
-    // 仅欧路模式
-    if (token) {
-      updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
+    }
+
+    // 2. 坚果云 WebDAV 双向合并（直接在页面线程原生执行，彻底规避 MV3 Service Worker 30秒被杀导致的丢包卡死）
+    if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
+      hasWebDAV = true;
+      const localRes = await new Promise(resolve => {
+        chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
+      });
+      const list = localRes.savedWords || [];
+      const deletions = localRes.deletedWords || {};
+      const lastSync = localRes.lastWebDAVSyncTime || 0;
+
+      const client = new WebDAVClient(webdavConfig);
+      const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+
+      await new Promise(resolve => {
+        chrome.storage.local.set({
+          savedWords: mergedList,
+          deletedWords: mergedDeletions,
+          lastWebDAVSyncTime: syncTime || Date.now()
+        }, resolve);
+      });
+
+      currentWords = mergedList;
+      webdavSuccessCount = mergedList.length;
+      if (currentView !== 'flashcard') {
+        applyFilter();
+      }
+      updateStats();
+
+      updateSyncBadge('connected', `已同步 (${webdavSuccessCount} 词)`);
       if (notifyUser) {
-        if (eudicError) {
-          showToast(`❌ 欧路同步失败: ${eudicError}`, 'error', 4000);
-        } else {
-          showToast(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 词。`, 'success', 3500);
+        let msg = `🎉 同步完成！词库共 ${webdavSuccessCount} 词。`;
+        if (token && eudicNewCount > 0) {
+          msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
         }
+        if (eudicError) {
+          msg += `\n⚠️ 欧路提示: ${eudicError}`;
+        }
+        showToast(msg, 'success', 3500);
       }
     } else {
-      updateSyncBadge('disconnected', '未配置同步');
-      if (notifyUser) showToast("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！", 'warning');
+      // 仅欧路模式或未配置模式
+      if (token) {
+        updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
+        if (notifyUser) {
+          if (eudicError) {
+            showToast(`❌ 欧路同步失败: ${eudicError}`, 'error', 4000);
+          } else {
+            showToast(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 词。`, 'success', 3500);
+          }
+        }
+      } else {
+        updateSyncBadge('disconnected', '未配置同步');
+        if (notifyUser) showToast("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！", 'warning');
+      }
     }
+  } catch (err) {
+    console.error("同步异常:", err);
+    updateSyncBadge('disconnected', "同步失败");
+    if (notifyUser) {
+      showToast(`❌ 同步失败: ${err.message || '网络连接超时'}`, 'error', 4000);
+    }
+  } finally {
+    clearTimeout(watchdogTimer);
+    isFullSyncing = false;
   }
 }
 
@@ -764,47 +803,53 @@ async function doWebDAVSync(notifyUser = false) {
   return doFullSync(notifyUser);
 }
 
-function doWebDAVOverwrite(callback = null) {
+async function doWebDAVOverwrite(callback = null) {
   if (!webdavConfig || !webdavConfig.enabled || !webdavConfig.username || !webdavConfig.password) {
     if (callback) callback({ success: false, error: '未配置坚果云' });
     return;
   }
   updateSyncBadge('syncing', '正在覆盖上传...');
-  chrome.runtime.sendMessage({
-    action: "OVERWRITE_WEBDAV_SYNC",
-    config: webdavConfig
-  }, (res) => {
-    if (res && res.success) {
-      updateSyncBadge('connected', `坚果云已同步 (${res.count} 词)`);
-    } else {
-      updateSyncBadge('disconnected', "同步失败");
-    }
-    if (callback) callback(res);
-  });
+  try {
+    const client = new WebDAVClient(webdavConfig);
+    const localRes = await new Promise(r => chrome.storage.local.get({ savedWords: [], deletedWords: {} }, r));
+    const list = localRes.savedWords || [];
+    const deletions = localRes.deletedWords || {};
+    await client.uploadWords(list);
+    await client.uploadDeletions(deletions);
+    updateSyncBadge('connected', `坚果云已同步 (${list.length} 词)`);
+    if (callback) callback({ success: true, count: list.length });
+  } catch (err) {
+    console.error("WebDAV 覆盖上传失败:", err);
+    updateSyncBadge('disconnected', "同步失败");
+    if (callback) callback({ success: false, error: err.message });
+  }
 }
 
-function doWebDAVPullForce(callback = null) {
+async function doWebDAVPullForce(callback = null) {
   if (!webdavConfig || !webdavConfig.enabled || !webdavConfig.username || !webdavConfig.password) {
     if (callback) callback({ success: false, error: '未配置坚果云' });
     return;
   }
   updateSyncBadge('syncing', '正在拉取云端全量...');
-  chrome.runtime.sendMessage({
-    action: "PULL_WEBDAV_FORCE",
-    config: webdavConfig
-  }, (res) => {
-    if (res && res.success) {
-      updateSyncBadge('connected', `云端已拉取 (${res.count} 词)`);
-      chrome.storage.local.get({ savedWords: [] }, (r) => {
-        currentWords = r.savedWords || [];
-        applyFilter();
-        updateStats();
-      });
-    } else {
-      updateSyncBadge('disconnected', "拉取失败");
-    }
-    if (callback) callback(res);
-  });
+  try {
+    const client = new WebDAVClient(webdavConfig);
+    const remoteList = await client.downloadWords();
+    const remoteDeletions = await client.downloadDeletions();
+    await new Promise(r => chrome.storage.local.set({
+      savedWords: remoteList,
+      deletedWords: remoteDeletions,
+      lastWebDAVSyncTime: Date.now()
+    }, r));
+    currentWords = remoteList;
+    applyFilter();
+    updateStats();
+    updateSyncBadge('connected', `云端已拉取 (${remoteList.length} 词)`);
+    if (callback) callback({ success: true, count: remoteList.length });
+  } catch (err) {
+    console.error("WebDAV 强制拉取失败:", err);
+    updateSyncBadge('disconnected', "拉取失败");
+    if (callback) callback({ success: false, error: err.message });
+  }
 }
 
 // 辅助函数：根据 SRS 等级与复习历史获取熟练度圆点颜色、描述及下一档状态
@@ -2817,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const engine = new EudicSyncEngine(token);
         if (statusEl) statusEl.innerText = "正在验证授权并扫描全部分类生词本...";
-        const eudicWords = await engine.fetchAllCategoriesAndWords();
+        const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
 
         if (statusEl) statusEl.innerText = `已拉取 ${eudicWords.length} 词，正在比对合并...`;
         const { mergedList, newAddedCount, totalEudicScanned } = engine.mergeEudicWords(currentWords, eudicWords);

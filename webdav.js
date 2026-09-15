@@ -1,5 +1,25 @@
 // Antigravity - WebDAV 客户端同步引擎 (100% 逐词双向增量合并，绝不覆盖丢失)
 
+// 带超时的安全网络请求辅助函数 (默认 12 秒超时，彻底杜绝请求无响应假死挂起)
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`网络连接超时 (${Math.round(timeoutMs / 1000)}秒)`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 class WebDAVClient {
   constructor(config = {}) {
     this.serverUrl = (config.serverUrl || "https://dav.jianguoyun.com/dav/").replace(/\/+$/, '') + '/';
@@ -32,12 +52,12 @@ class WebDAVClient {
     if (folderUrl === this.serverUrl) return true;
 
     try {
-      const resp = await fetch(folderUrl, {
+      const resp = await fetchWithTimeout(folderUrl, {
         method: "MKCOL",
         headers: {
           "Authorization": this.getAuthHeader()
         }
-      });
+      }, 8000);
       return resp.status === 201 || resp.status === 405 || resp.status === 200;
     } catch (e) {
       console.warn("MKCOL error:", e);
@@ -53,13 +73,13 @@ class WebDAVClient {
   // 2. 从云端拉取已有数据 (GET)
   async downloadWords() {
     const url = this.getFullUrl();
-    const resp = await fetch(url, {
+    const resp = await fetchWithTimeout(url, {
       method: "GET",
       headers: {
         "Authorization": this.getAuthHeader(),
         "Cache-Control": "no-cache"
       }
-    });
+    }, 12000);
 
     if (resp.status === 404) {
       return []; // 云端尚无文件，返回空数组
@@ -82,13 +102,13 @@ class WebDAVClient {
   async downloadDeletions() {
     const url = this.getDeletionsUrl();
     try {
-      const resp = await fetch(url, {
+      const resp = await fetchWithTimeout(url, {
         method: "GET",
         headers: {
           "Authorization": this.getAuthHeader(),
           "Cache-Control": "no-cache"
         }
-      });
+      }, 10000);
       if (resp.status === 404) return {};
       if (!resp.ok) return {};
       const text = await resp.text();
@@ -107,14 +127,14 @@ class WebDAVClient {
     const url = this.getFullUrl();
     const jsonStr = JSON.stringify(wordsList, null, 2);
 
-    const resp = await fetch(url, {
+    const resp = await fetchWithTimeout(url, {
       method: "PUT",
       headers: {
         "Authorization": this.getAuthHeader(),
         "Content-Type": "application/json; charset=utf-8"
       },
       body: jsonStr
-    });
+    }, 15000);
 
     if (resp.status === 200 || resp.status === 201 || resp.status === 204) {
       return true;
@@ -137,14 +157,14 @@ class WebDAVClient {
     }
     const jsonStr = JSON.stringify(cleanMap, null, 2);
     try {
-      await fetch(url, {
+      await fetchWithTimeout(url, {
         method: "PUT",
         headers: {
           "Authorization": this.getAuthHeader(),
           "Content-Type": "application/json; charset=utf-8"
         },
         body: jsonStr
-      });
+      }, 10000);
     } catch (e) {
       console.warn("uploadDeletions warning:", e);
     }
@@ -274,12 +294,12 @@ class EudicSyncEngine {
   // 1. 获取所有生词本分类
   async getCategories() {
     if (!this.authHeader) throw new Error("请先填写欧路词典授权 Token");
-    const resp = await fetch("https://api.frdic.com/api/open/v1/studylist/category?language=en", {
+    const resp = await fetchWithTimeout("https://api.frdic.com/api/open/v1/studylist/category?language=en", {
       headers: {
         "Authorization": this.authHeader,
         "Content-Type": "application/json"
       }
-    });
+    }, 8000);
     if (!resp.ok) {
       if (resp.status === 401) throw new Error("欧路 Token 无效或已过期，请在 my.eudic.net 重新获取");
       throw new Error(`欧路 API 连接失败 (${resp.status}): ${resp.statusText}`);
@@ -296,12 +316,12 @@ class EudicSyncEngine {
 
     while (page < 10) { // 限制单次同步最多检查前 1000 词
       const url = `https://api.frdic.com/api/open/v1/studylist/words?language=en&category_id=${encodeURIComponent(categoryId)}&page=${page}&page_size=${pageSize}`;
-      const resp = await fetch(url, {
+      const resp = await fetchWithTimeout(url, {
         headers: {
           "Authorization": this.authHeader,
           "Content-Type": "application/json"
         }
-      });
+      }, 10000);
       if (!resp.ok) {
         throw new Error(`拉取欧路生词本数据失败 (${resp.status}): ${resp.statusText}`);
       }
@@ -446,7 +466,7 @@ class EudicSyncEngine {
 
     for (const catId of categoryIds) {
       try {
-        await fetch("https://api.frdic.com/api/open/v1/studylist/words", {
+        await fetchWithTimeout("https://api.frdic.com/api/open/v1/studylist/words", {
           method: "DELETE",
           headers: {
             "Authorization": this.authHeader,
@@ -457,7 +477,7 @@ class EudicSyncEngine {
             language: "en",
             words: [cleanWord]
           })
-        });
+        }, 8000);
       } catch (err) {
         console.warn(`从欧路生词本分类 ${catId} 删除单词 ${cleanWord} 异常:`, err);
       }

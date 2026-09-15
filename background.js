@@ -674,16 +674,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "PULL_WEBDAV_FORCE") {
-    try {
-      const client = new WebDAVClient(request.config);
-      const remoteList = await client.downloadWords();
-      const remoteDeletions = await client.downloadDeletions();
-      chrome.storage.local.set({ savedWords: remoteList, deletedWords: remoteDeletions }, () => {
-        sendResponse({ success: true, count: remoteList.length });
-      });
-    } catch (err) {
-      sendResponse({ success: false, error: err.message });
-    }
+    (async () => {
+      try {
+        const client = new WebDAVClient(request.config);
+        const remoteList = await client.downloadWords();
+        const remoteDeletions = await client.downloadDeletions();
+        chrome.storage.local.set({ savedWords: remoteList, deletedWords: remoteDeletions }, () => {
+          sendResponse({ success: true, count: remoteList.length });
+        });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
     return true;
   }
 });
