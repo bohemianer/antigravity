@@ -148,7 +148,7 @@ function getDialectLabel(word) {
   }
 
   // 2. -our (英) vs -or (美)
-  if (w.endsWith("our") && w.length > 4) return "英式";
+  if (w.endsWith("our") && w.length > 4 && !["flour", "scour", "devour"].includes(w)) return "英式";
   if (w.endsWith("or") && ["color", "flavor", "honor", "labor", "rumor", "armor", "behavior", "humor", "neighbor", "favor", "harbor", "vigor"].includes(w)) return "美式";
 
   // 3. -re (英) vs -er (美)
@@ -156,14 +156,28 @@ function getDialectLabel(word) {
   if (w.endsWith("er") && ["theater", "center", "meter", "fiber", "liter", "caliber", "somber", "luster"].includes(w)) return "美式";
 
   // 4. -ise / -ised / -ising (英) vs -ize / -ized / -izing (美)
-  if (/(?:ised|ising|ise)$/.test(w) && w.length > 4) {
-    if (!["promise", "surprise", "exercise", "advise", "devise", "rise", "wise", "praise"].includes(w)) {
-      return "英式";
-    }
-  }
-  if (/(?:ized|izing|ize)$/.test(w) && w.length > 4) {
-    if (!["size", "prize", "seize", "capsize"].includes(w)) {
-      return "美式";
+  const isIsePattern = /(?:ised|ising|ise)$/.test(w);
+  const isIzePattern = /(?:ized|izing|ize)$/.test(w);
+  if (isIsePattern || isIzePattern) {
+    // 永远不区分英美的固有单词（无论英式美式拼写完全一致，绝非变体）
+    const invariantRoots = [
+      "bruise", "cruise", "disguise", "surprise", "promise", "compromise",
+      "enterprise", "exercise", "premise", "advise", "devise", "revise",
+      "supervise", "improvise", "televise", "franchise", "surmise", "apprise",
+      "comprise", "chastise", "excise", "incise", "concise", "precise",
+      "paradise", "expertise", "merchandise", "noise", "poise", "tortoise",
+      "turquoise", "otherwise", "clockwise", "likewise", "praise", "raise",
+      "rise", "wise", "chemise", "size", "prize", "seize", "capsize", "assize"
+    ];
+
+    const isInvariant = invariantRoots.some(root => {
+      const rootBase = root.replace(/e$/, '');
+      return w === root || w === root + 's' || w === root + 'd' || w === rootBase + 'ed' || w === rootBase + 'ing';
+    });
+
+    if (!isInvariant && w.length > 4) {
+      if (isIsePattern) return "英式";
+      if (isIzePattern) return "美式";
     }
   }
 
