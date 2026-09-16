@@ -721,6 +721,12 @@ async function doFullSync(notifyUser = false) {
   let webdavSuccessCount = 0;
 
   try {
+    // 先获取本地删除墓碑表，防止已删除词在欧路拉取中被复活
+    const localDelRes = await new Promise(resolve => {
+      chrome.storage.local.get({ deletedWords: {} }, resolve);
+    });
+    const deletions = localDelRes.deletedWords || {};
+
     // 1. 若配置了欧路 Token，自动拉取欧路全部分类生词（传入 currentWords 开启极速早停加速）
     const storageData = await new Promise(resolve => {
       chrome.storage.sync.get({ eudicToken: '' }, resolve);
@@ -733,7 +739,7 @@ async function doFullSync(notifyUser = false) {
         const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
         eudicTotalScanned = eudicWords.length;
         
-        const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords);
+        const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords, deletions);
         eudicNewCount = newAddedCount;
         if (newAddedCount > 0) {
           currentWords = mergedList;
@@ -1111,10 +1117,14 @@ function renderList(list, query = "") {
       if (idx === -1) return;
 
       if (confirm(`确定要从生词本中删除「${targetWord}」吗？`)) {
-        // 核心修复：精准仅删除被点击的那条单独记录！同名单词其他副本绝对完整保留
-        currentWords.splice(idx, 1);
-
         const cleanTarget = (targetWord || "").toLowerCase().trim();
+        // 彻底清除当前词库中该词的所有条目（包括可能的残留重复项）
+        currentWords = currentWords.filter(w => {
+          if (targetUid && w._uid && w._uid === targetUid) return false;
+          if ((w.text || w.word || "").toLowerCase().trim() === cleanTarget) return false;
+          return true;
+        });
+
         chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
           const delMap = Object.assign({}, rDel.deletedWords || {});
           if (cleanTarget) delMap[cleanTarget] = Date.now();
@@ -1122,22 +1132,22 @@ function renderList(list, query = "") {
           chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
             doWebDAVOverwrite(); // 立即用删除后的纯净数据覆盖坚果云端并同步上传墓碑
 
-            // 关键：检查库中是否还存在其他同名单词；若无，才从欧路词典生词本中同步删除
-            const hasOtherSameWord = currentWords.some(w => (w.text || w.word || "").toLowerCase().trim() === cleanTarget);
-            if (!hasOtherSameWord) {
-              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-                if (r.eudicToken) {
-                  const engine = new EudicSyncEngine(r.eudicToken);
-                  engine.deleteWord(targetWord).catch(err => {
-                    console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
-                  });
+            // 关键：直接同步向欧路词典发送删除指令，彻底抹杀云端残留
+            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+              if (r.eudicToken) {
+                const engine = new EudicSyncEngine(r.eudicToken);
+                engine.deleteWord(targetWord).catch(err => {
+                  console.warn(`从欧路同步删除 ${targetWord} 失败:`, err);
+                });
+                if (cleanTarget !== targetWord) {
+                  engine.deleteWord(cleanTarget).catch(() => {});
                 }
-              });
-            }
+              }
+            });
 
             applyFilter();
             updateStats();
-            showToast(`🗑️ 已删除「${targetWord}」`, 'info');
+            showToast(`🗑️ 已永久删除「${targetWord}」`, 'info');
           });
         });
       }
@@ -2412,11 +2422,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 读取本地生词库 (默认空白 [])
-  chrome.storage.local.get({ savedWords: [] }, (res) => {
+  // 读取本地生词库并结合墓碑记录执行自愈净化
+  chrome.storage.local.get({ savedWords: [], deletedWords: {} }, (res) => {
     const list = res.savedWords || [];
+    const delMap = res.deletedWords || {};
     let needSave = false;
-    currentWords = list.map(item => {
+
+    // 滤除在用户删除墓碑表中登记的死词，防止历史遗留脏数据在界面中出现
+    const validList = list.filter(item => {
+      const k = (item.text || item.word || "").toLowerCase().trim();
+      if (k && delMap[k]) {
+        needSave = true;
+        return false;
+      }
+      return true;
+    });
+
+    currentWords = validList.map(item => {
       item.notes = cleanNotes(item.notes);
       if (item.phonetic) item.phonetic = cleanIPA(item.phonetic);
       if (typeof item.srsLevel === 'undefined') item.srsLevel = 0;
@@ -2898,7 +2920,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
 
         if (statusEl) statusEl.innerText = `已拉取 ${eudicWords.length} 词，正在比对合并...`;
-        const { mergedList, newAddedCount, totalEudicScanned } = engine.mergeEudicWords(currentWords, eudicWords);
+        const localDelRes = await new Promise(r => chrome.storage.local.get({ deletedWords: {} }, r));
+        const delMap = localDelRes.deletedWords || {};
+        const { mergedList, newAddedCount, totalEudicScanned } = engine.mergeEudicWords(currentWords, eudicWords, delMap);
 
         currentWords = mergedList;
         chrome.storage.local.set({ savedWords: currentWords }, () => {
@@ -3311,6 +3335,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
           doWebDAVOverwrite(); // 关键：权威覆盖坚果云并同步上传删除墓碑
+
+          // 关键：同时从欧路生词本中同步彻底抹除这些冗余变体
+          chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+            if (r.eudicToken) {
+              const engine = new EudicSyncEngine(r.eudicToken);
+              wordsToDelete.forEach(w => engine.deleteWord(w).catch(() => {}));
+            }
+          });
+
           exitVariantFilterMode();
           applyFilter();
           updateStats();

@@ -544,11 +544,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "UNSAVE_WORD") {
     const cleanWord = (request.word || "").trim().toLowerCase();
-    chrome.storage.local.get({ savedWords: [] }, (result) => {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, (result) => {
       let list = result.savedWords || [];
+      const delMap = Object.assign({}, result.deletedWords || {});
+      if (cleanWord) delMap[cleanWord] = Date.now();
       list = list.filter(x => (x.text || x.word || "").toLowerCase().trim() !== cleanWord);
-      chrome.storage.local.set({ savedWords: list }, () => {
+      chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
         autoSyncWebDAV(list);
+        chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+          if (r.eudicToken) {
+            const engine = new EudicSyncEngine(r.eudicToken);
+            engine.deleteWord(cleanWord).catch(e => console.warn(e));
+          }
+        });
         sendResponse({ success: true, count: list.length });
       });
     });
@@ -559,8 +567,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const payload = request.data;
     const cleanWord = (payload.text || payload.word || "").trim();
 
-    chrome.storage.local.get({ savedWords: [] }, (result) => {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, (result) => {
       const list = result.savedWords || [];
+      const delMap = Object.assign({}, result.deletedWords || {});
+
       // 智能词形关联检测：优先完全匹配 cleanWord；若未命中，自动检索是否已收录该词的原型词条 (如 deficits -> deficit, halted -> halt)
       let existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
       const baseForms = getBaseForms(cleanWord);
@@ -607,8 +617,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         list.splice(existsIndex, 1);
       }
       list.unshift(item);
+
+      // 用户显式重新收藏该词时，清除其删除墓碑，允许其正常保存与漫游
+      const lowerCanonical = canonicalWord.toLowerCase().trim();
+      const lowerClean = cleanWord.toLowerCase().trim();
+      if (delMap[lowerCanonical]) delete delMap[lowerCanonical];
+      if (delMap[lowerClean]) delete delMap[lowerClean];
       
-      chrome.storage.local.set({ savedWords: list }, () => {
+      chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
         autoSyncWebDAV(list);
         sendResponse({ success: true, count: list.length });
 

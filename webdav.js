@@ -187,15 +187,14 @@ class WebDAVClient {
   mergeWords(localList = [], remoteList = [], deletionsMap = {}, lastSyncTime = 0) {
     const map = new Map();
 
-    // 1. 先存入云端所有词 (遵从删除墓碑判断)
+    // 1. 先存入云端所有词 (遵从删除墓碑判断，已被删除词坚决抹除)
     remoteList.forEach(rItem => {
       const k = (rItem.text || rItem.word || "").toLowerCase().trim();
       if (!k) return;
 
       const delTime = deletionsMap[k] || 0;
-      const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
-      if (delTime > 0 && rUpdate <= delTime) {
-        // 该词已被标记删除，且在删除后未被重新添加，云端旧词予以抹除
+      if (delTime > 0) {
+        // 该词已被用户在墓碑表中标记删除，坚决抹除，绝不复活
         return;
       }
 
@@ -208,8 +207,7 @@ class WebDAVClient {
       if (!k) return;
 
       const delTime = deletionsMap[k] || 0;
-      const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
-      if (delTime > 0 && lUpdate <= delTime) {
+      if (delTime > 0) {
         // 该词已被标记删除，本地旧记录予以抹除，绝不复活
         return;
       }
@@ -406,8 +404,8 @@ class EudicSyncEngine {
     return Array.from(wordMap.values());
   }
 
-  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并 (确保新词全部置于最顶端)
-  mergeEudicWords(existingWords = [], eudicRawList = []) {
+  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并 (严格遵从删除墓碑，杜绝死词复活，新词置顶)
+  mergeEudicWords(existingWords = [], eudicRawList = [], deletionsMap = {}) {
     const existingMap = new Map();
     existingWords.forEach(w => {
       const k = (w.text || w.word || "").toLowerCase().trim();
@@ -422,11 +420,18 @@ class EudicSyncEngine {
     const baseTime = Math.max(Date.now(), maxExistingDate + 1000);
 
     const newItems = [];
+    const wordsToDeleteFromEudic = [];
 
     eudicRawList.forEach(item => {
       const wText = (item.word || item.text || item.key || "").trim();
       if (!wText) return;
       const k = wText.toLowerCase();
+
+      // 核心防线：如果该词已被用户标记删除，坚决绝不拉取！绝不允许死词复生！
+      if (deletionsMap && deletionsMap[k]) {
+        wordsToDeleteFromEudic.push(wText);
+        return;
+      }
 
       if (!existingMap.has(k)) {
         // 欧路官方 API 字段: phon, exp, context_line
@@ -467,6 +472,15 @@ class EudicSyncEngine {
       item._uid = 'w_' + itemDate + '_' + Math.random().toString(36).slice(2, 9);
     });
 
+    // 发现已被本地删除但仍残留在欧路云端的词条，异步顺手向欧路发送删除指令，清空云端残留
+    if (wordsToDeleteFromEudic.length > 0) {
+      setTimeout(() => {
+        wordsToDeleteFromEudic.forEach(w => {
+          this.deleteWord(w).catch(err => console.warn("后台异步清理欧路已删词失败:", err));
+        });
+      }, 100);
+    }
+
     // 新词排在最前
     const resultList = [...newItems, ...existingWords];
 
@@ -504,9 +518,11 @@ class EudicSyncEngine {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
+            id: String(catId),
             category_id: String(catId),
             language: "en",
-            words: [cleanWord]
+            word: cleanWord,
+            words: [cleanWord, cleanWord.toLowerCase()]
           })
         }, 8000);
       } catch (err) {
