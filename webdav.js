@@ -212,6 +212,8 @@ class WebDAVClient {
         return;
       }
 
+      const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
+
       if (!map.has(k)) {
         // 云端没有该词：
         // 关键智能判定：该词是离线期间本地新增的？还是在其他设备上已被删除？
