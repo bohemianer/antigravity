@@ -20,6 +20,18 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
   }
 }
 
+function cleanIPA(s) {
+  if (!s) return "";
+  let str = s.trim().replace(/^[\/\[]+|[\/\]]+$/g, '').trim();
+  if (str.includes(';') || str.includes('；') || str.includes(',')) {
+    str = str.split(/[;；,]/)[0].trim().replace(/^[\/\[]+|[\/\]]+$/g, '').trim();
+  }
+  str = str.replace(/[\u0300-\u036f]/g, '');
+  str = str.replace(/[\x00-\x1f\x7f-\x9f\ufffd]/g, '');
+  str = str.replace(/[()]/g, '');
+  return str;
+}
+
 class WebDAVClient {
   constructor(config = {}) {
     this.serverUrl = (config.serverUrl || "https://dav.jianguoyun.com/dav/").replace(/\/+$/, '') + '/';
@@ -394,7 +406,7 @@ class EudicSyncEngine {
     return Array.from(wordMap.values());
   }
 
-  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并
+  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并 (确保新词全部置于最顶端)
   mergeEudicWords(existingWords = [], eudicRawList = []) {
     const existingMap = new Map();
     existingWords.forEach(w => {
@@ -402,8 +414,14 @@ class EudicSyncEngine {
       if (k) existingMap.set(k, w);
     });
 
-    let newAddedCount = 0;
-    const resultList = [...existingWords];
+    // 计算当前全库已有的最大时间戳，确保新从欧路拉取的词时间戳大于库中所有老词，排在最顶部
+    const maxExistingDate = existingWords.reduce((max, w) => {
+      const t = typeof w.date === 'number' ? w.date : (w.date ? new Date(w.date).getTime() : 0);
+      return Math.max(max, isNaN(t) ? 0 : t);
+    }, 0);
+    const baseTime = Math.max(Date.now(), maxExistingDate + 1000);
+
+    const newItems = [];
 
     eudicRawList.forEach(item => {
       const wText = (item.word || item.text || item.key || "").trim();
@@ -427,21 +445,34 @@ class EudicSyncEngine {
           context: ctx || "来自欧路词典同步",
           title: "欧路词典 (Eudic)",
           url: "https://dict.eudic.net",
-          date: item.add_time ? new Date(item.add_time).getTime() : Date.now(),
+          date: 0, // 稍后按顺序统一定制时间戳
+          updatedAt: Date.now(),
           notes: "",
           srsLevel: 0,
           srsNextReview: 0,
-          srsReviews: 0
+          srsReviews: 0,
+          _uid: ""
         };
-        resultList.unshift(newItem);
+        newItems.push(newItem);
         existingMap.set(k, newItem);
-        newAddedCount++;
       }
     });
 
+    // 为所有新词赋予递增的顶端时间戳：
+    // eudicRawList 中排在前面的（最新在欧路中添加的）赋予最高的时间戳，确保在列表中排在最前面第 1 位
+    const totalNew = newItems.length;
+    newItems.forEach((item, idx) => {
+      const itemDate = baseTime + (totalNew - idx) * 1000;
+      item.date = itemDate;
+      item._uid = 'w_' + itemDate + '_' + Math.random().toString(36).slice(2, 9);
+    });
+
+    // 新词排在最前
+    const resultList = [...newItems, ...existingWords];
+
     return {
       mergedList: resultList,
-      newAddedCount: newAddedCount,
+      newAddedCount: totalNew,
       totalEudicScanned: eudicRawList.length
     };
   }

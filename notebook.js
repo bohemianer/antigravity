@@ -14,56 +14,65 @@ let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onCh
 // 全局 Apple 风格优雅悬浮 Toast 消息组件
 let agyToastTimer = null;
 function showToast(msg, type = 'info', duration = 2800) {
-  let toastEl = document.getElementById('agyGlobalToast');
-  if (!toastEl) {
-    toastEl = document.createElement('div');
-    toastEl.id = 'agyGlobalToast';
-    toastEl.style.cssText = `
-      position: fixed;
-      top: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-20px);
-      z-index: 999999;
-      background: rgba(26, 26, 26, 0.94);
-      color: #f5f5f7;
-      font-size: 13.5px;
-      font-weight: 500;
-      padding: 10px 22px;
-      border-radius: 9999px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.14);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      white-space: pre-wrap;
-      text-align: center;
-      max-width: 90vw;
-      line-height: 1.4;
-    `;
-    document.body.appendChild(toastEl);
+  try {
+    let toastEl = document.getElementById('agyGlobalToast');
+    if (!toastEl) {
+      if (!document.body) return;
+      toastEl = document.createElement('div');
+      toastEl.id = 'agyGlobalToast';
+      toastEl.style.cssText = `
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        z-index: 999999;
+        background: rgba(26, 26, 26, 0.94);
+        color: #f5f5f7;
+        font-size: 13.5px;
+        font-weight: 500;
+        padding: 10px 22px;
+        border-radius: 9999px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: pre-wrap;
+        text-align: center;
+        max-width: 90vw;
+        line-height: 1.4;
+      `;
+      document.body.appendChild(toastEl);
+    }
+
+    // 根据类型定制微边框高亮
+    let borderHighlight = 'rgba(255, 255, 255, 0.16)';
+    if (type === 'error') borderHighlight = 'rgba(239, 68, 68, 0.5)';
+    else if (type === 'success') borderHighlight = 'rgba(16, 185, 129, 0.5)';
+    else if (type === 'warning') borderHighlight = 'rgba(245, 158, 11, 0.5)';
+
+    toastEl.style.borderColor = borderHighlight;
+    toastEl.innerHTML = msg;
+    toastEl.style.opacity = '1';
+    toastEl.style.transform = 'translateX(-50%) translateY(0)';
+
+    if (agyToastTimer) clearTimeout(agyToastTimer);
+    agyToastTimer = setTimeout(() => {
+      if (toastEl) {
+        toastEl.style.opacity = '0';
+        toastEl.style.transform = 'translateX(-50%) translateY(-20px)';
+      }
+    }, duration);
+  } catch (e) {
+    console.warn('showToast error:', e);
   }
-
-  // 根据类型定制微边框高亮
-  let borderHighlight = 'rgba(255, 255, 255, 0.16)';
-  if (type === 'error') borderHighlight = 'rgba(239, 68, 68, 0.5)';
-  else if (type === 'success') borderHighlight = 'rgba(16, 185, 129, 0.5)';
-  else if (type === 'warning') borderHighlight = 'rgba(245, 158, 11, 0.5)';
-
-  toastEl.style.borderColor = borderHighlight;
-  toastEl.innerHTML = msg;
-  toastEl.style.opacity = '1';
-  toastEl.style.transform = 'translateX(-50%) translateY(0)';
-
-  if (agyToastTimer) clearTimeout(agyToastTimer);
-  agyToastTimer = setTimeout(() => {
-    toastEl.style.opacity = '0';
-    toastEl.style.transform = 'translateX(-50%) translateY(-20px)';
-  }, duration);
 }
+window.showToast = showToast;
+globalThis.showToast = showToast;
 
 // 原生零延迟 Web Audio API 物理微触感音效合成引擎 (Zero-Asset Synthetic Haptics)
 const SoundFx = {
@@ -3014,8 +3023,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             closeModal();
             saveAndRefresh();
-            SoundFx.playSuccess();
-            showToast(`✨ 已成功将内容智能融合更新至原型「${rootWord}」！`);
+            try {
+              if (SoundFx && typeof SoundFx.playSuccess === 'function') SoundFx.playSuccess();
+              if (typeof showToast === 'function') {
+                showToast(`✨ 已成功将内容智能融合更新至原型「${rootWord}」！`, 'success');
+              }
+            } catch (toastErr) {
+              console.warn("Toast notice suppressed:", toastErr);
+            }
             return;
           }
         }
@@ -3055,7 +3070,13 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
             closeModal();
             saveAndRefresh();
-            showToast(`✨ 生词「${word}」已成功收录入库！`, 'success');
+            try {
+              if (typeof showToast === 'function') {
+                showToast(`✨ 生词「${word}」已成功收录入库！`, 'success');
+              }
+            } catch (tErr) {
+              console.warn(tErr);
+            }
           });
         });
       } else {
@@ -3081,20 +3102,7 @@ document.addEventListener('DOMContentLoaded', () => {
           _uid: originalUid
         };
 
-        // 原地完全覆盖更新当前索引位置的词条 (按编辑后的内容直接覆盖原词条)
-        currentWords[idx] = Object.assign({}, currentWords[idx] || {}, updatedItem, { date: originalDate });
-
-        // 如果把单词修改为生词本中其他位置已存在的同名单词，合并去重：移除库中原有的那条重复词，由当前编辑后的条目直接覆盖替代！
-        if (isWordRenamed) {
-          const dupIdx = currentWords.findIndex((w, i) => i !== idx && (w.text || w.word || "").toLowerCase().trim() === word.toLowerCase().trim());
-          if (dupIdx !== -1) {
-            currentWords.splice(dupIdx, 1);
-            if (dupIdx < idx) {
-              idx--;
-            }
-          }
-        }
-
+        currentWords[idx] = updatedItem;
         closeModal();
 
         if (isWordRenamed) {
@@ -3121,12 +3129,24 @@ document.addEventListener('DOMContentLoaded', () => {
               }
               applyFilter();
               updateStats();
-              showToast(`✨ 已成功将「${oldWordText}」修改为「${word}」`, 'success');
+              try {
+                if (typeof showToast === 'function') {
+                  showToast(`✨ 已成功将「${oldWordText}」修改为「${word}」`, 'success');
+                }
+              } catch (tErr) {
+                console.warn(tErr);
+              }
             });
           });
         } else {
           saveAndRefresh();
-          showToast(`✨ 词条「${word}」修改已保存！`, 'success');
+          try {
+            if (typeof showToast === 'function') {
+              showToast(`✨ 词条「${word}」修改已保存！`, 'success');
+            }
+          } catch (tErr) {
+            console.warn(tErr);
+          }
         }
       }
 
@@ -3156,7 +3176,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       console.error('保存词条失败:', err);
-      alert('保存词条失败: ' + (err && err.message ? err.message : String(err)));
+      if (err && err.message && (err.message.includes('showToast') || err.message.includes('Toast'))) {
+        console.warn('Toast display suppressed error:', err);
+      } else {
+        alert('保存词条失败: ' + (err && err.message ? err.message : String(err)));
+      }
     }
   };
 

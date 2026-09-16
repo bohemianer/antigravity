@@ -80,6 +80,61 @@ function getPopupCard() {
   return popupCard;
 }
 
+const ABBR_SET = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'gen', 'col', 'capt', 'st',
+  'sen', 'rep', 'gov', 'pres', 'rev', 'dept', 'univ', 'fig', 'no', 'vol',
+  'approx', 'e.g', 'i.e', 'etc', 'vs', 'v', 'al', 'inc', 'ltd', 'co', 'corp'
+]);
+
+function isSentenceBoundary(text, index) {
+  const ch = text[index];
+  if (!ch) return true;
+  if (/[\n\r?!。！？]/.test(ch)) return true;
+  if (ch !== '.') return false;
+
+  // 1. 数字小数点 (如 3.14, 1.5M) 不断句
+  if (index > 0 && /\d/.test(text[index - 1]) && index + 1 < text.length && /\d/.test(text[index + 1])) {
+    return false;
+  }
+
+  // 2. 句点后紧跟字母或数字 (如 U.K. 中的第一点，或网址 example.com) 绝不是断句
+  if (index + 1 < text.length && /[a-zA-Z0-9]/.test(text[index + 1])) {
+    return false;
+  }
+
+  // 3. 向前提取单词，检测是否为常见头衔/缩写 (如 Mr., Dr., Prof., etc.)
+  let p = index - 1;
+  while (p >= 0 && /[a-zA-Z.]/.test(text[p])) p--;
+  const prevWord = text.substring(p + 1, index).toLowerCase();
+
+  if (ABBR_SET.has(prevWord) || ABBR_SET.has(prevWord + '.')) {
+    return false;
+  }
+
+  // 单个大写字母缩写片段 (如中间名 John F. Kennedy)
+  const rawPrev = text.substring(p + 1, index);
+  if (/^[A-Z]$/.test(rawPrev)) {
+    const rest = text.substring(index + 1).trim();
+    if (rest.length > 0 && /^[a-z]/.test(rest)) {
+      return false;
+    }
+  }
+
+  // 4. 查看点后第一个非空白字符：若跟随小写英文字母，通常句子未结束
+  let nextIdx = index + 1;
+  while (nextIdx < text.length && /[\s"'\u2018\u2019\u201c\u201d)\]}]/.test(text[nextIdx])) {
+    nextIdx++;
+  }
+  if (nextIdx < text.length) {
+    const nextChar = text[nextIdx];
+    if (/[a-z]/.test(nextChar)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function getSurroundingSentence(selection) {
   if (!selection || !selection.anchorNode) return "";
   const text = selection.anchorNode.textContent || "";
@@ -90,15 +145,25 @@ function getSurroundingSentence(selection) {
   if (index === -1) return selectedText;
   
   let start = index;
-  while (start > 0 && !/[.!?\n\r]/.test(text[start - 1])) {
+  while (start > 0) {
+    if (isSentenceBoundary(text, start - 1)) {
+      break;
+    }
     start--;
   }
   
   let end = index + selectedText.length;
-  while (end < text.length && !/[.!?\n\r]/.test(text[end])) {
+  while (end < text.length) {
+    if (isSentenceBoundary(text, end)) {
+      end++; // 包含结尾标点
+      // 若标点后有连带的引号或括号，一并收录
+      while (end < text.length && /["'\u2018\u2019\u201c\u201d)\]}]/.test(text[end])) {
+        end++;
+      }
+      break;
+    }
     end++;
   }
-  if (end < text.length) end++;
   
   return text.substring(start, end).trim();
 }
