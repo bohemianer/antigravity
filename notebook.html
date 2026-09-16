@@ -1217,6 +1217,17 @@
       color: var(--claude-terracotta);
       background: rgba(204, 120, 92, 0.12);
     }
+    .flashcard-phonetic.playing,
+    .word-phonetic.playing {
+      color: var(--claude-terracotta) !important;
+      background: rgba(204, 120, 92, 0.2) !important;
+      animation: audioPulse 0.9s infinite alternate ease-in-out;
+    }
+    @keyframes audioPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
     .flashcard-context {
       font-family: var(--font-serif);
       font-size: 15.5px;
@@ -2561,6 +2572,14 @@
               <span id="soundMenuText">交互音效</span>
             </span>
             <span class="check-mark" id="soundMenuCheck">✓</span>
+          </div>
+
+          <div class="dropdown-item" id="menuToggleAccent" title="切换发音口音：美式发音 (US) / 英式发音 (UK)">
+            <span style="display:flex; align-items:center; gap:7px;">
+              <span id="accentMenuIcon">🇺🇸</span>
+              <span id="accentMenuText">美式发音</span>
+            </span>
+            <span class="check-mark" id="accentMenuBadge" style="font-size: 11px; opacity: 0.85; font-family: -apple-system, BlinkMacSystemFont, monospace; font-weight: 600;">US</span>
           </div>
 
           <div class="dropdown-item" id="menuFindVariants" title="检索词库中的复数、过去式等词根重复变体">

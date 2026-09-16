@@ -347,6 +347,91 @@ function safeSendMessage(message, callback) {
   }
 }
 
+let currentContentAudio = null;
+function playPronunciation(text, triggerEl = null) {
+  if (!text) return;
+  const clean = text.trim();
+  if (!clean) return;
+
+  if (triggerEl) triggerEl.style.opacity = '0.55';
+  const resetUI = () => {
+    if (triggerEl) triggerEl.style.opacity = '1';
+  };
+
+  if (currentContentAudio) {
+    try {
+      currentContentAudio.pause();
+      currentContentAudio.currentTime = 0;
+    } catch (e) {}
+    currentContentAudio = null;
+  }
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
+  const doFallback = (accent) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      resetUI();
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = accent === 'uk' ? 'en-GB' : 'en-US';
+      u.rate = 0.92;
+      u.pitch = 1.0;
+      const voices = window.speechSynthesis.getVoices() || [];
+      const targetPrefix = accent === 'uk' ? 'en-gb' : 'en-us';
+      const pool = voices.filter(v => (v.lang || '').toLowerCase().replace('_', '-').startsWith(targetPrefix));
+      const preferred = accent === 'uk'
+        ? ['google uk english female', 'google uk english male', 'daniel', 'oliver', 'serena']
+        : ['google us english', 'samantha', 'ava', 'allison', 'jenny', 'guy', 'alex'];
+      let chosen = null;
+      for (const name of preferred) {
+        chosen = (pool.length > 0 ? pool : voices).find(v => (v.name || '').toLowerCase().includes(name));
+        if (chosen) break;
+      }
+      if (!chosen && pool.length > 0) chosen = pool[0];
+      if (chosen) u.voice = chosen;
+      u.onend = resetUI;
+      u.onerror = resetUI;
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      resetUI();
+    }
+  };
+
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+      chrome.storage.sync.get({ pronunciationAccent: 'us' }, (res) => {
+        const accent = (res && res.pronunciationAccent) || 'us';
+        const typeParam = accent === 'uk' ? 1 : 2;
+        const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=${typeParam}`;
+        const audio = new Audio(audioUrl);
+        currentContentAudio = audio;
+
+        let fallbackFired = false;
+        const fallback = () => {
+          if (fallbackFired) return;
+          fallbackFired = true;
+          doFallback(accent);
+        };
+
+        audio.onended = resetUI;
+        audio.onerror = fallback;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(fallback);
+        }
+      });
+    } else {
+      doFallback('us');
+    }
+  } catch (e) {
+    doFallback('us');
+  }
+}
+
 function showCard(rect, text, sentence) {
   const card = getPopupCard();
   const wordsCount = text.trim().split(/\s+/).length;
@@ -433,23 +518,7 @@ function showCard(rect, text, sentence) {
     const speakBtn = document.getElementById('agy-btn-speak');
     if (speakBtn) {
       speakBtn.onclick = () => {
-        try {
-          const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&type=2`;
-          const audio = new Audio(audioUrl);
-          audio.play().catch(() => {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'en-US';
-            u.rate = 0.95;
-            window.speechSynthesis.speak(u);
-          });
-        } catch (e) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text);
-          u.lang = 'en-US';
-          u.rate = 0.95;
-          window.speechSynthesis.speak(u);
-        }
+        playPronunciation(text, speakBtn);
       };
     }
   }

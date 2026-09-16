@@ -273,53 +273,231 @@ function createSparkleBurst(x, y) {
   }
 }
 
-// 真人母语者高清原声发音引擎 (优先美音真人录音 MP3，离线自动降级 + 灵动声波微动效)
-let currentAudio = null;
-function speakWord(text, triggerEl = null) {
-  if (!text) return;
-  const clean = text.trim();
+// ==========================================
+// 权威级双模母语原声发音引擎 (PronunciationEngine)
+// 支持美式 (US)/英式 (UK) 实时切换、权威真人原声优先、智能短语语流、高保真自然语音降级与 0ms 内存瞬时缓存
+// ==========================================
+const PronunciationEngine = {
+  accent: 'us', // 'us' | 'uk'
+  audioCache: new Map(),
+  currentAudio: null,
+  cachedVoices: [],
 
-  // 触发灵动声波跳动波形
-  const pills = triggerEl ? [triggerEl] : document.querySelectorAll(`.audio-pill-trigger[data-word="${clean}"]`);
-  pills.forEach(p => p.classList.add('playing'));
-  const fcAudioPill = document.getElementById('fcAudioPill');
-  if (fcAudioPill && (!triggerEl || triggerEl === fcAudioPill)) {
-    fcAudioPill.classList.add('playing');
-  }
-
-  const stopWave = () => {
-    pills.forEach(p => p.classList.remove('playing'));
-    if (fcAudioPill) fcAudioPill.classList.remove('playing');
-  };
-
-  try {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.currentTime = 0;
+  init() {
+    // 读取持久化口音偏好
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+        chrome.storage.sync.get({ pronunciationAccent: 'us' }, (res) => {
+          if (res && res.pronunciationAccent) {
+            this.accent = res.pronunciationAccent;
+            this.updateUI();
+          }
+        });
+      } else {
+        const saved = localStorage.getItem('antigravity_accent');
+        if (saved) {
+          this.accent = saved;
+          this.updateUI();
+        }
+      }
+    } catch (e) {
+      console.warn('PronunciationEngine init error:', e);
     }
-    const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=2`;
-    currentAudio = new Audio(audioUrl);
-    currentAudio.onended = stopWave;
-    currentAudio.onerror = () => {
-      fallbackTTS(clean);
-      setTimeout(stopWave, 1200);
-    };
-    currentAudio.play().catch(() => {
-      fallbackTTS(clean);
-      setTimeout(stopWave, 1200);
-    });
-  } catch (e) {
-    fallbackTTS(clean);
-    setTimeout(stopWave, 1200);
-  }
-}
 
-function fallbackTTS(text) {
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'en-US';
-  u.rate = 0.95;
-  window.speechSynthesis.speak(u);
+    // 预热 Web Speech 自然合成语音列表
+    this.loadVoices();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        this.loadVoices();
+      };
+    }
+  },
+
+  loadVoices() {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    this.cachedVoices = window.speechSynthesis.getVoices() || [];
+  },
+
+  toggleAccent() {
+    this.accent = this.accent === 'us' ? 'uk' : 'us';
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+        chrome.storage.sync.set({ pronunciationAccent: this.accent });
+      } else {
+        localStorage.setItem('antigravity_accent', this.accent);
+      }
+    } catch (e) {}
+    this.updateUI();
+    return this.accent;
+  },
+
+  updateUI() {
+    const iconEl = document.getElementById('accentMenuIcon');
+    const textEl = document.getElementById('accentMenuText');
+    const badgeEl = document.getElementById('accentMenuBadge');
+    const isUK = this.accent === 'uk';
+    if (iconEl) iconEl.innerText = isUK ? '🇬🇧' : '🇺🇸';
+    if (textEl) textEl.innerText = isUK ? '英式发音' : '美式发音';
+    if (badgeEl) badgeEl.innerText = isUK ? 'UK' : 'US';
+  },
+
+  getBestVoice(accent) {
+    if (!this.cachedVoices || this.cachedVoices.length === 0) {
+      this.loadVoices();
+    }
+    const targetPrefix = accent === 'uk' ? 'en-gb' : 'en-us';
+    const langVoices = this.cachedVoices.filter(v => {
+      const l = (v.lang || '').toLowerCase().replace('_', '-');
+      return l.startsWith(targetPrefix);
+    });
+
+    const pool = langVoices.length > 0 ? langVoices : this.cachedVoices.filter(v => (v.lang || '').toLowerCase().startsWith('en'));
+    if (pool.length === 0) return null;
+
+    const preferredNames = accent === 'uk'
+      ? ['google uk english female', 'google uk english male', 'daniel (enhanced)', 'daniel', 'oliver', 'serena', 'kate', 'arthur', 'george']
+      : ['google us english', 'samantha (enhanced)', 'samantha', 'ava (enhanced)', 'ava', 'allison', 'jenny', 'guy', 'alex', 'victoria'];
+
+    for (const name of preferredNames) {
+      const found = pool.find(v => (v.name || '').toLowerCase().includes(name));
+      if (found) return found;
+    }
+
+    const enhanced = pool.find(v => /enhanced|natural|premium|online/i.test(v.name || ''));
+    if (enhanced) return enhanced;
+
+    return pool[0];
+  },
+
+  speak(text, triggerEl = null, customAccent = null) {
+    if (!text) return;
+    const clean = text.trim();
+    if (!clean) return;
+
+    const useAccent = customAccent || this.accent || 'us';
+    const typeParam = useAccent === 'uk' ? 1 : 2; // 1: 英音, 2: 美音
+
+    // 视觉声波波形联动
+    const activeElements = new Set();
+    if (triggerEl) activeElements.add(triggerEl);
+    document.querySelectorAll(`.audio-phonetic-trigger[data-word="${clean}" i]`).forEach(el => activeElements.add(el));
+    const fcPhoneticEl = document.getElementById('fcPhonetic');
+    const fcWordEl = document.getElementById('fcWord');
+    if (fcPhoneticEl && fcWordEl && fcWordEl.innerText.trim().toLowerCase() === clean.toLowerCase()) {
+      activeElements.add(fcPhoneticEl);
+    }
+    activeElements.forEach(el => el.classList.add('playing'));
+
+    let stopped = false;
+    const stopWave = () => {
+      if (stopped) return;
+      stopped = true;
+      activeElements.forEach(el => el.classList.remove('playing'));
+    };
+
+    // 终止上一段正在播放的音频
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch (e) {}
+      this.currentAudio = null;
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+
+    const cacheKey = `${useAccent}_${clean.toLowerCase()}`;
+
+    // 1. 命中 0ms 本地内存音频缓存
+    if (this.audioCache.has(cacheKey)) {
+      const cached = this.audioCache.get(cacheKey);
+      try {
+        cached.currentTime = 0;
+        this.currentAudio = cached;
+        cached.onended = stopWave;
+        cached.onerror = () => {
+          this.fallbackSpeech(clean, useAccent, stopWave);
+        };
+        const p = cached.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {
+            this.fallbackSpeech(clean, useAccent, stopWave);
+          });
+        }
+        return;
+      } catch (e) {
+        this.audioCache.delete(cacheKey);
+      }
+    }
+
+    // 2. 权威词典真人 MP3（支持标准词条及经典成语短语）
+    const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(clean)}&type=${typeParam}`;
+    const audio = new Audio(audioUrl);
+    this.currentAudio = audio;
+
+    let fallbackTriggered = false;
+    const runFallback = () => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      this.fallbackSpeech(clean, useAccent, stopWave);
+    };
+
+    audio.onended = () => {
+      this.audioCache.set(cacheKey, audio);
+      stopWave();
+    };
+
+    audio.onerror = () => {
+      runFallback();
+    };
+
+    // 2.5s 智能超时保护（防止网络卡顿或短语 500 挂起）
+    const timeoutTimer = setTimeout(() => {
+      if (audio.readyState === 0 && !stopped) {
+        runFallback();
+      }
+    }, 2500);
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        clearTimeout(timeoutTimer);
+        this.audioCache.set(cacheKey, audio);
+      }).catch(() => {
+        clearTimeout(timeoutTimer);
+        runFallback();
+      });
+    }
+  },
+
+  fallbackSpeech(text, accent, onEnd) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      if (onEnd) onEnd();
+      return;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = accent === 'uk' ? 'en-GB' : 'en-US';
+      u.rate = 0.92;
+      u.pitch = 1.0;
+
+      const voice = this.getBestVoice(accent);
+      if (voice) u.voice = voice;
+
+      u.onend = () => { if (onEnd) onEnd(); };
+      u.onerror = () => { if (onEnd) onEnd(); };
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      console.warn('SpeechSynthesis error:', e);
+      if (onEnd) onEnd();
+    }
+  }
+};
+
+function speakWord(text, triggerEl = null) {
+  PronunciationEngine.speak(text, triggerEl);
 }
 
 function cleanIPA(s) {
@@ -1090,7 +1268,7 @@ function renderList(list, query = "") {
   tbody.querySelectorAll('.audio-phonetic-trigger').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
-      speakWord(btn.getAttribute('data-word'));
+      speakWord(btn.getAttribute('data-word'), btn);
     };
   });
 
@@ -1934,7 +2112,7 @@ function shuffleCards() {
   cardIndex = 0;
   renderFlashcard();
   const current = cardList[0];
-  if (current) speakWord(current.text || current.word);
+  if (current) speakWord(current.text || current.word, document.getElementById('fcPhonetic'));
 }
 
 let selectedSrsSet = new Set(['all']); // 支持多选熟练度过滤
@@ -2407,12 +2585,30 @@ function initTheme() {
         }
       };
     }
+
+    // 发音口音切换 (美音/英音) 初始化与绑定
+    const menuToggleAccent = document.getElementById('menuToggleAccent');
+    PronunciationEngine.updateUI();
+
+    if (menuToggleAccent) {
+      menuToggleAccent.onclick = (e) => {
+        e.stopPropagation();
+        const newAccent = PronunciationEngine.toggleAccent();
+        if (typeof showToast === 'function') {
+          showToast(`已切换为${newAccent === 'uk' ? '英式发音 🇬🇧' : '美式发音 🇺🇸'}`);
+        }
+        if (typeof SoundFx !== 'undefined' && SoundFx.enabled) {
+          SoundFx.playClick();
+        }
+      };
+    }
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initCard3DTilt();
+  PronunciationEngine.init();
 
   chrome.storage.sync.get({ webdavConfig: null }, (res) => {
     webdavConfig = res.webdavConfig;
@@ -2612,7 +2808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fcAudioPill.onclick = (e) => {
       e.stopPropagation();
       const w = document.getElementById('fcWord').innerText;
-      speakWord(w);
+      speakWord(w, document.getElementById('fcPhonetic') || fcAudioPill);
     };
   }
 
@@ -2822,7 +3018,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (e.code === 'KeyR') {
         e.preventDefault();
         if (cardList[cardIndex]) {
-          speakWord(cardList[cardIndex].text || cardList[cardIndex].word);
+          speakWord(cardList[cardIndex].text || cardList[cardIndex].word, document.getElementById('fcPhonetic'));
         }
       }
       return;
@@ -2858,7 +3054,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (e.code === 'KeyR') {
         e.preventDefault();
         const w = document.getElementById('fcWord').innerText;
-        speakWord(w);
+        speakWord(w, document.getElementById('fcPhonetic'));
       }
     }
   });
@@ -2869,7 +3065,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fcPhoneticEl.onclick = (e) => {
       e.stopPropagation();
       const w = document.getElementById('fcWord').innerText;
-      speakWord(w);
+      speakWord(w, fcPhoneticEl);
     };
   }
 
@@ -3630,7 +3826,7 @@ document.addEventListener('DOMContentLoaded', () => {
         speakPill.style.display = 'inline-flex';
         speakPill.onclick = (e) => {
           e.stopPropagation();
-          speakWord(text);
+          speakWord(text, speakPill);
         };
       }
 
