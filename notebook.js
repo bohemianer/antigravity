@@ -9,6 +9,7 @@ let cardIndex = 0;
 let cardList = [];
 let cardRevealed = false;
 let currentView = 'table';
+let viewBeforeSearch = null; // 记录临时搜索前的视图（如 flashcard）
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
 
 // 全局 Apple 风格优雅悬浮 Toast 消息组件
@@ -1805,7 +1806,7 @@ function renderStealthMailCard() {
 }
 
 // 视图切换控制 (支持 table 与 flashcard 纯净双视图)
-function switchView(viewName) {
+function switchView(viewName, forceResetFlashcard = false) {
   currentView = viewName;
   const tableContainer = document.getElementById('viewTableContainer');
   const flashcardContainer = document.getElementById('viewFlashcardContainer');
@@ -1822,7 +1823,17 @@ function switchView(viewName) {
   if (viewName === 'table') {
     applyFilter();
   } else if (viewName === 'flashcard') {
-    updateFlashcardList(true);
+    // 核心保障：若已有进行中的自测任务且未显式要求强制重置，保留当前词组、进度与统计，无缝恢复现场！
+    if (forceResetFlashcard || cardList.length === 0) {
+      updateFlashcardList(true);
+    } else {
+      const summaryCard = document.getElementById('flashcardSummaryCard');
+      if (summaryCard && batchStats.completedCount >= batchTotalTarget && batchTotalTarget > 0) {
+        showBatchSummary();
+      } else {
+        renderFlashcard();
+      }
+    }
   }
 }
 
@@ -2752,10 +2763,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tab 切换事件 (笔记本 / 闪卡自测 纯净双模式)
   document.getElementById('tabTableView').onclick = () => {
     SoundFx.playClick();
+    viewBeforeSearch = null; // 用户主动点击切换到列表，解除临时搜索回退状态
     switchView('table');
   };
   document.getElementById('tabFlashcardView').onclick = () => {
     SoundFx.playClick();
+    viewBeforeSearch = null; // 用户主动点击切换到闪卡，解除临时搜索回退状态
     switchView('flashcard');
   };
 
@@ -3689,6 +3702,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // 退出搜索状态并优雅恢复现场
+  function exitSearchState() {
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    updateSearchClearState();
+    applyFilter();
+
+    // 若此前是从闪卡自测模式发起的单词检索，退出搜索时自动无缝回归闪卡现场，进度100%保留！
+    if (viewBeforeSearch === 'flashcard') {
+      viewBeforeSearch = null;
+      switchView('flashcard');
+    }
+  }
+
   if (searchInput) {
     searchInput.addEventListener('input', () => {
       if (isVariantFilterActive) {
@@ -3702,10 +3730,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (banner) banner.style.display = 'none';
       }
       updateSearchClearState();
-      // 若用户在闪卡界面中在搜索框输入内容，智能自动切换到笔记本列表，方便直观查看单词检索结果
-      if (currentView === 'flashcard' && searchInput.value.trim().length > 0) {
-        switchView('table');
+
+      if (searchInput.value.trim().length > 0) {
+        // 若用户在闪卡界面中在搜索框输入内容，记录原始视图并自动切换到列表以展示检索词条
+        if (currentView === 'flashcard') {
+          viewBeforeSearch = 'flashcard';
+          switchView('table');
+        } else {
+          applyFilter();
+        }
       } else {
+        // 输入框内容被完全删空
         applyFilter();
       }
     });
@@ -3722,10 +3757,15 @@ document.addEventListener('DOMContentLoaded', () => {
           const banner = document.getElementById('noContextFilterBanner');
           if (banner) banner.style.display = 'none';
         }
-        searchInput.value = '';
-        updateSearchClearState();
-        applyFilter();
+        exitSearchState();
         searchInput.blur();
+      }
+    });
+
+    searchInput.addEventListener('blur', () => {
+      // 当输入框内容为空失焦且此前来自闪卡模式，自动优雅回退到闪卡自测现场
+      if (searchInput.value.trim().length === 0 && viewBeforeSearch === 'flashcard') {
+        exitSearchState();
       }
     });
   }
@@ -3745,12 +3785,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const banner = document.getElementById('noContextFilterBanner');
         if (banner) banner.style.display = 'none';
       }
-      if (searchInput) {
-        searchInput.value = '';
-        updateSearchClearState();
-        applyFilter();
-        searchInput.focus();
-      }
+      exitSearchState();
     });
   }
 
