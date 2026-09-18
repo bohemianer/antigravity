@@ -660,141 +660,272 @@
       }
     }
 
+    .mobile-tab-bar {
+      display: none;
+    }
+
     @media (max-width: 768px) {
       body {
         min-width: 100% !important;
         width: 100%;
         overflow-x: hidden;
       }
+      /* 手机端顶栏：极度纯粹、精致单行（高度 48px，绝无按钮挤压） */
       header {
-        height: auto !important;
-        min-height: auto !important;
-        max-height: none !important;
-        padding: 8px 12px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        max-height: 48px !important;
+        padding: 0 14px !important;
         display: flex !important;
-        flex-direction: column !important;
-        gap: 8px !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         box-sizing: border-box !important;
         background: var(--bg-header) !important;
         border-bottom: 1px solid var(--border-glass) !important;
       }
-      /* 第一行：左侧应用图标，中间整齐的 [词本 / 闪卡] 切换器，右侧同步与菜单 */
       .logo-area {
         width: 100% !important;
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
-        gap: 6px !important;
       }
       .logo-brand-wrap {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
-        flex-shrink: 0 !important;
-      }
-      .logo-title {
-        display: none !important; /* 手机端隐藏冗长文字，留出充足空间 */
+        gap: 8px !important;
       }
       .logo-icon {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 17px !important;
-        border-radius: 9px !important;
-      }
-      .view-switcher {
-        flex: 1 1 auto !important;
-        max-width: 200px !important;
-        height: 34px !important;
-        padding: 2px !important;
-        box-sizing: border-box !important;
-        margin: 0 auto !important;
-        display: flex !important;
-        border-radius: 10px !important;
-      }
-      .view-tab {
-        flex: 1 !important;
-        justify-content: center !important;
-        height: 100% !important;
-        font-size: 12.5px !important;
-        font-weight: 600 !important;
-        padding: 0 6px !important;
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 16px !important;
         border-radius: 8px !important;
+      }
+      .logo-title {
+        display: inline !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.3px !important;
+      }
+      .logo-brand {
+        display: inline !important;
+      }
+      /* 手机端顶部彻底隐藏切换器与冗余按钮（已全部下放至 iOS 原生底部导航栏） */
+      .view-switcher {
+        display: none !important;
       }
       .header-right-actions {
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
-        flex-shrink: 0 !important;
       }
-      .sync-status-badge {
-        height: 32px !important;
-        padding: 0 8px 0 6px !important;
-        border-radius: 9px !important;
-        gap: 4px !important;
+      .header-right-actions .sync-status-badge {
+        display: none !important; /* 长条未同步标签移至底部导航栏 */
       }
-      #syncText {
-        display: inline !important;
-        font-size: 11px !important;
-        font-weight: 500 !important;
+      .header-right-actions #moreMenuContainer {
+        display: flex !important;
       }
       .more-menu-btn {
         width: 32px !important;
         height: 32px !important;
+        min-width: 32px !important;
+        border-radius: 50% !important;
         padding: 0 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        border-radius: 9px !important;
+      }
+      .more-dropdown-menu {
+        position: fixed !important;
+        bottom: 68px !important;
+        top: auto !important;
+        left: 14px !important;
+        right: 14px !important;
+        width: auto !important;
+        max-width: 420px !important;
+        margin: 0 auto !important;
+        border-radius: 20px !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28) !important;
+        z-index: 99999 !important;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-glass) !important;
+        padding: 8px !important;
       }
 
-      /* 第二行：仅在笔记本列表展示的搜索与操作栏 */
+      /* 搜索控制栏：仅在生词库视图展示，自适应全宽 */
       .controls {
         width: 100% !important;
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 8px !important;
         box-sizing: border-box !important;
-        margin-top: 0 !important;
+        padding: 10px 14px 4px !important;
       }
       body[data-current-view="flashcard"] .controls {
-        display: none !important; /* 切换至闪卡复习时，搜索栏完全隐藏，给闪卡留出最大全屏视野！ */
+        display: none !important; /* 闪卡自测模式下 100% 隐藏搜索框，整屏纯粹沉浸！ */
       }
       .search-box-wrap {
         flex: 1 1 auto !important;
-        min-width: 80px !important;
-        height: 35px !important;
+        min-width: 100px !important;
+        height: 38px !important;
       }
       .search-input {
-        font-size: 12.5px !important;
-        height: 35px !important;
-        padding: 0 24px 0 10px !important;
-        border-radius: 10px !important;
+        font-size: 13px !important;
+        height: 38px !important;
+        padding: 0 26px 0 12px !important;
+        border-radius: 12px !important;
       }
       .dropdown-btn {
-        height: 35px !important;
+        height: 38px !important;
         width: auto !important;
-        min-width: 76px !important;
-        max-width: 90px !important;
-        padding: 0 6px !important;
-        font-size: 11px !important;
-        border-radius: 10px !important;
+        min-width: 80px !important;
+        padding: 0 8px !important;
+        font-size: 11.5px !important;
+        border-radius: 12px !important;
       }
       #btnAddWord {
-        height: 35px !important;
-        padding: 0 10px !important;
-        font-size: 12px !important;
+        height: 38px !important;
+        padding: 0 12px !important;
+        font-size: 12.5px !important;
         white-space: nowrap !important;
         flex-shrink: 0 !important;
-        border-radius: 10px !important;
+        border-radius: 12px !important;
       }
 
-      /* 主体区域：消灭挤压变形的多列表格，蜕变为现代移动端卡片流 */
+      /* 主体区域：留出底部导航栏的安全距离 */
       main {
-        padding: 10px 12px 40px !important;
+        padding: 10px 12px 84px !important; /* 底部 84px 避免挡住评分按钮与底部标签栏 */
         width: 100% !important;
         box-sizing: border-box !important;
       }
+
+      /* 手机端闪卡体验优化（全屏主角） */
+      .flashcard-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      .flashcard-header-bar {
+        padding: 4px 4px 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+      }
+      .flashcard-batch-group {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+      }
+      .batch-label {
+        display: none !important; /* 手机端隐藏“每组定量:”，直接展示 10/20/50/全部 选项 */
+      }
+      .batch-tab {
+        padding: 3px 8px !important;
+        font-size: 11.5px !important;
+        border-radius: 8px !important;
+      }
+      .flashcard-progress-box {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+      }
+      .flashcard-progress-text {
+        font-size: 12px !important;
+        white-space: nowrap !important;
+      }
+      .flashcard-progress-bar {
+        width: 46px !important;
+        min-width: 40px !important;
+        height: 6px !important;
+      }
+      .kbd-hint, .btn-stealth-trigger {
+        display: none !important; /* 手机端无键盘/无摸鱼快捷键，自动隐藏 */
+      }
+      .flashcard-summary-card {
+        padding: 24px 16px !important;
+        min-height: 320px !important;
+        border-radius: 20px !important;
+      }
+      .summary-title {
+        font-size: 20px !important;
+      }
+      .summary-subtitle {
+        font-size: 13px !important;
+        margin-bottom: 18px !important;
+      }
+      .summary-stats-grid {
+        gap: 8px !important;
+        margin-bottom: 20px !important;
+      }
+      .stat-pill {
+        padding: 10px 6px !important;
+      }
+      .stat-num {
+        font-size: 22px !important;
+      }
+      .stat-label {
+        font-size: 11px !important;
+      }
+      .summary-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 10px !important;
+      }
+      .summary-actions .btn {
+        width: 100% !important;
+        height: 44px !important;
+        justify-content: center !important;
+      }
+      .flashcard-card-box {
+        padding: 26px 20px !important;
+        min-height: 390px !important;
+        border-radius: 24px !important;
+        margin-bottom: 14px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+      }
+      .flashcard-word {
+        font-size: 36px !important;
+        font-weight: 700 !important;
+        line-height: 1.15 !important;
+      }
+      .flashcard-phonetic {
+        font-size: 15px !important;
+      }
+      .flashcard-context {
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+        margin-top: 16px !important;
+      }
+      .flashcard-trans {
+        font-size: 15px !important;
+        line-height: 1.6 !important;
+      }
+
+      /* 底部评分按钮：舒适的大拇指盲按热区 */
+      .flashcard-smart-bar {
+        display: flex !important;
+        gap: 10px !important;
+        width: 100% !important;
+      }
+      .btn-srs-action {
+        flex: 1 !important;
+        height: 48px !important;
+        border-radius: 14px !important;
+        font-size: 14.5px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+      }
+      .btn-nav {
+        flex: 1 !important;
+        height: 44px !important;
+        border-radius: 12px !important;
+        font-size: 13.5px !important;
+      }
+
+      /* 手机端生词库：卡片流展示 */
       .table-container {
         background: transparent !important;
         border: none !important;
@@ -833,7 +964,6 @@
         text-align: left !important;
         width: 100% !important;
       }
-      /* 卡片第一行：单词 + 音标 + 熟练度指示 */
       tbody td:first-child {
         display: flex !important;
         align-items: baseline !important;
@@ -856,7 +986,6 @@
       .word-phonetic {
         font-size: 13px !important;
       }
-      /* 例句区域 */
       .salad-context-box {
         background: var(--bg-subtle) !important;
         border: 1px solid var(--border-warm) !important;
@@ -865,14 +994,12 @@
         font-size: 12.5px !important;
         line-height: 1.5 !important;
       }
-      /* 释义区域 */
       .trans-text {
         font-size: 14px !important;
         color: var(--text-title) !important;
         font-weight: 500 !important;
         line-height: 1.5 !important;
       }
-      /* 笔记区域 */
       .note-text {
         font-size: 12.5px !important;
         color: var(--claude-amber) !important;
@@ -881,7 +1008,6 @@
         border-radius: 6px !important;
         display: inline-block !important;
       }
-      /* 操作按钮组在卡片底端 */
       tbody td:last-child {
         display: flex !important;
         align-items: center !important;
@@ -894,34 +1020,59 @@
         gap: 8px !important;
       }
 
-      /* 闪卡自测视图卡片微调 */
-      .flashcard-container {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
+      /* 原生 iOS 底部导航栏 */
+      .mobile-tab-bar {
+        display: flex !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 56px !important;
+        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+        background: var(--bg-card) !important;
+        border-top: 1px solid var(--border-glass) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06) !important;
+        z-index: 999 !important;
+        align-items: center !important;
+        justify-content: space-around !important;
+        backdrop-filter: blur(24px) !important;
+        -webkit-backdrop-filter: blur(24px) !important;
       }
-      .flashcard-card-box {
-        padding: 24px 18px !important;
-        min-height: 380px !important;
-        border-radius: 22px !important;
+      .mobile-tab-item {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 6px 0 !important;
+        cursor: pointer !important;
+        color: var(--text-muted) !important;
+        transition: color 0.15s ease, transform 0.15s ease !important;
+        gap: 2px !important;
       }
-      .flashcard-word {
-        font-size: 34px !important;
+      .mobile-tab-item.active {
+        color: var(--claude-terracotta) !important;
       }
-      .flashcard-actions {
-        width: 100% !important;
-        gap: 8px !important;
+      .mobile-tab-icon {
+        font-size: 19px !important;
+        line-height: 1 !important;
       }
-      .btn-srs {
-        padding: 13px 8px !important;
-        font-size: 13.5px !important;
-        border-radius: 12px !important;
+      .mobile-tab-label {
+        font-size: 10.5px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.2px !important;
       }
+      .mobile-tab-item:active {
+        transform: scale(0.92) !important;
+      }
+
       .modal-card {
         width: calc(100vw - 28px) !important;
         max-width: 100% !important;
         padding: 20px 16px !important;
-        max-height: 88vh !important;
+        max-height: 84vh !important;
         overflow-y: auto !important;
       }
     }
@@ -3573,7 +3724,27 @@
     </div>
   </div>
 
-  <script src="webdav.js?v=1.0.1"></script>
-  <script src="notebook.js?v=1.0.1"></script>
+  <!-- 手机端原生 iOS 底部导航栏 (Mobile Bottom Tab Bar) -->
+  <nav class="mobile-tab-bar" id="mobileTabBar" aria-label="移动端底部导航">
+    <button type="button" class="mobile-tab-item active" id="mobileTabFlashcard">
+      <span class="mobile-tab-icon">🎴</span>
+      <span class="mobile-tab-label">闪卡自测</span>
+    </button>
+    <button type="button" class="mobile-tab-item" id="mobileTabTable">
+      <span class="mobile-tab-icon">📋</span>
+      <span class="mobile-tab-label">生词库</span>
+    </button>
+    <button type="button" class="mobile-tab-item" id="mobileTabSync">
+      <span class="mobile-tab-icon" id="mobileSyncIcon">☁️</span>
+      <span class="mobile-tab-label" id="mobileSyncLabel">云同步</span>
+    </button>
+    <button type="button" class="mobile-tab-item" id="mobileTabMore">
+      <span class="mobile-tab-icon">⚙️</span>
+      <span class="mobile-tab-label">设置</span>
+    </button>
+  </nav>
+
+  <script src="webdav.js?v=1.0.2"></script>
+  <script src="notebook.js?v=1.0.2"></script>
 </body>
 </html>

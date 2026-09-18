@@ -8,7 +8,11 @@ let webdavConfig = null;
 let cardIndex = 0;
 let cardList = [];
 let cardRevealed = false;
-let currentView = 'table';
+// 移动端优先架构：屏幕宽度 <= 768px 或移动端设备，默认直接进入沉浸式闪卡自测！
+const isMobileDevice = (typeof window !== 'undefined') && (
+  window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+);
+let currentView = isMobileDevice ? 'flashcard' : 'table';
 let viewBeforeSearch = null; // 记录临时搜索前的视图（如 flashcard）
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
 
@@ -855,6 +859,12 @@ function updateSyncBadge(status, text, tooltip = "") {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncText');
   const btn = document.getElementById('btnSyncStatus');
+  const mLabel = document.getElementById('mobileSyncLabel');
+  if (mLabel) {
+    if (status === 'connected') mLabel.innerText = "已同步";
+    else if (status === 'syncing') mLabel.innerText = "同步中";
+    else mLabel.innerText = "云同步";
+  }
   if (!dot || !txt) return;
 
   if (status === 'connected') {
@@ -1858,6 +1868,12 @@ function switchView(viewName, forceResetFlashcard = false) {
   if (tabTable) tabTable.classList.toggle('active', viewName === 'table');
   if (tabCard) tabCard.classList.toggle('active', viewName === 'flashcard');
 
+  // 同步手机端原生 iOS 底部导航栏高亮状态
+  const mobileTabCard = document.getElementById('mobileTabFlashcard');
+  const mobileTabTable = document.getElementById('mobileTabTable');
+  if (mobileTabCard) mobileTabCard.classList.toggle('active', viewName === 'flashcard');
+  if (mobileTabTable) mobileTabTable.classList.toggle('active', viewName === 'table');
+
   if (viewName === 'table') {
     applyFilter();
   } else if (viewName === 'flashcard') {
@@ -2703,7 +2719,11 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ savedWords: currentWords });
     }
     
-    applyFilter();
+    if (currentView === 'flashcard') {
+      switchView('flashcard', true);
+    } else {
+      applyFilter();
+    }
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -2815,6 +2835,45 @@ document.addEventListener('DOMContentLoaded', () => {
     viewBeforeSearch = null; // 用户主动点击切换到闪卡，解除临时搜索回退状态
     switchView('flashcard');
   };
+
+  // 手机端原生 iOS 底部导航栏事件绑定
+  const mTabFc = document.getElementById('mobileTabFlashcard');
+  const mTabTbl = document.getElementById('mobileTabTable');
+  const mTabSync = document.getElementById('mobileTabSync');
+  const mTabMore = document.getElementById('mobileTabMore');
+
+  if (mTabFc) {
+    mTabFc.onclick = () => {
+      SoundFx.playClick();
+      viewBeforeSearch = null;
+      switchView('flashcard');
+    };
+  }
+  if (mTabTbl) {
+    mTabTbl.onclick = () => {
+      SoundFx.playClick();
+      viewBeforeSearch = null;
+      switchView('table');
+    };
+  }
+  if (mTabSync) {
+    mTabSync.onclick = () => {
+      SoundFx.playClick();
+      openDavModal();
+    };
+  }
+  if (mTabMore) {
+    mTabMore.onclick = (e) => {
+      e.stopPropagation();
+      SoundFx.playClick();
+      const btnMore = document.getElementById('btnMoreMenu');
+      if (btnMore) {
+        btnMore.click();
+      } else {
+        openDavModal();
+      }
+    };
+  }
 
   // 闪卡自测事件
   document.getElementById('flashcardBox').onclick = toggleCardReveal;
