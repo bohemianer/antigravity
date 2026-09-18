@@ -3433,6 +3433,81 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // 📤 导入词库 (JSON)
+  const importBtn = document.getElementById('menuImportJson');
+  const importInput = document.getElementById('importJsonInput');
+  if (importBtn && importInput) {
+    importBtn.onclick = (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
+      importInput.value = '';
+      importInput.click();
+    };
+
+    importInput.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          let rawList = [];
+          if (Array.isArray(parsed)) {
+            rawList = parsed;
+          } else if (parsed && Array.isArray(parsed.savedWords)) {
+            rawList = parsed.savedWords;
+          } else if (parsed && Array.isArray(parsed.words)) {
+            rawList = parsed.words;
+          } else if (parsed && typeof parsed === 'object') {
+            rawList = Object.values(parsed).filter(x => x && typeof x === 'object');
+          }
+
+          if (!rawList.length) {
+            showToast('⚠️ 未在所选 JSON 中找到有效的生词数据');
+            return;
+          }
+
+          const sanitizedList = rawList.map(item => {
+            const wordText = (item.text || item.word || '').trim();
+            if (!wordText) return null;
+            return {
+              text: wordText,
+              trans: item.trans || item.definition || item.translation || '',
+              phonetic: cleanIPA(item.phonetic || ''),
+              context: item.context || item.sentence || '',
+              title: item.title || item.sourceTitle || 'Web Article',
+              url: item.url || item.sourceUrl || '',
+              date: item.date ? (typeof item.date === 'number' ? item.date : new Date(item.date).getTime()) : Date.now(),
+              updatedAt: item.updatedAt || Date.now(),
+              notes: cleanNotes(item.notes || ''),
+              srsLevel: parseInt(item.srsLevel) || 0,
+              srsNextReview: item.srsNextReview || 0,
+              srsReviews: parseInt(item.srsReviews) || 0
+            };
+          }).filter(Boolean);
+
+          const client = new WebDAVClient();
+          const prevCount = currentWords.length;
+          const merged = client.mergeWords(currentWords, sanitizedList, {}, 0);
+          currentWords = merged;
+
+          chrome.storage.local.set({ savedWords: currentWords }, () => {
+            renderTable();
+            updateStats();
+            const addedCount = currentWords.length - prevCount;
+            showToast(`🎉 成功导入词库！共合并 ${sanitizedList.length} 个词条（新增 ${Math.max(0, addedCount)} 词，现总计 ${currentWords.length} 词）`, 'success');
+          });
+        } catch (err) {
+          console.error('[Import JSON Error]', err);
+          showToast('❌ 解析 JSON 词库文件失败，请确保格式正确');
+        }
+      };
+      reader.readAsText(file);
+    };
+  }
+
   // 🔍 词根变体检索菜单项与合并处理
   const menuFindVariants = document.getElementById('menuFindVariants');
   if (menuFindVariants) {
@@ -3951,4 +4026,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // PWA Service Worker 离线缓存注册
+  if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        console.log('[Antigravity PWA] ServiceWorker registered:', reg.scope);
+      }).catch((err) => {
+        console.warn('[Antigravity PWA] ServiceWorker registration skipped:', err);
+      });
+    });
+  }
 });
