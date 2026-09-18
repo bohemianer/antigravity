@@ -8,11 +8,7 @@ let webdavConfig = null;
 let cardIndex = 0;
 let cardList = [];
 let cardRevealed = false;
-// 移动端优先架构：屏幕宽度 <= 768px 或移动端设备，默认直接进入沉浸式闪卡自测！
-const isMobileDevice = (typeof window !== 'undefined') && (
-  window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-);
-let currentView = isMobileDevice ? 'flashcard' : 'table';
+let currentView = 'table';
 let viewBeforeSearch = null; // 记录临时搜索前的视图（如 flashcard）
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
 
@@ -859,12 +855,6 @@ function updateSyncBadge(status, text, tooltip = "") {
   const dot = document.getElementById('syncDot');
   const txt = document.getElementById('syncText');
   const btn = document.getElementById('btnSyncStatus');
-  const mLabel = document.getElementById('mobileSyncLabel');
-  if (mLabel) {
-    if (status === 'connected') mLabel.innerText = "已同步";
-    else if (status === 'syncing') mLabel.innerText = "同步中";
-    else mLabel.innerText = "云同步";
-  }
   if (!dot || !txt) return;
 
   if (status === 'connected') {
@@ -1159,46 +1149,9 @@ function renderList(list, query = "") {
   
   if (list.length === 0) {
     if (q) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
     } else {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" style="padding: 28px 12px; border: none;">
-            <div style="max-width: 440px; margin: 0 auto; text-align: center; background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 18px; padding: 26px 18px; box-shadow: var(--glass-shadow);">
-              <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
-              <div style="font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--text-title); margin-bottom: 6px;">欢迎使用 Antigravity 词库</div>
-              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">当前本地暂无词汇，通过以下任意方式即刻同步您的词库：</div>
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button type="button" id="btnEmptyWebdav" class="btn" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 14px; background: linear-gradient(135deg, #CC785C, #D97706); color: #fff; border: none; border-radius: 11px; cursor: pointer; box-shadow: 0 3px 12px rgba(204, 120, 92, 0.3);">
-                  <span>☁️ 连接坚果云 WebDAV 同步</span>
-                </button>
-                <button type="button" id="btnEmptyImport" class="btn" style="height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 11px; cursor: pointer;">
-                  <span>📥 导入本地 JSON 词库文件</span>
-                </button>
-                <button type="button" id="btnEmptyAdd" class="btn" style="height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); background: transparent; border: none; cursor: pointer;">
-                  <span>➕ 手动添加第一个生词</span>
-                </button>
-              </div>
-            </div>
-          </td>
-        </tr>`;
-      setTimeout(() => {
-        const btnDav = document.getElementById('btnEmptyWebdav');
-        if (btnDav) btnDav.onclick = () => {
-          const syncBtn = document.getElementById('btnSyncStatus');
-          if (syncBtn) syncBtn.click();
-        };
-        const btnImp = document.getElementById('btnEmptyImport');
-        if (btnImp) btnImp.onclick = () => {
-          const impInput = document.getElementById('importJsonInput');
-          if (impInput) impInput.click();
-        };
-        const btnAdd = document.getElementById('btnEmptyAdd');
-        if (btnAdd) btnAdd.onclick = () => {
-          const addBtn = document.getElementById('btnAddWord');
-          if (addBtn) addBtn.click();
-        };
-      }, 50);
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
     }
     return;
   }
@@ -1855,7 +1808,6 @@ function renderStealthMailCard() {
 // 视图切换控制 (支持 table 与 flashcard 纯净双视图)
 function switchView(viewName, forceResetFlashcard = false) {
   currentView = viewName;
-  document.body.setAttribute('data-current-view', viewName);
   const tableContainer = document.getElementById('viewTableContainer');
   const flashcardContainer = document.getElementById('viewFlashcardContainer');
 
@@ -1867,12 +1819,6 @@ function switchView(viewName, forceResetFlashcard = false) {
 
   if (tabTable) tabTable.classList.toggle('active', viewName === 'table');
   if (tabCard) tabCard.classList.toggle('active', viewName === 'flashcard');
-
-  // 同步手机端原生 iOS 底部导航栏高亮状态
-  const mobileTabCard = document.getElementById('mobileTabFlashcard');
-  const mobileTabTable = document.getElementById('mobileTabTable');
-  if (mobileTabCard) mobileTabCard.classList.toggle('active', viewName === 'flashcard');
-  if (mobileTabTable) mobileTabTable.classList.toggle('active', viewName === 'table');
 
   if (viewName === 'table') {
     applyFilter();
@@ -1954,43 +1900,9 @@ function renderFlashcard() {
   const barRevealed = document.getElementById('smartBarRevealed');
 
   if (cardList.length === 0) {
-    if (currentWords.length === 0) {
-      document.getElementById('fcWord').innerText = "欢迎使用 Antigravity";
-      document.getElementById('fcPhonetic').innerText = "极简 · 艾宾浩斯记忆闪卡";
-      document.getElementById('fcContext').innerHTML = `
-        <div style="font-size: 13.5px; line-height: 1.6; margin-bottom: 16px; color: var(--text-body);">
-          当前设备词库暂空。您可以一键载入精选生词快速体验，或连接坚果云开启多端云漫游：
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 260px; margin: 0 auto;">
-          <button type="button" id="btnLoadSampleInsideCard" class="btn btn-primary" style="height: 38px; font-size: 13px; justify-content: center; border-radius: 10px;">
-            📚 载入精选生词 (快速体验)
-          </button>
-          <button type="button" id="btnOpenSyncInsideCard" class="btn" style="height: 38px; font-size: 13px; justify-content: center; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-glass);">
-            ☁️ 连接坚果云 / 欧路同步
-          </button>
-        </div>
-      `;
-      const btnLoad = document.getElementById('btnLoadSampleInsideCard');
-      if (btnLoad) {
-        btnLoad.onclick = (e) => {
-          e.stopPropagation();
-          SoundFx.playClick();
-          loadSampleVocabulary();
-        };
-      }
-      const btnSync = document.getElementById('btnOpenSyncInsideCard');
-      if (btnSync) {
-        btnSync.onclick = (e) => {
-          e.stopPropagation();
-          SoundFx.playClick();
-          openDavModal();
-        };
-      }
-    } else {
-      document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
-      document.getElementById('fcPhonetic').innerText = "";
-      document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "词库已全部复习完毕，干得漂亮！" : "恭喜！所选分组下暂无待复习词汇。";
-    }
+    document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
+    document.getElementById('fcPhonetic').innerText = "";
+    document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "生词本为空，快去外刊划词加入吧！" : "恭喜！所选分组下暂无待复习词汇。";
     document.getElementById('fcAnswerBox').style.display = 'none';
     document.getElementById('cardCurrentIndex').innerText = "0";
     document.getElementById('cardTotalCount').innerText = "0";
@@ -2639,16 +2551,11 @@ function initTheme() {
   if (btnMoreMenu && moreDropdownMenu) {
     btnMoreMenu.onclick = (e) => {
       e.stopPropagation();
-      if (window.innerWidth <= 768) {
-        SoundFx.playClick();
-        openMobileSettingsSheet();
-      } else {
-        const isOpen = moreDropdownMenu.style.display === 'flex';
-        // 关闭其他可能打开的下拉浮层
-        const srsMenu = document.getElementById('srsDropdownMenu');
-        if (srsMenu) srsMenu.style.display = 'none';
-        moreDropdownMenu.style.display = isOpen ? 'none' : 'flex';
-      }
+      const isOpen = moreDropdownMenu.style.display === 'flex';
+      // 关闭其他可能打开的下拉浮层
+      const srsMenu = document.getElementById('srsDropdownMenu');
+      if (srsMenu) srsMenu.style.display = 'none';
+      moreDropdownMenu.style.display = isOpen ? 'none' : 'flex';
     };
 
     document.addEventListener('click', () => {
@@ -2709,135 +2616,6 @@ function initTheme() {
   }
 }
 
-// ---------------- 移动端原生体验强化：精选示例词库与设置抽屉 ----------------
-const SAMPLE_VOCABULARY = [
-  {
-    text: "ephemeral",
-    phonetic: "/ɪˈfemərəl/",
-    trans: "adj. 短暂的；转瞬即逝的",
-    notes: "核心高频词汇",
-    context: "Fashions are ephemeral, but true style endures through decades.",
-    date: Date.now() - 100000,
-    srsLevel: 0
-  },
-  {
-    text: "serendipity",
-    phonetic: "/ˌserənˈdɪpəti/",
-    trans: "n. 意外惊喜；机缘巧合",
-    notes: "GRE/托福高频词",
-    context: "Finding this rare book in a small cafe was pure serendipity.",
-    date: Date.now() - 90000,
-    srsLevel: 0
-  },
-  {
-    text: "resilience",
-    phonetic: "/rɪˈzɪliəns/",
-    trans: "n. 韧性；恢复力；适应力",
-    notes: "商业与心理学核心词",
-    context: "The economic recovery demonstrated the extraordinary resilience of local businesses.",
-    date: Date.now() - 80000,
-    srsLevel: 0
-  },
-  {
-    text: "paradigm",
-    phonetic: "/ˈpærədaɪm/",
-    trans: "n. 范式；典范；思考模式",
-    notes: "前沿科技与学术高频",
-    context: "Artificial intelligence represents a fundamental paradigm shift in modern computing.",
-    date: Date.now() - 70000,
-    srsLevel: 1
-  },
-  {
-    text: "lucid",
-    phonetic: "/ˈluːsɪd/",
-    trans: "adj. 清晰明了的；清醒的",
-    notes: "写作高分修饰词",
-    context: "Her explanation was so lucid that even beginners grasped the concept instantly.",
-    date: Date.now() - 60000,
-    srsLevel: 0
-  },
-  {
-    text: "pragmatic",
-    phonetic: "/præɡˈmætɪk/",
-    trans: "adj. 务实的；实事求是的",
-    notes: "政经社论核心词",
-    context: "We need a pragmatic approach to resolve this complex supply chain issue.",
-    date: Date.now() - 50000,
-    srsLevel: 2
-  },
-  {
-    text: "tenacious",
-    phonetic: "/təˈneɪʃəs/",
-    trans: "adj. 坚韧不拔的；顽强的",
-    notes: "人物性格刻画",
-    context: "Her tenacious pursuit of the truth finally brought the evidence to light.",
-    date: Date.now() - 40000,
-    srsLevel: 0
-  },
-  {
-    text: "ubiquitous",
-    phonetic: "/juːˈbɪkwɪtəs/",
-    trans: "adj. 无所不在的；十分普遍的",
-    notes: "科技前沿常见词",
-    context: "Smartphones have become ubiquitous in every corner of contemporary life.",
-    date: Date.now() - 30000,
-    srsLevel: 1
-  },
-  {
-    text: "catalyst",
-    phonetic: "/ˈkætəlɪst/",
-    trans: "n. 催化剂；促成因素",
-    notes: "科技与商业隐喻",
-    context: "The new regulatory policy served as a catalyst for green innovation.",
-    date: Date.now() - 20000,
-    srsLevel: 0
-  },
-  {
-    text: "eloquent",
-    phonetic: "/ˈeləkwənt/",
-    trans: "adj. 雄辩的；生动感人的",
-    notes: "口语与演讲赞誉词",
-    context: "His speech delivered an eloquent defense of artistic freedom.",
-    date: Date.now() - 10000,
-    srsLevel: 0
-  }
-];
-
-function loadSampleVocabulary() {
-  currentWords = SAMPLE_VOCABULARY.map(item => {
-    item._uid = 'w_' + item.date + '_' + Math.random().toString(36).slice(2, 9);
-    return item;
-  });
-  chrome.storage.local.set({ savedWords: currentWords }, () => {
-    showToast('🎉 已成功载入 10 个精选高频生词！', 'success');
-    updateFlashcardList(true);
-  });
-}
-
-function openMobileSettingsSheet() {
-  const sheet = document.getElementById('mobileSheetOverlay');
-  if (!sheet) return;
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'system';
-  document.querySelectorAll('.mobile-theme-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-theme-val') === currentTheme);
-  });
-  const soundBadge = document.getElementById('mobileSoundStatusBadge');
-  const soundIcon = document.getElementById('mobileSoundIcon');
-  if (soundBadge) soundBadge.innerText = SoundFx.enabled ? '已开启' : '已关闭';
-  if (soundIcon) soundIcon.innerText = SoundFx.enabled ? '🔊' : '🔇';
-  const accentBadge = document.getElementById('mobileAccentBadge');
-  const accentIcon = document.getElementById('mobileAccentIcon');
-  if (accentBadge) accentBadge.innerText = PronunciationEngine.accent === 'uk' ? '英式 UK' : '美式 US';
-  if (accentIcon) accentIcon.innerText = PronunciationEngine.accent === 'uk' ? '🇬🇧' : '🇺🇸';
-
-  sheet.style.display = 'flex';
-}
-
-function closeMobileSettingsSheet() {
-  const sheet = document.getElementById('mobileSheetOverlay');
-  if (sheet) sheet.style.display = 'none';
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initCard3DTilt();
@@ -2881,11 +2659,7 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ savedWords: currentWords });
     }
     
-    if (currentView === 'flashcard') {
-      switchView('flashcard', true);
-    } else {
-      applyFilter();
-    }
+    applyFilter();
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -2997,131 +2771,6 @@ document.addEventListener('DOMContentLoaded', () => {
     viewBeforeSearch = null; // 用户主动点击切换到闪卡，解除临时搜索回退状态
     switchView('flashcard');
   };
-
-  // 手机端原生 iOS 底部导航栏事件绑定
-  const mTabFc = document.getElementById('mobileTabFlashcard');
-  const mTabTbl = document.getElementById('mobileTabTable');
-  const mTabSync = document.getElementById('mobileTabSync');
-  const mTabMore = document.getElementById('mobileTabMore');
-
-  if (mTabFc) {
-    mTabFc.onclick = () => {
-      SoundFx.playClick();
-      viewBeforeSearch = null;
-      switchView('flashcard');
-    };
-  }
-  if (mTabTbl) {
-    mTabTbl.onclick = () => {
-      SoundFx.playClick();
-      viewBeforeSearch = null;
-      switchView('table');
-    };
-  }
-  if (mTabSync) {
-    mTabSync.onclick = () => {
-      SoundFx.playClick();
-      openDavModal();
-    };
-  }
-  if (mTabMore) {
-    mTabMore.onclick = (e) => {
-      e.stopPropagation();
-      SoundFx.playClick();
-      openMobileSettingsSheet();
-    };
-  }
-
-  // 移动端设置抽屉事件绑定
-  const sheetClose = document.getElementById('mobileSheetClose');
-  const sheetBackdrop = document.getElementById('mobileSheetBackdrop');
-  if (sheetClose) sheetClose.onclick = closeMobileSettingsSheet;
-  if (sheetBackdrop) sheetBackdrop.onclick = closeMobileSettingsSheet;
-
-  // 移动端主题切换
-  document.querySelectorAll('.mobile-theme-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      SoundFx.playClick();
-      const val = btn.getAttribute('data-theme-val') || 'system';
-      applyThemeMode(val);
-      chrome.storage.sync.set({ themeMode: val });
-      document.querySelectorAll('.mobile-theme-btn').forEach(b => b.classList.toggle('active', b === btn));
-    };
-  });
-
-  // 移动端触感音效
-  const mobileSoundRow = document.getElementById('mobileSoundRow');
-  if (mobileSoundRow) {
-    mobileSoundRow.onclick = (e) => {
-      e.stopPropagation();
-      SoundFx.toggle();
-      const soundBadge = document.getElementById('mobileSoundStatusBadge');
-      const soundIcon = document.getElementById('mobileSoundIcon');
-      if (soundBadge) soundBadge.innerText = SoundFx.enabled ? '已开启' : '已关闭';
-      if (soundIcon) soundIcon.innerText = SoundFx.enabled ? '🔊' : '🔇';
-      if (SoundFx.enabled) SoundFx.playSuccess();
-    };
-  }
-
-  // 移动端发音口音切换
-  const mobileAccentRow = document.getElementById('mobileAccentRow');
-  if (mobileAccentRow) {
-    mobileAccentRow.onclick = (e) => {
-      e.stopPropagation();
-      SoundFx.playClick();
-      const newAccent = PronunciationEngine.toggleAccent();
-      const accentBadge = document.getElementById('mobileAccentBadge');
-      const accentIcon = document.getElementById('mobileAccentIcon');
-      if (accentBadge) accentBadge.innerText = newAccent === 'uk' ? '英式 UK' : '美式 US';
-      if (accentIcon) accentIcon.innerText = newAccent === 'uk' ? '🇬🇧' : '🇺🇸';
-      if (typeof showToast === 'function') {
-        showToast(`已切换为${newAccent === 'uk' ? '英式发音 🇬🇧' : '美式发音 🇺🇸'}`);
-      }
-    };
-  }
-
-  // 移动端打开坚果云与欧路同步
-  const mobileOpenSyncRow = document.getElementById('mobileOpenSyncRow');
-  if (mobileOpenSyncRow) {
-    mobileOpenSyncRow.onclick = (e) => {
-      e.stopPropagation();
-      closeMobileSettingsSheet();
-      openDavModal();
-    };
-  }
-
-  // 移动端载入示例词库
-  const mobileLoadSampleRow = document.getElementById('mobileLoadSampleRow');
-  if (mobileLoadSampleRow) {
-    mobileLoadSampleRow.onclick = (e) => {
-      e.stopPropagation();
-      closeMobileSettingsSheet();
-      loadSampleVocabulary();
-    };
-  }
-
-  // 移动端导出 JSON
-  const mobileExportJsonRow = document.getElementById('mobileExportJsonRow');
-  if (mobileExportJsonRow) {
-    mobileExportJsonRow.onclick = (e) => {
-      e.stopPropagation();
-      closeMobileSettingsSheet();
-      const exportBtn = document.getElementById('menuExportJson');
-      if (exportBtn) exportBtn.click();
-    };
-  }
-
-  // 移动端导入 JSON
-  const mobileImportJsonRow = document.getElementById('mobileImportJsonRow');
-  if (mobileImportJsonRow) {
-    mobileImportJsonRow.onclick = (e) => {
-      e.stopPropagation();
-      closeMobileSettingsSheet();
-      const importInput = document.getElementById('importJsonInput');
-      if (importInput) importInput.click();
-    };
-  }
 
   // 闪卡自测事件
   document.getElementById('flashcardBox').onclick = toggleCardReveal;
@@ -3784,81 +3433,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // 📤 导入词库 (JSON)
-  const importBtn = document.getElementById('menuImportJson');
-  const importInput = document.getElementById('importJsonInput');
-  if (importBtn && importInput) {
-    importBtn.onclick = (e) => {
-      if (e) e.stopPropagation();
-      const moreMenu = document.getElementById('moreDropdownMenu');
-      if (moreMenu) moreMenu.style.display = 'none';
-      importInput.value = '';
-      importInput.click();
-    };
-
-    importInput.onchange = (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          let rawList = [];
-          if (Array.isArray(parsed)) {
-            rawList = parsed;
-          } else if (parsed && Array.isArray(parsed.savedWords)) {
-            rawList = parsed.savedWords;
-          } else if (parsed && Array.isArray(parsed.words)) {
-            rawList = parsed.words;
-          } else if (parsed && typeof parsed === 'object') {
-            rawList = Object.values(parsed).filter(x => x && typeof x === 'object');
-          }
-
-          if (!rawList.length) {
-            showToast('⚠️ 未在所选 JSON 中找到有效的生词数据');
-            return;
-          }
-
-          const sanitizedList = rawList.map(item => {
-            const wordText = (item.text || item.word || '').trim();
-            if (!wordText) return null;
-            return {
-              text: wordText,
-              trans: item.trans || item.definition || item.translation || '',
-              phonetic: cleanIPA(item.phonetic || ''),
-              context: item.context || item.sentence || '',
-              title: item.title || item.sourceTitle || 'Web Article',
-              url: item.url || item.sourceUrl || '',
-              date: item.date ? (typeof item.date === 'number' ? item.date : new Date(item.date).getTime()) : Date.now(),
-              updatedAt: item.updatedAt || Date.now(),
-              notes: cleanNotes(item.notes || ''),
-              srsLevel: parseInt(item.srsLevel) || 0,
-              srsNextReview: item.srsNextReview || 0,
-              srsReviews: parseInt(item.srsReviews) || 0
-            };
-          }).filter(Boolean);
-
-          const client = new WebDAVClient();
-          const prevCount = currentWords.length;
-          const merged = client.mergeWords(currentWords, sanitizedList, {}, 0);
-          currentWords = merged;
-
-          chrome.storage.local.set({ savedWords: currentWords }, () => {
-            renderTable();
-            updateStats();
-            const addedCount = currentWords.length - prevCount;
-            showToast(`🎉 成功导入词库！共合并 ${sanitizedList.length} 个词条（新增 ${Math.max(0, addedCount)} 词，现总计 ${currentWords.length} 词）`, 'success');
-          });
-        } catch (err) {
-          console.error('[Import JSON Error]', err);
-          showToast('❌ 解析 JSON 词库文件失败，请确保格式正确');
-        }
-      };
-      reader.readAsText(file);
-    };
-  }
-
   // 🔍 词根变体检索菜单项与合并处理
   const menuFindVariants = document.getElementById('menuFindVariants');
   if (menuFindVariants) {
@@ -4377,15 +3951,4 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
-
-  // PWA Service Worker 离线缓存注册
-  if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then((reg) => {
-        console.log('[Antigravity PWA] ServiceWorker registered:', reg.scope);
-      }).catch((err) => {
-        console.warn('[Antigravity PWA] ServiceWorker registration skipped:', err);
-      });
-    });
-  }
 });
