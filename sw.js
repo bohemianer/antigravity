@@ -1,5 +1,5 @@
 // sw.js - Service Worker for Antigravity PWA
-const CACHE_NAME = 'antigravity-pwa-v1.0.1';
+const CACHE_NAME = 'antigravity-pwa-v1.0.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
