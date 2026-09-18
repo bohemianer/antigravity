@@ -1956,8 +1956,36 @@ function renderFlashcard() {
   if (cardList.length === 0) {
     if (currentWords.length === 0) {
       document.getElementById('fcWord').innerText = "欢迎使用 Antigravity";
-      document.getElementById('fcPhonetic').innerText = "极简 · 高质感 · 记忆闪卡";
-      document.getElementById('fcContext').innerHTML = '当前设备本地尚无生词，请点击顶栏右侧 <span style="color:var(--claude-terracotta); font-weight:600; cursor:pointer;" onclick="document.getElementById(\'btnSyncStatus\').click()">[坚果云]</span> 开启双向云漫游，或点击 <span style="color:var(--claude-terracotta); font-weight:600; cursor:pointer;" onclick="document.getElementById(\'btnMoreMenu\').click()">[⋯ 菜单]</span> 导入 JSON 词库！';
+      document.getElementById('fcPhonetic').innerText = "极简 · 艾宾浩斯记忆闪卡";
+      document.getElementById('fcContext').innerHTML = `
+        <div style="font-size: 13.5px; line-height: 1.6; margin-bottom: 16px; color: var(--text-body);">
+          当前设备词库暂空。您可以一键载入精选生词快速体验，或连接坚果云开启多端云漫游：
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 260px; margin: 0 auto;">
+          <button type="button" id="btnLoadSampleInsideCard" class="btn btn-primary" style="height: 38px; font-size: 13px; justify-content: center; border-radius: 10px;">
+            📚 载入精选生词 (快速体验)
+          </button>
+          <button type="button" id="btnOpenSyncInsideCard" class="btn" style="height: 38px; font-size: 13px; justify-content: center; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border-glass);">
+            ☁️ 连接坚果云 / 欧路同步
+          </button>
+        </div>
+      `;
+      const btnLoad = document.getElementById('btnLoadSampleInsideCard');
+      if (btnLoad) {
+        btnLoad.onclick = (e) => {
+          e.stopPropagation();
+          SoundFx.playClick();
+          loadSampleVocabulary();
+        };
+      }
+      const btnSync = document.getElementById('btnOpenSyncInsideCard');
+      if (btnSync) {
+        btnSync.onclick = (e) => {
+          e.stopPropagation();
+          SoundFx.playClick();
+          openDavModal();
+        };
+      }
     } else {
       document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
       document.getElementById('fcPhonetic').innerText = "";
@@ -2611,11 +2639,16 @@ function initTheme() {
   if (btnMoreMenu && moreDropdownMenu) {
     btnMoreMenu.onclick = (e) => {
       e.stopPropagation();
-      const isOpen = moreDropdownMenu.style.display === 'flex';
-      // 关闭其他可能打开的下拉浮层
-      const srsMenu = document.getElementById('srsDropdownMenu');
-      if (srsMenu) srsMenu.style.display = 'none';
-      moreDropdownMenu.style.display = isOpen ? 'none' : 'flex';
+      if (window.innerWidth <= 768) {
+        SoundFx.playClick();
+        openMobileSettingsSheet();
+      } else {
+        const isOpen = moreDropdownMenu.style.display === 'flex';
+        // 关闭其他可能打开的下拉浮层
+        const srsMenu = document.getElementById('srsDropdownMenu');
+        if (srsMenu) srsMenu.style.display = 'none';
+        moreDropdownMenu.style.display = isOpen ? 'none' : 'flex';
+      }
     };
 
     document.addEventListener('click', () => {
@@ -2674,6 +2707,135 @@ function initTheme() {
       };
     }
   }
+}
+
+// ---------------- 移动端原生体验强化：精选示例词库与设置抽屉 ----------------
+const SAMPLE_VOCABULARY = [
+  {
+    text: "ephemeral",
+    phonetic: "/ɪˈfemərəl/",
+    trans: "adj. 短暂的；转瞬即逝的",
+    notes: "核心高频词汇",
+    context: "Fashions are ephemeral, but true style endures through decades.",
+    date: Date.now() - 100000,
+    srsLevel: 0
+  },
+  {
+    text: "serendipity",
+    phonetic: "/ˌserənˈdɪpəti/",
+    trans: "n. 意外惊喜；机缘巧合",
+    notes: "GRE/托福高频词",
+    context: "Finding this rare book in a small cafe was pure serendipity.",
+    date: Date.now() - 90000,
+    srsLevel: 0
+  },
+  {
+    text: "resilience",
+    phonetic: "/rɪˈzɪliəns/",
+    trans: "n. 韧性；恢复力；适应力",
+    notes: "商业与心理学核心词",
+    context: "The economic recovery demonstrated the extraordinary resilience of local businesses.",
+    date: Date.now() - 80000,
+    srsLevel: 0
+  },
+  {
+    text: "paradigm",
+    phonetic: "/ˈpærədaɪm/",
+    trans: "n. 范式；典范；思考模式",
+    notes: "前沿科技与学术高频",
+    context: "Artificial intelligence represents a fundamental paradigm shift in modern computing.",
+    date: Date.now() - 70000,
+    srsLevel: 1
+  },
+  {
+    text: "lucid",
+    phonetic: "/ˈluːsɪd/",
+    trans: "adj. 清晰明了的；清醒的",
+    notes: "写作高分修饰词",
+    context: "Her explanation was so lucid that even beginners grasped the concept instantly.",
+    date: Date.now() - 60000,
+    srsLevel: 0
+  },
+  {
+    text: "pragmatic",
+    phonetic: "/præɡˈmætɪk/",
+    trans: "adj. 务实的；实事求是的",
+    notes: "政经社论核心词",
+    context: "We need a pragmatic approach to resolve this complex supply chain issue.",
+    date: Date.now() - 50000,
+    srsLevel: 2
+  },
+  {
+    text: "tenacious",
+    phonetic: "/təˈneɪʃəs/",
+    trans: "adj. 坚韧不拔的；顽强的",
+    notes: "人物性格刻画",
+    context: "Her tenacious pursuit of the truth finally brought the evidence to light.",
+    date: Date.now() - 40000,
+    srsLevel: 0
+  },
+  {
+    text: "ubiquitous",
+    phonetic: "/juːˈbɪkwɪtəs/",
+    trans: "adj. 无所不在的；十分普遍的",
+    notes: "科技前沿常见词",
+    context: "Smartphones have become ubiquitous in every corner of contemporary life.",
+    date: Date.now() - 30000,
+    srsLevel: 1
+  },
+  {
+    text: "catalyst",
+    phonetic: "/ˈkætəlɪst/",
+    trans: "n. 催化剂；促成因素",
+    notes: "科技与商业隐喻",
+    context: "The new regulatory policy served as a catalyst for green innovation.",
+    date: Date.now() - 20000,
+    srsLevel: 0
+  },
+  {
+    text: "eloquent",
+    phonetic: "/ˈeləkwənt/",
+    trans: "adj. 雄辩的；生动感人的",
+    notes: "口语与演讲赞誉词",
+    context: "His speech delivered an eloquent defense of artistic freedom.",
+    date: Date.now() - 10000,
+    srsLevel: 0
+  }
+];
+
+function loadSampleVocabulary() {
+  currentWords = SAMPLE_VOCABULARY.map(item => {
+    item._uid = 'w_' + item.date + '_' + Math.random().toString(36).slice(2, 9);
+    return item;
+  });
+  chrome.storage.local.set({ savedWords: currentWords }, () => {
+    showToast('🎉 已成功载入 10 个精选高频生词！', 'success');
+    updateFlashcardList(true);
+  });
+}
+
+function openMobileSettingsSheet() {
+  const sheet = document.getElementById('mobileSheetOverlay');
+  if (!sheet) return;
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'system';
+  document.querySelectorAll('.mobile-theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-theme-val') === currentTheme);
+  });
+  const soundBadge = document.getElementById('mobileSoundStatusBadge');
+  const soundIcon = document.getElementById('mobileSoundIcon');
+  if (soundBadge) soundBadge.innerText = SoundFx.enabled ? '已开启' : '已关闭';
+  if (soundIcon) soundIcon.innerText = SoundFx.enabled ? '🔊' : '🔇';
+  const accentBadge = document.getElementById('mobileAccentBadge');
+  const accentIcon = document.getElementById('mobileAccentIcon');
+  if (accentBadge) accentBadge.innerText = PronunciationEngine.accent === 'uk' ? '英式 UK' : '美式 US';
+  if (accentIcon) accentIcon.innerText = PronunciationEngine.accent === 'uk' ? '🇬🇧' : '🇺🇸';
+
+  sheet.style.display = 'flex';
+}
+
+function closeMobileSettingsSheet() {
+  const sheet = document.getElementById('mobileSheetOverlay');
+  if (sheet) sheet.style.display = 'none';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2866,12 +3028,98 @@ document.addEventListener('DOMContentLoaded', () => {
     mTabMore.onclick = (e) => {
       e.stopPropagation();
       SoundFx.playClick();
-      const btnMore = document.getElementById('btnMoreMenu');
-      if (btnMore) {
-        btnMore.click();
-      } else {
-        openDavModal();
+      openMobileSettingsSheet();
+    };
+  }
+
+  // 移动端设置抽屉事件绑定
+  const sheetClose = document.getElementById('mobileSheetClose');
+  const sheetBackdrop = document.getElementById('mobileSheetBackdrop');
+  if (sheetClose) sheetClose.onclick = closeMobileSettingsSheet;
+  if (sheetBackdrop) sheetBackdrop.onclick = closeMobileSettingsSheet;
+
+  // 移动端主题切换
+  document.querySelectorAll('.mobile-theme-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      SoundFx.playClick();
+      const val = btn.getAttribute('data-theme-val') || 'system';
+      applyThemeMode(val);
+      chrome.storage.sync.set({ themeMode: val });
+      document.querySelectorAll('.mobile-theme-btn').forEach(b => b.classList.toggle('active', b === btn));
+    };
+  });
+
+  // 移动端触感音效
+  const mobileSoundRow = document.getElementById('mobileSoundRow');
+  if (mobileSoundRow) {
+    mobileSoundRow.onclick = (e) => {
+      e.stopPropagation();
+      SoundFx.toggle();
+      const soundBadge = document.getElementById('mobileSoundStatusBadge');
+      const soundIcon = document.getElementById('mobileSoundIcon');
+      if (soundBadge) soundBadge.innerText = SoundFx.enabled ? '已开启' : '已关闭';
+      if (soundIcon) soundIcon.innerText = SoundFx.enabled ? '🔊' : '🔇';
+      if (SoundFx.enabled) SoundFx.playSuccess();
+    };
+  }
+
+  // 移动端发音口音切换
+  const mobileAccentRow = document.getElementById('mobileAccentRow');
+  if (mobileAccentRow) {
+    mobileAccentRow.onclick = (e) => {
+      e.stopPropagation();
+      SoundFx.playClick();
+      const newAccent = PronunciationEngine.toggleAccent();
+      const accentBadge = document.getElementById('mobileAccentBadge');
+      const accentIcon = document.getElementById('mobileAccentIcon');
+      if (accentBadge) accentBadge.innerText = newAccent === 'uk' ? '英式 UK' : '美式 US';
+      if (accentIcon) accentIcon.innerText = newAccent === 'uk' ? '🇬🇧' : '🇺🇸';
+      if (typeof showToast === 'function') {
+        showToast(`已切换为${newAccent === 'uk' ? '英式发音 🇬🇧' : '美式发音 🇺🇸'}`);
       }
+    };
+  }
+
+  // 移动端打开坚果云与欧路同步
+  const mobileOpenSyncRow = document.getElementById('mobileOpenSyncRow');
+  if (mobileOpenSyncRow) {
+    mobileOpenSyncRow.onclick = (e) => {
+      e.stopPropagation();
+      closeMobileSettingsSheet();
+      openDavModal();
+    };
+  }
+
+  // 移动端载入示例词库
+  const mobileLoadSampleRow = document.getElementById('mobileLoadSampleRow');
+  if (mobileLoadSampleRow) {
+    mobileLoadSampleRow.onclick = (e) => {
+      e.stopPropagation();
+      closeMobileSettingsSheet();
+      loadSampleVocabulary();
+    };
+  }
+
+  // 移动端导出 JSON
+  const mobileExportJsonRow = document.getElementById('mobileExportJsonRow');
+  if (mobileExportJsonRow) {
+    mobileExportJsonRow.onclick = (e) => {
+      e.stopPropagation();
+      closeMobileSettingsSheet();
+      const exportBtn = document.getElementById('menuExportJson');
+      if (exportBtn) exportBtn.click();
+    };
+  }
+
+  // 移动端导入 JSON
+  const mobileImportJsonRow = document.getElementById('mobileImportJsonRow');
+  if (mobileImportJsonRow) {
+    mobileImportJsonRow.onclick = (e) => {
+      e.stopPropagation();
+      closeMobileSettingsSheet();
+      const importInput = document.getElementById('importJsonInput');
+      if (importInput) importInput.click();
     };
   }
 
