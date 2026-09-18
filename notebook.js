@@ -1149,9 +1149,46 @@ function renderList(list, query = "") {
   
   if (list.length === 0) {
     if (q) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
     } else {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="padding: 28px 12px; border: none;">
+            <div style="max-width: 440px; margin: 0 auto; text-align: center; background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 18px; padding: 26px 18px; box-shadow: var(--glass-shadow);">
+              <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
+              <div style="font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--text-title); margin-bottom: 6px;">欢迎使用 Antigravity 词库</div>
+              <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">当前本地暂无词汇，通过以下任意方式即刻同步您的词库：</div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" id="btnEmptyWebdav" class="btn" style="height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 14px; background: linear-gradient(135deg, #CC785C, #D97706); color: #fff; border: none; border-radius: 11px; cursor: pointer; box-shadow: 0 3px 12px rgba(204, 120, 92, 0.3);">
+                  <span>☁️ 连接坚果云 WebDAV 同步</span>
+                </button>
+                <button type="button" id="btnEmptyImport" class="btn" style="height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 11px; cursor: pointer;">
+                  <span>📥 导入本地 JSON 词库文件</span>
+                </button>
+                <button type="button" id="btnEmptyAdd" class="btn" style="height: 36px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); background: transparent; border: none; cursor: pointer;">
+                  <span>➕ 手动添加第一个生词</span>
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      setTimeout(() => {
+        const btnDav = document.getElementById('btnEmptyWebdav');
+        if (btnDav) btnDav.onclick = () => {
+          const syncBtn = document.getElementById('btnSyncStatus');
+          if (syncBtn) syncBtn.click();
+        };
+        const btnImp = document.getElementById('btnEmptyImport');
+        if (btnImp) btnImp.onclick = () => {
+          const impInput = document.getElementById('importJsonInput');
+          if (impInput) impInput.click();
+        };
+        const btnAdd = document.getElementById('btnEmptyAdd');
+        if (btnAdd) btnAdd.onclick = () => {
+          const addBtn = document.getElementById('btnAddWord');
+          if (addBtn) addBtn.click();
+        };
+      }, 50);
     }
     return;
   }
@@ -1808,6 +1845,7 @@ function renderStealthMailCard() {
 // 视图切换控制 (支持 table 与 flashcard 纯净双视图)
 function switchView(viewName, forceResetFlashcard = false) {
   currentView = viewName;
+  document.body.setAttribute('data-current-view', viewName);
   const tableContainer = document.getElementById('viewTableContainer');
   const flashcardContainer = document.getElementById('viewFlashcardContainer');
 
@@ -1900,9 +1938,15 @@ function renderFlashcard() {
   const barRevealed = document.getElementById('smartBarRevealed');
 
   if (cardList.length === 0) {
-    document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
-    document.getElementById('fcPhonetic').innerText = "";
-    document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "生词本为空，快去外刊划词加入吧！" : "恭喜！所选分组下暂无待复习词汇。";
+    if (currentWords.length === 0) {
+      document.getElementById('fcWord').innerText = "欢迎使用 Antigravity";
+      document.getElementById('fcPhonetic').innerText = "极简 · 高质感 · 记忆闪卡";
+      document.getElementById('fcContext').innerHTML = '当前设备本地尚无生词，请点击顶栏右侧 <span style="color:var(--claude-terracotta); font-weight:600; cursor:pointer;" onclick="document.getElementById(\'btnSyncStatus\').click()">[坚果云]</span> 开启双向云漫游，或点击 <span style="color:var(--claude-terracotta); font-weight:600; cursor:pointer;" onclick="document.getElementById(\'btnMoreMenu\').click()">[⋯ 菜单]</span> 导入 JSON 词库！';
+    } else {
+      document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
+      document.getElementById('fcPhonetic').innerText = "";
+      document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "词库已全部复习完毕，干得漂亮！" : "恭喜！所选分组下暂无待复习词汇。";
+    }
     document.getElementById('fcAnswerBox').style.display = 'none';
     document.getElementById('cardCurrentIndex').innerText = "0";
     document.getElementById('cardTotalCount').innerText = "0";
