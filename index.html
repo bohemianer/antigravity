@@ -6,3998 +6,1520 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Antigravity">
-  <meta name="theme-color" content="#CC785C">
+  <meta name="theme-color" content="#FAF9F5" id="metaThemeColor">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>Antigravity 笔记本</title>
-  <script src="storage-polyfill.js?v=1.0.1"></script>
+  <title>Antigravity 随身闪卡</title>
   <script>
-    // 立即执行极速主题初始化，防止页面加载时出现白屏或暗色闪烁 (Zero Flicker)
     (function() {
       try {
-        const storedTheme = localStorage.getItem('antigravity_theme') || 'system';
-        const isDark = storedTheme === 'dark' || (storedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.setAttribute('data-theme', storedTheme);
-        document.documentElement.setAttribute('data-applied-theme', isDark ? 'dark' : 'light');
+        const storedTheme = localStorage.getItem("antigravity_theme") || "system";
+        const isDark = storedTheme === "dark" || (storedTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", storedTheme);
+        document.documentElement.setAttribute("data-applied-theme", isDark ? "dark" : "light");
       } catch (e) {}
     })();
   </script>
   <style>
     :root, [data-applied-theme="light"] {
-      --bg-warm: #FAF9F5; /* 最早的经典 Claude 暖黄纸质底色 (Warm Ivory Paper) */
-      --bg-card: #FFFFFF; /* 实体纯白卡片，温润柔和无透视重影 */
-      --bg-card-hover: #F5F3ED;
-      --bg-header: #FAF9F5; /* 顶栏与暖纸底色浑然一体 */
-      --bg-muted: #EFECE6; /* 柔和浅米槽色 (用于切换器滑轨，柔和自然) */
-      --bg-subtle: #F5F3ED; /* 柔和暖白表头色 (用于 thead，与白底表格轻柔衔接) */
-      --border-warm: #E6E4DD; /* 经典温润细边框 */
-      --border-light: #EFECE6;
-      --border-subtle: #D6D3CD;
-      --border-glass: #E6E4DD;
-      --glass-blur: none;
-      --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-      --glass-specular: 0 0 0 0 transparent;
-      --text-main: #1F1E1D;
-      --text-title: #1A1918;
-      --text-body: #383532;
-      --text-muted: #8C827A;
-      --claude-terracotta: #CC785C;
-      --claude-terracotta-hover: #BF684D;
-      --claude-amber: #D97706;
-      --claude-green: #059669;
-      --highlight-bg: #FDE68A;
-      --highlight-text: #78350F;
-      --modal-overlay: rgba(30, 25, 20, 0.4);
-      --font-serif: "Charter", "Georgia", "Chronicle SSm A", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --bg-page: #FAF9F5;
+      --bg-card: #FFFFFF;
+      --bg-card-subtle: #F6F4EE;
+      --bg-header: rgba(250, 249, 245, 0.94);
+      --bg-modal: #FFFFFF;
+      --text-title: #1C1917;
+      --text-main: #292524;
+      --text-muted: #78716C;
+      --text-subtle: #A8A29E;
+      --border-color: #E7E5E4;
+      --border-warm: #E2DDD5;
+      --primary: #CC785C;
+      --primary-hover: #BA664B;
+      --primary-subtle: #FBF4F0;
+      --accent-green: #10B981;
+      --accent-amber: #D97706;
+      --accent-red: #EF4444;
+      --accent-blue: #3B82F6;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.09);
+      --font-serif: "Newsreader", "Charter", "Georgia", "Songti SC", serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     [data-applied-theme="dark"] {
-      --bg-warm: #101014;
-      --bg-card: #1B1B22;
-      --bg-card-hover: #24242C;
-      --bg-header: #15151A;
-      --bg-muted: #262630;
-      --bg-subtle: #202028;
-      --border-warm: #2C2C38;
-      --border-light: #22222C;
-      --border-subtle: #383846;
-      --border-glass: #2C2C38;
-      --glass-blur: none;
-      --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
-      --glass-specular: 0 0 0 0 transparent;
-      --text-main: #F5F5F7;
-      --text-title: #FFFFFF;
-      --text-body: #E2E2E8;
-      --text-muted: #9898A0;
-      --claude-terracotta: #FA7E64;
-      --claude-terracotta-hover: #FF957D;
-      --claude-amber: #FBBF24;
-      --claude-green: #34D399;
-      --highlight-bg: #78350F;
-      --highlight-text: #FDE68A;
-      --modal-overlay: rgba(0, 0, 0, 0.75);
+      --bg-page: #151413;
+      --bg-card: #201E1C;
+      --bg-card-subtle: #282522;
+      --bg-header: rgba(21, 20, 19, 0.94);
+      --bg-modal: #22201D;
+      --text-title: #F5F4F0;
+      --text-main: #E6E4DE;
+      --text-muted: #A39E96;
+      --text-subtle: #757067;
+      --border-color: #332F2B;
+      --border-warm: #3D3934;
+      --primary: #E07A5F;
+      --primary-hover: #F28C72;
+      --primary-subtle: #2B211C;
+      --accent-green: #34D399;
+      --accent-amber: #FBBF24;
+      --accent-red: #F87171;
+      --accent-blue: #60A5FA;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root:not([data-theme="light"]):not([data-theme="dark"]) {
-        --bg-warm: #101014;
-        --bg-card: #1B1B22;
-        --bg-card-hover: #24242C;
-        --bg-header: #15151A;
-        --bg-muted: #262630;
-        --bg-subtle: #202028;
-        --border-warm: #2C2C38;
-        --border-light: #22222C;
-        --border-subtle: #383846;
-        --border-glass: #2C2C38;
-        --glass-blur: none;
-        --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
-        --glass-specular: 0 0 0 0 transparent;
-        --text-main: #F5F5F7;
-        --text-title: #FFFFFF;
-        --text-body: #E2E2E8;
-        --text-muted: #9898A0;
-        --claude-terracotta: #FA7E64;
-        --claude-terracotta-hover: #FF957D;
-        --claude-amber: #FBBF24;
-        --claude-green: #34D399;
-        --highlight-bg: #78350F;
-        --highlight-text: #FDE68A;
-        --modal-overlay: rgba(0, 0, 0, 0.75);
-      }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-warm);
+    html, body {
+      width: 100%;
+      height: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      background-color: var(--bg-page);
       color: var(--text-main);
       font-family: var(--font-sans);
-      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    body {
       display: flex;
       flex-direction: column;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      text-rendering: optimizeLegibility;
-      transition: background-color 0.25s ease, color 0.25s ease;
-      position: relative;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    /* 移除多余的氛围光斑，保持纯色清晰高对比底色 */
-    .ambient-glow-layer {
-      display: none;
-    }
-    .glow-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(85px);
-      will-change: transform;
-      animation: floatOrb 22s ease-in-out infinite alternate;
-    }
-    .orb-1 {
-      top: -8%;
-      left: 12%;
-      width: 480px;
-      height: 480px;
-      background: radial-gradient(circle, rgba(224, 109, 83, 0.28) 0%, rgba(224, 109, 83, 0) 70%);
-      animation-duration: 20s;
-    }
-    .orb-2 {
-      top: 38%;
-      right: 8%;
-      width: 520px;
-      height: 520px;
-      background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(139, 92, 246, 0) 70%);
-      animation-duration: 25s;
-      animation-delay: -6s;
-    }
-    .orb-3 {
-      bottom: -12%;
-      left: 28%;
-      width: 550px;
-      height: 550px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(16, 185, 129, 0) 70%);
-      animation-duration: 28s;
-      animation-delay: -12s;
-    }
-    @keyframes floatOrb {
-      0% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(35px, 25px) scale(1.06); }
-      100% { transform: translate(-25px, 45px) scale(0.95); }
-    }
-
+    /* 顶栏：极致克制、不挤压、专为手机设计 */
     header {
-      background: var(--bg-header);
-      border-bottom: 1px solid var(--border-glass);
-      padding: 0 32px;
-      height: 60px;
-      min-height: 60px;
-      max-height: 60px;
-      box-sizing: border-box;
+      height: 52px;
+      min-height: 52px;
+      padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      background: var(--bg-header);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
       position: sticky;
       top: 0;
-      z-index: 100;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-      transition: background-color 0.2s ease, border-color 0.2s ease;
-    }
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .logo-brand-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .logo-icon {
-      width: 32px; height: 32px;
-      background: linear-gradient(135deg, #E06D53, #D97706);
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-serif);
-      font-size: 18px;
-      font-weight: 900; color: #fff;
-      box-shadow: 0 3px 10px rgba(224, 109, 83, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      flex-shrink: 0;
-    }
-    .logo-title {
-      font-family: var(--font-serif);
-      font-size: 18.5px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: var(--text-main);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .header-right-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    
-    .view-switcher {
-      display: flex;
-      align-items: center;
-      background: var(--bg-muted);
-      padding: 3px;
-      border-radius: 11px;
-      border: 1px solid var(--border-warm);
-      gap: 3px;
-      height: 35px;
-      box-sizing: border-box;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .view-tab {
-      height: 27px;
-      background: transparent;
-      border: 1px solid transparent; /* 关键：未激活预留 1px 透明边框，杜绝切换时增加 2px 边框导致高度跳动 */
-      padding: 0 14px;
-      border-radius: 8px;
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-      user-select: none;
-      box-sizing: border-box;
-      line-height: 1;
-      white-space: nowrap;
-      flex-shrink: 0;
-      word-break: keep-all;
-    }
-    .view-tab:active {
-      background: rgba(255, 255, 255, 0.35);
-      transform: none; /* 移除 scale 引起的尺寸扰动，避免点击微跳 */
-    }
-    .view-tab.active {
-      background: var(--bg-card);
-      color: var(--text-main);
-      box-shadow: var(--glass-shadow);
-      font-weight: 600;
-      border: 1px solid var(--border-glass);
-    }
-
-    .sync-status-badge {
-      display: flex; align-items: center; gap: 7px;
-      height: 35px;
-      box-sizing: border-box;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-glass);
-      padding: 0 13px 0 11px; border-radius: 20px; font-size: 12px; color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      user-select: none;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-      white-space: nowrap;
-      flex-shrink: 0;
-      word-break: keep-all;
-    }
-    .sync-status-badge:hover {
-      background: var(--bg-card-hover);
-      color: var(--text-main);
-      transform: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-    .sync-status-badge:active {
-      transform: none;
-      background: var(--bg-subtle);
-    }
-
-    /* 结合了状态指示与循环刷新的融合图标 (Merged Sync Icon) */
-    .sync-icon-dot {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-muted);
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-    .sync-icon-dot.active {
-      color: var(--claude-green);
-      filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.5));
-    }
-    .sync-icon-dot.rotating svg, .sync-icon-dot:hover svg {
-      animation: syncRotate 0.8s linear infinite;
-    }
-    .sync-icon-dot:hover {
-      color: var(--claude-terracotta);
-    }
-    @keyframes syncRotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    
-    /* 苹果风格自定义下拉菜单 (Apple Custom Dropdown) */
-    .dropdown-container {
-      position: relative;
-      flex-shrink: 0;
-    }
-    .dropdown-btn {
-      height: 35px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      color: var(--text-body);
-      padding: 0 11px;
-      border-radius: 10px;
-      font-size: 12.5px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 122px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-      font-family: var(--font-sans);
-      box-sizing: border-box;
-      white-space: nowrap;
-      flex-shrink: 0;
-      word-break: keep-all;
-    }
-    .dropdown-btn:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-subtle);
-      color: var(--text-main);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      transform: none;
-    }
-    .dropdown-btn:active {
-      transform: none;
-      background: var(--bg-card);
-    }
-    .dropdown-btn-left {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .more-menu-btn {
-      width: 35px;
-      min-width: 35px;
-      padding: 0;
-      justify-content: center;
-    }
-    .dropdown-menu {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      width: 140px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 12px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-      padding: 6px;
-      display: none;
-      flex-direction: column;
-      gap: 2px;
-      z-index: 1000;
-      animation: dropIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .more-dropdown-menu {
-      width: 156px;
-      right: 0;
-      left: auto;
-    }
-    .menu-section-label {
-      font-size: 10.5px;
-      font-weight: 600;
-      color: var(--text-muted);
-      padding: 5px 10px 3px;
-      letter-spacing: 0.3px;
-      user-select: none;
-    }
-    .menu-divider {
-      height: 1px;
-      background: var(--border-light);
-      margin: 4px 6px;
-    }
-    @keyframes dropIn {
-      from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .dropdown-item {
-      padding: 7px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--text-body);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.15s ease;
-      user-select: none;
-    }
-    .dropdown-item:hover {
-      background: var(--bg-card-hover);
-      color: var(--text-main);
-      transform: translateX(2px);
-    }
-    .dropdown-item.selected {
-      background: var(--bg-subtle);
-      color: var(--claude-terracotta);
-      font-weight: 600;
-    }
-    .dropdown-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      margin-right: 7px;
-    }
-    .dot-all { background: var(--text-muted); }
-    .dot-0 { background: #DC2626; }
-    .dot-1 { background: #D97706; }
-    .dot-2 { background: #2563EB; }
-    .dot-3 { background: #059669; }
-    .check-mark {
-      font-size: 11px;
-      color: var(--claude-terracotta);
-      font-weight: bold;
-    }
-
-    .search-box-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      flex: 0 1 210px;
-      min-width: 120px;
-    }
-    .search-input {
-      height: 35px;
-      width: 100%;
-      min-width: 120px;
-      max-width: 210px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      color: var(--text-main);
-      padding: 0 28px 0 12px;
-      border-radius: 10px;
-      font-size: 12.5px;
-      outline: none;
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      font-family: var(--font-sans);
-      box-sizing: border-box;
-      white-space: nowrap;
-    }
-    .search-input:focus {
-      border-color: var(--claude-terracotta);
-      box-shadow: 0 0 0 3px rgba(224, 109, 83, 0.18);
-    }
-    
-    .search-clear-btn {
-      position: absolute;
-      right: 7px;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: none;
-      background: var(--bg-muted);
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 10.5px;
-      font-weight: 700;
-      line-height: 1;
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-      transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s, color 0.15s;
-      user-select: none;
-      padding: 0;
-      z-index: 2;
-    }
-    /* 有输入时：鼠标移到搜索框区域或按钮上优雅浮现，获得焦点时也会浮现 */
-    .search-box-wrap.has-text:hover .search-clear-btn,
-    .search-box-wrap.has-text:focus-within .search-clear-btn {
-      opacity: 0.85;
-      visibility: visible;
-      pointer-events: auto;
-    }
-    .search-clear-btn:hover {
-      opacity: 1 !important;
-      background: var(--border-subtle);
-      color: var(--text-main);
-      transform: scale(1.18);
-    }
-    .search-clear-btn:active {
-      transform: scale(0.92);
-    }
-    
-    .btn {
-      height: 35px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      color: var(--text-body);
-      padding: 0 13px;
-      border-radius: 10px;
-      font-size: 12.5px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-      font-family: var(--font-sans);
-      box-sizing: border-box;
-      user-select: none;
-      white-space: nowrap;
-      flex-shrink: 0;
-      word-break: keep-all;
-    }
-    .btn:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-subtle);
-      color: var(--text-main);
-      transform: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-    .btn:active {
-      transform: none;
-      background: var(--bg-subtle);
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #E06D53, #D97706);
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      color: #FFFFFF;
-      box-shadow: 0 2px 8px rgba(224, 109, 83, 0.3);
-      white-space: nowrap;
-      flex-shrink: 0;
-      word-break: keep-all;
-    }
-    .btn-primary:hover {
-      background: linear-gradient(135deg, #CC5B40, #C26604);
-      box-shadow: 0 4px 14px rgba(224, 109, 83, 0.42);
-      color: #FFFFFF;
-      transform: none;
-    }
-    .btn-primary:active {
-      transform: none;
-      filter: brightness(0.95);
-    }
-
-    /* 响应式顶栏适配：窄屏与小窗口绝不挤压扭曲 (Responsive Header Auto-Adaptation) */
-    @media (max-width: 1220px) {
-      header {
-        padding: 0 16px;
-        gap: 10px;
-      }
-      .logo-area {
-        gap: 10px;
-      }
-      .controls {
-        gap: 8px;
-      }
-      .logo-brand {
-        display: none; /* 自动折叠 "Antigravity"，仅保留 "Notebook"，立省 95px 宽度 */
-      }
-      .search-box-wrap {
-        flex: 0 1 180px;
-      }
-    }
-
-    @media (max-width: 1024px) {
-      header {
-        padding: 0 12px;
-        gap: 8px;
-      }
-      .logo-area {
-        gap: 8px;
-      }
-      .controls {
-        gap: 6px;
-      }
-      .dropdown-btn {
-        width: 108px;
-        padding: 0 8px;
-        font-size: 12px;
-      }
-      .search-box-wrap {
-        flex: 0 1 140px;
-        min-width: 100px;
-      }
-      .search-input {
-        padding: 0 24px 0 10px;
-        font-size: 12px;
-      }
-      .view-tab {
-        padding: 0 10px;
-        font-size: 12px;
-        gap: 4px;
-      }
-      .btn {
-        padding: 0 10px;
-        font-size: 12px;
-      }
-      .sync-status-badge {
-        padding: 0 10px 0 8px;
-      }
-    }
-
-    @media (max-width: 880px) {
-      #syncText {
-        display: none; /* 超窄屏下同步徽标仅保留图标，化身圆角紧凑徽标 */
-      }
-      .sync-status-badge {
-        padding: 0;
-        width: 35px;
-        justify-content: center;
-      }
-      .dropdown-btn {
-        width: 98px;
-      }
-      .search-box-wrap {
-        flex: 0 1 120px;
-        min-width: 90px;
-      }
-    }
-
-    .mobile-tab-bar {
-      display: none;
-    }
-
-    @media (max-width: 768px) {
-      html, body {
-        width: 100% !important;
-        max-width: 100vw !important;
-        overflow-x: hidden !important;
-        box-sizing: border-box !important;
-      }
-      /* 手机端顶栏：极度纯粹、精致单行（高度 48px，绝无溢出与挤压） */
-      header {
-        height: 48px !important;
-        min-height: 48px !important;
-        max-height: 48px !important;
-        padding: 0 16px !important;
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        background: var(--bg-header) !important;
-        border-bottom: 1px solid var(--border-glass) !important;
-        overflow: hidden !important;
-      }
-      .logo-area {
-        width: 100% !important;
-        max-width: 100% !important;
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        box-sizing: border-box !important;
-      }
-      .logo-brand-wrap {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-      }
-      .logo-icon {
-        width: 28px !important;
-        height: 28px !important;
-        font-size: 15px !important;
-        border-radius: 8px !important;
-      }
-      .logo-title {
-        display: inline !important;
-        font-size: 15.5px !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.3px !important;
-      }
-      .logo-brand {
-        display: inline !important;
-      }
-      /* 手机端顶部彻底隐藏切换器与冗余按钮（已全部下放至 iOS 原生底部导航栏） */
-      .view-switcher {
-        display: none !important;
-      }
-      .header-right-actions {
-        display: flex !important;
-        align-items: center !important;
-      }
-      .header-right-actions .sync-status-badge {
-        display: none !important;
-      }
-      .header-right-actions #moreMenuContainer {
-        display: flex !important;
-      }
-      #btnMoreMenu.more-menu-btn {
-        width: 32px !important;
-        min-width: 32px !important;
-        max-width: 32px !important;
-        height: 32px !important;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-sizing: border-box !important;
-      }
-      .more-dropdown-menu {
-        position: fixed !important;
-        bottom: 68px !important;
-        top: auto !important;
-        left: 14px !important;
-        right: 14px !important;
-        width: auto !important;
-        max-width: 390px !important;
-        margin: 0 auto !important;
-        border-radius: 20px !important;
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35) !important;
-        z-index: 99999 !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-glass) !important;
-        padding: 8px !important;
-      }
-
-      /* 搜索控制栏：手机端仅在生词库视图展示，闪卡模式下 100% 隐藏防溢出 */
-      .controls {
-        display: none !important;
-      }
-      body[data-current-view="table"] .controls {
-        display: flex !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        padding: 8px 12px 4px !important;
-        gap: 6px !important;
-      }
-      .search-box-wrap {
-        flex: 1 1 auto !important;
-        min-width: 80px !important;
-        height: 36px !important;
-      }
-      .search-input {
-        font-size: 13px !important;
-        height: 36px !important;
-        padding: 0 24px 0 10px !important;
-        border-radius: 10px !important;
-      }
-      .dropdown-btn {
-        height: 36px !important;
-        width: auto !important;
-        min-width: 75px !important;
-        padding: 0 6px !important;
-        font-size: 11px !important;
-        border-radius: 10px !important;
-      }
-      #btnAddWord {
-        height: 36px !important;
-        padding: 0 10px !important;
-        font-size: 12px !important;
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        border-radius: 10px !important;
-      }
-
-      /* 主体区域：留出底部导航栏的安全距离，绝无横向滚动 */
-      main {
-        padding: 8px 14px 80px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-      }
-
-      /* 手机端闪卡体验优化（全屏沉浸、单行自测栏、零溢出） */
-      body[data-current-view="flashcard"] #viewTableContainer {
-        display: none !important;
-      }
-      body[data-current-view="table"] #viewFlashcardContainer {
-        display: none !important;
-      }
-      #viewFlashcardContainer {
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-      }
-      .flashcard-header-bar {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        flex-wrap: nowrap !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        padding: 2px 0 10px !important;
-        margin-bottom: 6px !important;
-      }
-      .flashcard-batch-group {
-        display: flex !important;
-        align-items: center !important;
-        gap: 4px !important;
-      }
-      .batch-label {
-        display: none !important;
-      }
-      .batch-tabs {
-        display: flex !important;
-        gap: 3px !important;
-      }
-      .batch-tab {
-        padding: 3px 7px !important;
-        font-size: 11px !important;
-        border-radius: 6px !important;
-        min-width: unset !important;
-      }
-      .flashcard-header-right {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        width: auto !important;
-      }
-      .flashcard-progress-box {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-      }
-      .flashcard-progress-text {
-        font-size: 11.5px !important;
-        white-space: nowrap !important;
-      }
-      .flashcard-progress-bar {
-        width: 44px !important;
-        min-width: 36px !important;
-        height: 5px !important;
-      }
-      .kbd-hint, .btn-stealth-trigger {
-        display: none !important;
-      }
-
-      /* 闪卡卡片：自适应字号与圆角，文本换行防溢出 */
-      .flashcard-card-box {
-        padding: 20px 16px !important;
-        min-height: 330px !important;
-        border-radius: 20px !important;
-        margin-bottom: 12px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-        box-sizing: border-box !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow: hidden !important;
-      }
-      .flashcard-word {
-        font-size: clamp(20px, 5.5vw, 28px) !important;
-        font-weight: 700 !important;
-        line-height: 1.25 !important;
-        text-align: center !important;
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
-      }
-      .flashcard-phonetic {
-        font-size: 14px !important;
-      }
-      .flashcard-context {
-        font-size: 13.5px !important;
-        line-height: 1.55 !important;
-        margin-top: 14px !important;
-        word-break: break-word !important;
-      }
-      .flashcard-trans {
-        font-size: 14.5px !important;
-        line-height: 1.55 !important;
-        word-break: break-word !important;
-      }
-
-      /* 底部操作按钮：严格限制在一行内平分屏幕宽度 */
-      .flashcard-smart-bar {
-        gap: 8px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        margin-top: 12px !important;
-      }
-      #smartBarUnrevealed .btn-nav {
-        flex: 1 1 0 !important;
-        min-width: 0 !important;
-        height: 44px !important;
-        border-radius: 12px !important;
-        font-size: 13px !important;
-        padding: 0 4px !important;
-        white-space: nowrap !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 4px !important;
-      }
-      #smartBarRevealed .btn-srs-action {
-        flex: 1 1 0 !important;
-        min-width: 0 !important;
-        height: 48px !important;
-        border-radius: 14px !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        padding: 0 4px !important;
-        white-space: nowrap !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 4px !important;
-      }
-
-      /* 完成总结卡片响应式 */
-      .flashcard-summary-card {
-        padding: 24px 16px !important;
-        min-height: 300px !important;
-        border-radius: 20px !important;
-        box-sizing: border-box !important;
-      }
-      .summary-title {
-        font-size: 20px !important;
-      }
-      .summary-subtitle {
-        font-size: 13px !important;
-        margin-bottom: 18px !important;
-      }
-      .summary-stats-grid {
-        gap: 8px !important;
-        margin-bottom: 20px !important;
-      }
-      .stat-pill {
-        padding: 10px 6px !important;
-      }
-      .stat-num {
-        font-size: 22px !important;
-      }
-      .stat-label {
-        font-size: 11px !important;
-      }
-      .summary-actions {
-        flex-direction: column !important;
-        width: 100% !important;
-        gap: 10px !important;
-      }
-      .summary-actions .btn {
-        width: 100% !important;
-        height: 44px !important;
-        justify-content: center !important;
-      }
-
-      /* 手机端生词库：卡片流展示 */
-      .table-container {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        overflow: visible !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-      }
-      table {
-        display: block !important;
-        width: 100% !important;
-      }
-      thead {
-        display: none !important;
-      }
-      tbody {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 10px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-      }
-      tbody tr {
-        display: flex !important;
-        flex-direction: column !important;
-        background: var(--bg-card) !important;
-        border: 1px solid var(--border-glass) !important;
-        border-radius: 16px !important;
-        padding: 14px 16px !important;
-        box-shadow: var(--glass-shadow) !important;
-        gap: 8px !important;
-        box-sizing: border-box !important;
-        width: 100% !important;
-      }
-      tbody td {
-        display: block !important;
-        padding: 0 !important;
-        border: none !important;
-        text-align: left !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-      }
-      tbody td:first-child {
-        display: flex !important;
-        align-items: baseline !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-        padding-bottom: 6px !important;
-        border-bottom: 1px solid var(--border-light) !important;
-      }
-      .word-cell-wrap {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: baseline !important;
-        gap: 8px !important;
-        flex-wrap: wrap !important;
-      }
-      .word-title {
-        font-size: 18px !important;
-        font-weight: 700 !important;
-      }
-      .word-phonetic {
-        font-size: 13px !important;
-      }
-      .salad-context-box {
-        background: var(--bg-subtle) !important;
-        border: 1px solid var(--border-warm) !important;
-        border-radius: 8px !important;
-        padding: 8px 10px !important;
-        font-size: 12.5px !important;
-        line-height: 1.5 !important;
-      }
-      .trans-text {
-        font-size: 14px !important;
-        color: var(--text-title) !important;
-        font-weight: 500 !important;
-        line-height: 1.5 !important;
-      }
-      .note-text {
-        font-size: 12.5px !important;
-        color: var(--claude-amber) !important;
-        background: rgba(217, 119, 6, 0.08) !important;
-        padding: 4px 8px !important;
-        border-radius: 6px !important;
-        display: inline-block !important;
-      }
-      tbody td:last-child {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-end !important;
-        padding-top: 4px !important;
-      }
-      .action-group {
-        display: flex !important;
-        align-items: center !important;
-        gap: 8px !important;
-      }
-
-      /* 原生 iOS 底部导航栏（4大核心入口，精确 25% 均分，无溢出） */
-      .mobile-tab-bar {
-        display: flex !important;
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100% !important;
-        max-width: 100vw !important;
-        height: 54px !important;
-        padding: 0 4px !important;
-        padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-        box-sizing: border-box !important;
-        background: var(--bg-card) !important;
-        border-top: 1px solid var(--border-glass) !important;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
-        z-index: 999 !important;
-        align-items: center !important;
-        justify-content: space-around !important;
-        backdrop-filter: blur(24px) !important;
-        -webkit-backdrop-filter: blur(24px) !important;
-      }
-      .mobile-tab-item {
-        flex: 1 1 0 !important;
-        max-width: 25% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: transparent !important;
-        border: none !important;
-        padding: 4px 0 !important;
-        cursor: pointer !important;
-        color: var(--text-muted) !important;
-        transition: color 0.15s ease, transform 0.15s ease !important;
-        gap: 2px !important;
-        box-sizing: border-box !important;
-      }
-      .mobile-tab-item.active {
-        color: var(--claude-terracotta) !important;
-      }
-      .mobile-tab-icon {
-        font-size: 18px !important;
-        line-height: 1 !important;
-      }
-      .mobile-tab-label {
-        font-size: 10.5px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.2px !important;
-      }
-      .mobile-tab-item:active {
-        transform: scale(0.92) !important;
-      }
-
-      .modal-card {
-        width: calc(100vw - 28px) !important;
-        max-width: 100% !important;
-        padding: 20px 16px !important;
-        max-height: 84vh !important;
-        overflow-y: auto !important;
-      }
-
-      /* 移动端专属 iOS 原生设置抽屉 */
-      .mobile-sheet-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 100000;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-      }
-      .mobile-sheet-backdrop {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-      }
-      .mobile-sheet-container {
-        position: relative;
-        background: var(--bg-card);
-        border-top-left-radius: 24px;
-        border-top-right-radius: 24px;
-        padding: 12px 18px env(safe-area-inset-bottom, 24px);
-        max-height: 80vh;
-        overflow-y: auto;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
-        border-top: 1px solid var(--border-glass);
-        animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      @keyframes slideUpSheet {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-      }
-      .mobile-sheet-handle {
-        width: 36px;
-        height: 4px;
-        border-radius: 2px;
-        background: var(--border-subtle);
-        margin: 4px auto 14px;
-      }
-      .mobile-sheet-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 16px;
-      }
-      .mobile-sheet-title {
-        font-size: 16.5px;
-        font-weight: 700;
-        color: var(--text-title);
-      }
-      .mobile-sheet-close {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        background: var(--bg-muted);
-        border: none;
-        font-size: 13px;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-      }
-      .mobile-sheet-section {
-        margin-bottom: 16px;
-      }
-      .mobile-section-label {
-        font-size: 11.5px;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-      }
-      .mobile-theme-group {
-        display: flex;
-        background: var(--bg-muted);
-        border-radius: 12px;
-        padding: 3px;
-        gap: 4px;
-      }
-      .mobile-theme-btn {
-        flex: 1;
-        height: 34px;
-        border: none;
-        background: transparent;
-        border-radius: 9px;
-        font-size: 12.5px;
-        font-weight: 500;
-        color: var(--text-muted);
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-      .mobile-theme-btn.active {
-        background: var(--bg-card);
-        color: var(--text-title);
-        font-weight: 600;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      }
-      .mobile-setting-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 14px;
-        background: var(--bg-subtle);
-        border: 1px solid var(--border-light);
-        border-radius: 12px;
-        margin-bottom: 8px;
-        cursor: pointer;
-        font-size: 13.5px;
-        color: var(--text-main);
-        transition: background 0.15s ease;
-      }
-      .mobile-setting-row:active {
-        background: var(--bg-muted);
-      }
-      .mobile-setting-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 500;
-      }
-      .mobile-setting-badge {
-        font-size: 12px;
-        padding: 2px 8px;
-        border-radius: 6px;
-        background: rgba(204, 120, 92, 0.12);
-        color: var(--claude-terracotta);
-        font-weight: 600;
-      }
-    }
-
-    main {
-      flex: 1;
-      max-width: 1360px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    /* 视图 1: 经典表格视图 */
-    #viewTableContainer {
+      z-index: 50;
       width: 100%;
     }
-    .table-container {
-      width: 100%;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: var(--glass-shadow);
-      transition: box-shadow 0.25s ease;
-    }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    thead tr {
-      background: var(--bg-subtle);
-      border-bottom: 1px solid var(--border-light);
-    }
-    th {
-      padding: 14px 20px;
-      font-size: 12.5px;
-      color: var(--text-muted);
-      font-weight: 500;
-      letter-spacing: 0.2px;
-      font-family: var(--font-sans);
-      text-align: center !important;
-      vertical-align: middle !important;
-    }
-    tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.15s; }
-    tbody tr:hover { background: var(--bg-card-hover); }
-    td {
-      padding: 16px 20px;
-      font-size: 13.5px;
-      color: var(--text-body);
-      vertical-align: middle !important;
-    }
-    
-    .word-cell-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-    .word-title {
-      font-family: var(--font-serif);
-      font-size: 16.5px;
-      font-weight: 700;
-      color: var(--text-title);
-      line-height: 1.2;
-    }
-    .word-title mark.search-match {
-      background: var(--highlight-bg);
-      color: var(--highlight-text);
-      font-weight: 700;
-      padding: 1px 3px;
-      border-radius: 3px;
-      box-decoration-break: clone;
-      -webkit-box-decoration-break: clone;
-    }
 
-    /* 智能英式/美式拼写感知小角标 */
-    .nb-dialect-badge {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 600;
-      font-family: var(--font-sans);
-      border-radius: 4px;
-      padding: 1px 5px;
-      margin-left: 6px;
-      vertical-align: middle;
-      line-height: 1.25;
-      letter-spacing: 0.1px;
-    }
-    .nb-dialect-badge.dialect-uk {
-      color: #2563EB;
-      background: rgba(37, 99, 235, 0.1);
-      border: 1px solid rgba(37, 99, 235, 0.25);
-    }
-    .nb-dialect-badge.dialect-us {
-      color: #059669;
-      background: rgba(5, 150, 105, 0.1);
-      border: 1px solid rgba(5, 150, 105, 0.25);
-    }
-    
-    /* 纯净交互式音标：无图标，直接点击音标本身朗读发音 */
-    .word-phonetic {
-      color: var(--text-muted);
-      font-size: 12.5px;
-      font-family: "Charis SIL", "Doulos SIL", "Lucida Sans Unicode", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      font-weight: 400;
-      cursor: pointer;
-      padding: 1px 5px;
-      border-radius: 4px;
-      transition: all 0.15s ease;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
       user-select: none;
     }
-    .word-phonetic:hover {
-      color: var(--claude-terracotta);
-      background: rgba(204, 120, 92, 0.12);
-    }
 
-    .srs-badge {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-warm);
-      color: var(--text-muted);
-      user-select: none;
-      font-family: var(--font-sans);
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .srs-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--text-muted);
-    }
-    .srs-level-0, .srs-level-1, .srs-level-2, .srs-level-3 {
-      background: var(--bg-subtle);
-      color: var(--text-muted);
-      border: 1px solid var(--border-warm);
-    }
-    .srs-level-0 .srs-dot, .srs-level-1 .srs-dot, .srs-level-2 .srs-dot, .srs-level-3 .srs-dot {
-      background: var(--text-muted);
-    }
-
-    .salad-context-box { 
-      line-height: 1.6; 
-    }
-    .salad-sentence {
-      font-family: var(--font-serif);
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text-main);
-      line-height: 1.65;
-      text-align: justify;
-      text-justify: inter-word;
-      text-align-last: left;
-    }
-    .salad-sentence .highlight {
-      background: var(--highlight-bg);
-      color: var(--highlight-text);
-      font-weight: 600;
-      padding: 1px 4px;
-      border-radius: 3px;
-      transition: all 0.15s ease;
-    }
-
-    /* 方案 1：检索模式下，例句锚点高亮优雅降权，让位于第一列检索关键词焦点 */
-    .is-searching .salad-sentence .highlight {
-      background: rgba(204, 120, 92, 0.12);
-      color: var(--claude-terracotta);
-      font-weight: 500;
-      border-bottom: 1.5px solid var(--claude-terracotta);
-      padding: 0 2px;
-      border-radius: 2px;
-    }
-    
-    .trans-text,
-    .note-text {
-      color: var(--text-main);
-      font-size: 13.5px;
-      line-height: 1.7;
-      letter-spacing: 0.15px;
-      white-space: pre-line;
-      word-break: break-word;
-    }
-    .trans-text {
-      font-weight: 550;
-    }
-    .trans-line {
-      display: block;
-      margin-bottom: 3px;
-    }
-    .trans-line:last-child {
-      margin-bottom: 0;
-    }
-    .trans-pos-tag {
-      color: var(--claude-terracotta);
-      font-weight: 700;
-      font-family: var(--font-serif, "Georgia", serif);
-      font-size: 13px;
-      margin-right: 4px;
-      display: inline-block;
-    }
-    .note-text {
-      font-weight: 450;
-      color: var(--text-body);
-    }
-
-    .action-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      justify-content: center;
-    }
-    
-    /* 熟练度发光状态圆点按钮与悬浮糖果微胶囊 */
-    .mastery-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .mastery-dot-btn {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 1px solid transparent;
-      background: transparent;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .mastery-dot-btn:hover {
-      background: var(--bg-muted);
-      border-color: var(--border-warm);
-      transform: scale(1.18);
-    }
-    .mastery-dot-btn:active {
-      transform: scale(0.88);
-    }
-    .mastery-dot-glow {
-      width: 7.5px;
-      height: 7.5px;
-      border-radius: 50%;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    
-    /* 未标记：极淡极简空心虚线环，低调不抢眼 */
-    .mastery-dot-unmarked {
-      width: 8px;
-      height: 8px;
-      background: transparent;
-      border: 1.5px dashed var(--text-muted);
-      opacity: 0.55;
-    }
-    tbody tr:hover .mastery-dot-unmarked {
-      opacity: 0.95;
-      border-color: var(--claude-terracotta);
-    }
-
-    .mastery-dot-red {
-      background: #EF4444;
-      box-shadow: 0 0 7px rgba(239, 68, 68, 0.6);
-    }
-    .mastery-dot-orange {
-      background: #F59E0B;
-      box-shadow: 0 0 7px rgba(245, 158, 11, 0.6);
-    }
-    .mastery-dot-green {
-      background: #10B981;
-      box-shadow: 0 0 7px rgba(16, 185, 129, 0.6);
-    }
-    .mastery-dot-purple {
-      background: #6366F1;
-      box-shadow: 0 0 7px rgba(99, 102, 241, 0.6);
-    }
-
-    /* 悬浮微胶囊快捷选择器 (Apple Floating Candy Picker) */
-    .mastery-picker-popup {
-      position: absolute;
-      bottom: calc(100% + 6px);
-      right: -24px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-warm);
-      border-radius: 20px;
-      padding: 5px 8px;
-      display: none;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.05);
-      z-index: 100;
-      animation: candyPop 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-      white-space: nowrap;
-    }
-    /* 鼠标安全桥接区域：防止鼠标从圆点滑向浮窗时丢失判定 */
-    .mastery-picker-popup::after {
-      content: '';
-      position: absolute;
-      top: 100%;
-      left: 0;
-      width: 100%;
-      height: 10px;
-      background: transparent;
-    }
-    .mastery-wrap:hover .mastery-picker-popup,
-    .mastery-picker-popup.open {
-      display: flex;
-    }
-    @keyframes candyPop {
-      from { opacity: 0; transform: translateY(5px) scale(0.9); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .candy-option {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-      background: transparent;
-      border: none;
-      padding: 0;
-    }
-    .candy-option:hover {
-      transform: scale(1.35);
-      background: rgba(128, 128, 128, 0.12);
-    }
-    .candy-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    .apple-icon-btn {
+    .brand-icon {
       width: 30px;
       height: 30px;
-      border-radius: 7px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .apple-icon-btn:hover {
-      background: var(--bg-muted);
-      border-color: var(--border-warm);
-      color: var(--text-main);
-      transform: scale(1.08);
-    }
-    .apple-icon-btn-del:hover {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: rgba(239, 68, 68, 0.25);
-      color: #DC2626;
-    }
-
-    /* 视图 2: 苹果美学级艾宾浩斯闪卡自测容器 */
-    #viewFlashcardContainer {
-      display: none;
-      width: 100%;
-      max-width: 680px;
-      margin: 16px auto;
-      flex-direction: column;
-      align-items: center;
-      box-sizing: border-box;
-    }
-    
-    /* 闪卡顶部定量控制与进度栏 */
-    .flashcard-header-bar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      gap: 12px;
-      box-sizing: border-box;
-    }
-    .flashcard-batch-group {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .batch-label {
-      font-size: 11.5px;
-      color: var(--text-muted);
-      font-weight: 500;
-      user-select: none;
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .batch-tabs {
-      display: inline-flex;
-      align-items: center;
-      background: var(--bg-muted);
-      padding: 2px;
-      border-radius: 7px;
-      gap: 2px;
-      height: 26px;
-      box-sizing: border-box;
-      border: 1px solid var(--border-warm);
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .batch-tab {
-      background: transparent;
-      border: none;
-      height: 20px;
-      padding: 0 7px;
-      border-radius: 5px;
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-family: var(--font-sans);
-      transition: all 0.15s ease;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .batch-tab:hover {
-      color: var(--text-main);
-    }
-    .batch-tab.active {
-      background: var(--bg-card);
-      color: var(--text-main);
-      font-weight: 600;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    }
-
-    .flashcard-header-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .flashcard-progress-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-      flex-shrink: 0;
-      white-space: nowrap;
-      word-break: keep-all;
-    }
-    .flashcard-progress-text {
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .flashcard-progress-bar {
-      width: 72px;
-      height: 4px;
-      background: var(--bg-muted);
-      border-radius: 2px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    .flashcard-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #CC785C, #D97706);
-      width: 0%;
-      border-radius: 2px;
-      transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .kbd-hint {
-      font-size: 11px;
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      user-select: none;
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .kbd-hint kbd {
-      background: var(--bg-muted);
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 10px;
-      color: var(--text-body);
-      white-space: nowrap;
-    }
-
-    
-    .flashcard-card-box {
-      width: 100%;
-      min-height: 420px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 24px;
-      box-shadow: var(--glass-shadow);
-      padding: 32px 36px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start; /* 单词与例句位置绝对锁定，翻面 0 位移！ */
-      cursor: pointer;
-      position: relative;
-      user-select: none;
-      transition: box-shadow 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.25s ease;
-      box-sizing: border-box;
-    }
-    .flashcard-card-box:hover {
-      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
-      border-color: var(--border-subtle);
-    }
-    .flashcard-card-box:active {
-      /* 保持绝对平稳，无任何上下移动或形变 */
-    }
-    .flashcard-top-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      gap: 10px;
-      width: 100%;
-      box-sizing: border-box;
-      white-space: nowrap;
-    }
-    .flashcard-top-right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .flashcard-hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .fc-edit-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--text-muted);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-glass);
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      font-family: var(--font-sans);
-      user-select: none;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .fc-edit-btn:hover {
-      background: var(--bg-card);
-      border-color: var(--claude-terracotta);
-      color: var(--claude-terracotta);
-      box-shadow: 0 3px 10px rgba(224, 109, 83, 0.2);
-      transform: none;
-    }
-    .fc-edit-btn:active {
-      transform: none;
-      background: var(--bg-card-hover);
-    }
-    .flashcard-word {
+      background: linear-gradient(135deg, #CC785C, #D97706);
+      color: #FFFFFF;
       font-family: var(--font-serif);
-      font-size: 34px;
       font-weight: 700;
-      color: var(--text-title);
-      text-align: center;
-      margin-bottom: 8px;
-      letter-spacing: -0.5px;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text;
-    }
-    .flashcard-phonetic-wrap {
+      font-size: 16px;
+      border-radius: 9px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
-    }
-    .flashcard-phonetic {
-      font-size: 14.5px;
-      color: var(--text-muted);
-      font-family: "Charis SIL", "Doulos SIL", "Lucida Sans Unicode", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      letter-spacing: 0.3px;
-      cursor: pointer;
-      padding: 2px 8px;
-      border-radius: 6px;
-      transition: all 0.15s ease;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-    }
-    .flashcard-phonetic:hover {
-      color: var(--claude-terracotta);
-      background: rgba(204, 120, 92, 0.12);
-    }
-    .flashcard-phonetic.playing,
-    .word-phonetic.playing {
-      color: var(--claude-terracotta) !important;
-      background: rgba(204, 120, 92, 0.2) !important;
-      animation: audioPulse 0.9s infinite alternate ease-in-out;
-    }
-    @keyframes audioPulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.06); }
-      100% { transform: scale(1); }
-    }
-    .flashcard-context {
-      font-family: var(--font-serif);
-      font-size: 15.5px;
-      color: var(--text-main);
-      line-height: 1.7;
-      text-align: justify;
-      text-justify: inter-word;
-      text-align-last: left;
-      margin-bottom: 16px;
-      padding: 16px 20px;
-      background: var(--bg-subtle);
-      border-radius: 10px;
-      border: 1px dashed var(--border-warm);
-      letter-spacing: 0.1px;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text;
-    }
-    .flashcard-context .highlight {
-      background: var(--highlight-bg);
-      color: var(--highlight-text);
-      font-weight: 600;
-      padding: 1px 4px;
-      border-radius: 3px;
-    }
-    
-    .flashcard-answer-box {
-      border-top: 1px solid var(--border-light);
-      padding-top: 20px;
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      animation: fadeIn 0.18s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .flashcard-trans {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 530px;
-      margin: 0 auto 12px;
-      gap: 12px;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text;
-    }
-    .flashcard-trans .trans-line {
-      display: flex;
-      align-items: baseline;
-      line-height: 1.7;
-    }
-    .flashcard-trans .trans-line-pos {
-      gap: 12px;
-      width: 100%;
-    }
-    .flashcard-trans .trans-pos-tag {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--font-sans);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--claude-terracotta);
-      background: rgba(204, 120, 92, 0.12);
-      border: 1px solid rgba(204, 120, 92, 0.22);
-      border-radius: 4px;
-      padding: 1px 6px;
-      min-width: 32px;
-      text-align: center;
-      user-select: none;
-      letter-spacing: 0.2px;
-      margin-top: 2px;
-    }
-    .flashcard-trans .trans-meaning {
-      flex: 1;
-      font-size: 15.5px;
-      font-weight: 500;
-      color: var(--text-main);
-      letter-spacing: 0.1px;
-      line-height: 1.7;
-      text-align: justify;
-      text-justify: inter-ideograph;
-      text-align-last: left;
-      word-break: break-word;
-    }
-    .flashcard-trans .trans-line-plain {
-      width: 100%;
-      font-size: 15.5px;
-      font-weight: 500;
-      color: var(--text-main);
-      line-height: 1.7;
-      text-align: justify;
-      text-justify: inter-ideograph;
-      text-align-last: left;
-    }
-    .flashcard-notes {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 530px;
-      margin: 0 auto;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text;
-      box-sizing: border-box;
-      animation: fadeIn 0.18s ease;
-    }
-    .fc-notes-divider {
-      width: 100%;
-      height: 1px;
-      background: var(--border-light);
-      margin: 6px 0 10px 0;
-    }
-    .flashcard-notes .trans-line-note {
-      gap: 12px;
-      width: 100%;
-      display: flex;
-      align-items: baseline;
-      line-height: 1.7;
-    }
-    .flashcard-notes .trans-notes-tag {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--font-sans);
-      font-size: 10.5px;
-      font-weight: 700;
-      color: var(--claude-terracotta);
-      background: rgba(204, 120, 92, 0.14);
-      border: 1px solid rgba(204, 120, 92, 0.28);
-      border-radius: 4px;
-      padding: 1px 6px;
-      min-width: 32px;
-      text-align: center;
-      user-select: none;
-      letter-spacing: 0.2px;
-      margin-top: 2px;
-    }
-    .flashcard-notes .fc-notes-body {
-      flex: 1;
-      font-size: 15px;
-      color: var(--text-body);
-      line-height: 1.7;
-      letter-spacing: 0.1px;
-      white-space: pre-line;
-      word-break: break-word;
-      text-align: justify;
-      text-justify: inter-ideograph;
-      text-align-last: left;
-    }
-    
-    /* 艾宾浩斯一体化智能动态底栏 (Smart Unified Bottom Bar) */
-    .flashcard-smart-bar {
-      width: 100%;
-      margin-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      animation: fadeIn 0.18s ease;
-    }
-    
-    .btn-nav {
-      height: 40px;
-      padding: 0 18px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-body);
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      font-family: var(--font-sans);
-      user-select: none;
-      cursor: pointer;
-    }
-    .btn-nav:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-subtle);
-      color: var(--text-main);
-      transform: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-    .btn-nav:active {
-      transform: none;
-      background: var(--bg-card);
-    }
-    .btn-nav-center {
-      flex: 1;
-      max-width: 210px;
+      box-shadow: 0 2px 6px rgba(204, 120, 92, 0.25);
     }
 
-    /* 揭晓后的 3 大多巴胺高反馈自测按键 */
-    .btn-srs-action {
-      flex: 1;
-      height: 46px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      cursor: pointer;
-      font-family: var(--font-sans);
-      transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-      user-select: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-srs-action:active {
-      transform: none;
-      filter: brightness(0.96);
-    }
-    .srs-btn-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .srs-btn-title {
-      font-size: 13.5px;
-      font-weight: 600;
-    }
-
-    .btn-srs-again {
-      background: rgba(254, 242, 242, 0.95);
-      border-color: rgba(239, 68, 68, 0.28);
-      color: #DC2626;
-    }
-    .btn-srs-again:hover {
-      background: #FEE2E2;
-      border-color: rgba(239, 68, 68, 0.48);
-      transform: none;
-      box-shadow: 0 6px 18px rgba(220, 38, 38, 0.22);
-    }
-    [data-applied-theme="dark"] .btn-srs-again {
-      background: rgba(239, 68, 68, 0.16);
-      border-color: rgba(239, 68, 68, 0.35);
-      color: #F87171;
-    }
-    [data-applied-theme="dark"] .btn-srs-again:hover {
-      background: rgba(239, 68, 68, 0.28);
-      box-shadow: 0 6px 18px rgba(239, 68, 68, 0.25);
-    }
-
-    .btn-srs-hard {
-      background: rgba(255, 251, 235, 0.95);
-      border-color: rgba(245, 158, 11, 0.28);
-      color: #D97706;
-    }
-    .btn-srs-hard:hover {
-      background: #FEF3C7;
-      border-color: rgba(245, 158, 11, 0.48);
-      transform: none;
-      box-shadow: 0 6px 18px rgba(217, 119, 6, 0.22);
-    }
-    [data-applied-theme="dark"] .btn-srs-hard {
-      background: rgba(245, 158, 11, 0.16);
-      border-color: rgba(245, 158, 11, 0.35);
-      color: #FBBF24;
-    }
-    [data-applied-theme="dark"] .btn-srs-hard:hover {
-      background: rgba(245, 158, 11, 0.28);
-      box-shadow: 0 6px 18px rgba(245, 158, 11, 0.25);
-    }
-
-    .btn-srs-good {
-      background: rgba(236, 253, 245, 0.95);
-      border-color: rgba(16, 185, 129, 0.28);
-      color: #059669;
-    }
-    .btn-srs-good:hover {
-      background: #D1FAE5;
-      border-color: rgba(16, 185, 129, 0.48);
-      transform: none;
-      box-shadow: 0 6px 18px rgba(5, 150, 105, 0.22);
-    }
-    [data-applied-theme="dark"] .btn-srs-good {
-      background: rgba(16, 185, 129, 0.16);
-      border-color: rgba(16, 185, 129, 0.35);
-      color: #34D399;
-    }
-    [data-applied-theme="dark"] .btn-srs-good:hover {
-      background: rgba(16, 185, 129, 0.28);
-      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.25);
-    }
-
-    /* 多巴胺微粒子爆破 (Sparkle Particles) */
-    .sparkle-particle {
-      position: fixed;
-      pointer-events: none;
-      border-radius: 50%;
-      z-index: 99999;
-      will-change: transform, opacity;
-      animation: particleBurst 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @keyframes particleBurst {
-      0% {
-        transform: translate(0, 0) scale(1);
-        opacity: 1;
-      }
-      100% {
-        transform: translate(var(--dx), var(--dy)) scale(0);
-        opacity: 0;
-      }
-    }
-
-    /* 闪卡完成小结卡片 (Batch Completion Summary) */
-    .flashcard-summary-card {
-      width: 100%;
-      min-height: 340px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 22px;
-      box-shadow: var(--glass-shadow);
-      padding: 36px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      animation: fadeIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .summary-trophy {
-      font-size: 40px;
-      margin-bottom: 12px;
-    }
-    .summary-title {
-      font-family: var(--font-serif);
-      font-size: 24px;
-      font-weight: 700;
-      color: var(--text-title);
-      margin-bottom: 8px;
-    }
-    .summary-subtitle {
-      font-size: 13.5px;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-    .summary-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      width: 100%;
-      max-width: 420px;
-      margin-bottom: 28px;
-    }
-    .summary-stat-box {
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-warm);
-      border-radius: 10px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .stat-pill {
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 14px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    }
-    .stat-num {
-      font-family: var(--font-serif);
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-    .stat-label {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .summary-actions {
-      display: flex;
-      gap: 12px;
-    }
-
-    /* 模态弹窗 */
-    .modal-backdrop {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: var(--modal-overlay);
-      display: none; align-items: center; justify-content: center; z-index: 1000;
-    }
-    .modal-card {
-      width: 480px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-glass);
-      border-radius: 20px;
-      box-shadow: var(--glass-shadow);
-      padding: 26px;
-      animation: modalIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    @keyframes modalIn {
-      from { opacity: 0; transform: scale(0.94) translateY(10px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    .modal-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
-    }
-    .modal-title { font-family: var(--font-sans); font-size: 16px; font-weight: 700; color: var(--text-title); }
-    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; transition: all 0.15s; border-radius: 6px; padding: 2px 6px; }
-    .modal-close:hover { background: var(--bg-muted); color: var(--text-main); }
-    .form-group { margin-bottom: 14px; }
-    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
-    .form-input, .form-textarea {
-      width: 100%;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-glass);
-      color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 13.5px;
-      outline: none;
-      font-family: var(--font-sans);
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-    }
-    .form-input:focus, .form-textarea:focus {
-      background: var(--bg-card);
-      border-color: var(--claude-terracotta);
-      box-shadow: 0 0 0 3px rgba(224, 109, 83, 0.18);
-    }
-    .form-textarea { resize: vertical; min-height: 65px; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-    /* 内嵌外刊即时划词查词引擎 (In-Notebook Selection Lookup) */
-    .flashcard-context,
-    .context-box,
-    .note-text {
-      user-select: text !important;
-      -webkit-user-select: text !important;
-      cursor: text !important;
-    }
-
-    #nb-trigger-icon {
-      position: absolute;
-      z-index: 9999;
-      width: 28px;
-      height: 28px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-warm);
-      border-radius: 50%;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15), 0 0 1px rgba(0, 0, 0, 0.1);
-      transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
-      animation: agySpringIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    #nb-trigger-icon .nb-icon-inner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #nb-trigger-icon:hover {
-      transform: scale(1.18) translateY(-2px);
-      background: var(--bg-card-hover);
-      border-color: var(--claude-terracotta);
-      box-shadow: 0 6px 18px rgba(204, 120, 92, 0.28);
-    }
-    #nb-vocab-popup {
-      position: absolute;
-      z-index: 9999;
-      display: none;
-      min-width: 260px;
-      max-width: 340px;
-      background: var(--bg-card);
-      border-radius: 12px;
-      border: 1px solid var(--border-warm);
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.04);
-      padding: 14px 16px;
-      animation: agyCardIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
-      color: var(--text-main);
-    }
-    #nb-vocab-popup .nb-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 8px;
-      gap: 8px;
-    }
-    #nb-vocab-popup .nb-word {
+    .brand-title {
       font-family: var(--font-serif);
       font-size: 17px;
       font-weight: 700;
       color: var(--text-title);
-    }
-    #nb-vocab-popup .nb-phonetic-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 1px 6px;
-      background: var(--bg-subtle);
-      border-radius: 4px;
-      cursor: pointer;
-      color: var(--text-muted);
-      font-size: 12.5px;
-      transition: all 0.15s;
-      user-select: none;
-    }
-    #nb-vocab-popup .nb-phonetic-pill:hover {
-      background: rgba(204, 120, 92, 0.12);
-      color: var(--claude-terracotta);
-    }
-    #nb-vocab-popup .nb-definition {
-      font-size: 13.5px;
-      font-weight: 550;
-      color: var(--text-main);
-      line-height: 1.6;
-      white-space: pre-line;
-    }
-    #nb-vocab-popup .nb-skeleton {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding: 4px 0;
-    }
-    #nb-vocab-popup .nb-sk-line {
-      height: 12px;
-      background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-subtle) 50%, var(--bg-muted) 75%);
-      background-size: 200% 100%;
-      animation: agyShimmer 1.4s infinite;
-      border-radius: 4px;
-    }
-
-    /* 摸鱼模式：VS Code 逼真工作台全屏层 (Workplace Camouflage) */
-    .btn-stealth-trigger {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      height: 26px;
-      padding: 0 9px;
-      border-radius: 7px;
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--text-muted);
-      background: var(--bg-muted);
-      border: 1px solid var(--border-warm);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      font-family: var(--font-sans);
-      user-select: none;
-      box-sizing: border-box;
-      white-space: nowrap;
-      word-break: keep-all;
-      flex-shrink: 0;
-    }
-    .btn-stealth-trigger:hover {
-      background: var(--bg-card);
-      color: var(--text-main);
-      border-color: var(--border-warm);
-      box-shadow: var(--glass-shadow);
-      transform: translateY(-1px);
-    }
-    .btn-stealth-trigger:active {
-      transform: translateY(0);
-    }
-
-    #stealthOverlay {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #1E1E1E;
-      color: #D4D4D4;
-      z-index: 100000;
-      display: flex;
-      flex-direction: column;
-      font-family: Consolas, "Fira Code", Monaco, Menlo, "Courier New", monospace;
-      font-size: 13px;
-      user-select: none;
-      overflow: hidden;
-    }
-
-    /* VS Code 顶栏 */
-    .vscode-titlebar {
-      height: 32px;
-      background: #323233;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 12px;
-      border-bottom: 1px solid #252526;
-      font-size: 12px;
-      color: #999999;
-      flex-shrink: 0;
-    }
-    .vscode-window-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .vscode-window-controls .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      display: inline-block;
-      cursor: pointer;
-    }
-    .vscode-window-controls .dot-red { background: #FF5F56; }
-    .vscode-window-controls .dot-yellow { background: #FFBD2E; }
-    .vscode-window-controls .dot-green { background: #27C93F; }
-    .vscode-title-text {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #CCCCCC;
-      font-weight: 400;
-    }
-    .stealth-badge-exit {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
-      color: #AAAAAA;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .stealth-badge-exit:hover {
-      background: rgba(239, 68, 68, 0.2);
-      color: #F87171;
-    }
-
-    /* 标签页栏 */
-    .vscode-tabs-bar {
-      height: 36px;
-      background: #252526;
-      display: flex;
-      align-items: center;
-      overflow-x: auto;
-      flex-shrink: 0;
-    }
-    .vscode-tab {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 14px;
-      background: #2D2D2D;
-      color: #969696;
-      font-size: 12.5px;
-      border-right: 1px solid #1E1E1E;
-      cursor: pointer;
-    }
-    .vscode-tab.active {
-      background: #1E1E1E;
-      color: #FFFFFF;
-      border-top: 1px solid #007ACC;
-    }
-    .tab-ts-icon { color: #3178C6; font-weight: 700; font-size: 11px; }
-    .tab-json-icon { color: #CBCB41; font-weight: 700; font-size: 11px; }
-    .tab-env-icon { color: #E5C07B; font-size: 11px; }
-
-    /* 面包屑 */
-    .vscode-breadcrumbs {
-      height: 24px;
-      background: #1E1E1E;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 16px;
-      font-size: 11.5px;
-      color: #888888;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      flex-shrink: 0;
-    }
-    .bc-sep { color: #555555; }
-    .bc-file { color: #CCCCCC; }
-    .bc-symbol { color: #DCDCAA; }
-
-    /* 主体布局 */
-    .vscode-main-body {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-    .vscode-activity-bar {
-      width: 48px;
-      background: #333333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 10px;
-      gap: 18px;
-      flex-shrink: 0;
-      color: #858585;
-    }
-    .vscode-activity-bar .act-item {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 38px;
-      border-left: 2px solid transparent;
-      transition: color 0.15s;
-    }
-    .vscode-activity-bar .act-item.active {
-      color: #FFFFFF;
-      border-left: 2px solid #FFFFFF;
-    }
-    .vscode-sidebar {
-      width: 220px;
-      background: #252526;
-      display: flex;
-      flex-direction: column;
-      padding: 10px 0;
-      border-right: 1px solid #1E1E1E;
-      font-size: 12px;
-      color: #CCCCCC;
-      flex-shrink: 0;
-    }
-    .sidebar-header {
-      font-size: 11px;
-      font-weight: 700;
-      color: #BBBBBB;
-      padding: 0 16px 8px 16px;
-      letter-spacing: 0.5px;
-    }
-    .tree-item {
-      padding: 4px 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: #CCCCCC;
-    }
-    .tree-item:hover { background: #2A2D2E; }
-    .tree-item.active { background: #37373D; color: #FFFFFF; }
-    .tree-item.sub { padding-left: 28px; }
-    .ts-file-badge { color: #3178C6; font-weight: 700; font-size: 10px; }
-
-    /* 编辑器代码区 */
-    .vscode-editor-pane {
-      flex: 1;
-      background: #1E1E1E;
-      overflow-y: auto;
-      padding: 14px 20px;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-    .editor-code-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: Consolas, "Fira Code", Monaco, Menlo, "Courier New", monospace;
-      font-size: 13.5px;
-      line-height: 22px;
-    }
-    .code-line {
-      display: flex;
-      align-items: center;
-      width: 100%;
-      transition: background 0.1s;
-    }
-    .code-line:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .code-line.highlight-line {
-      background: #282828;
-    }
-    .line-num {
-      width: 46px;
-      text-align: right;
-      padding-right: 18px;
-      color: #858585;
-      user-select: none;
-      font-size: 12px;
-      flex-shrink: 0;
-    }
-    .line-code {
-      flex: 1;
-      white-space: pre-wrap;
-      word-break: break-word;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-    }
-
-    /* 代码高亮配色 */
-    .syn-kwd { color: #C586C0; font-weight: 600; }     /* import, export, from, return, class, const, async, await */
-    .syn-type { color: #4EC9B0; }                       /* Promise, string, CacheRecord */
-    .syn-fn { color: #DCDCAA; }                         /* process_word, evaluateSRS */
-    .syn-str { color: #CE9178; }                        /* "..." */
-    .syn-comment { color: #6A9955; font-style: italic; }/* // ... */
-    .syn-jsdoc { color: #6A9955; }                      /* /** ... */ */
-    .syn-jsdoc-tag { color: #569CD6; font-weight: 600; }/* @description, @spec */
-    .syn-spec-text { color: #4FC1FF; font-weight: 550; font-style: normal; }
-    .syn-notes-text { color: #D7BA7D; font-style: normal; }
-    .syn-var { color: #9CDCFE; }                        /* context, symbol */
-    .syn-num { color: #B5CEA8; }                        /* 1, 2, 3 */
-    .syn-prop { color: #9CDCFE; }
-    .syn-ipa { color: #E5C07B; font-weight: 500; font-style: normal; }
-
-    /* 展开提示微按钮 */
-    .stealth-reveal-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(86, 156, 214, 0.15);
-      border: 1px dashed #569CD6;
-      color: #9CDCFE;
-      padding: 1px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      margin-left: 6px;
-      user-select: none;
-      transition: all 0.15s;
-    }
-    .stealth-reveal-pill:hover {
-      background: rgba(86, 156, 214, 0.3);
-      color: #FFFFFF;
-    }
-
-    /* 状态栏 */
-    .vscode-statusbar {
-      height: 24px;
-      background: #007ACC;
-      color: #FFFFFF;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 10px;
-      font-size: 11.5px;
-      flex-shrink: 0;
-      user-select: none;
-    }
-    .vscode-statusbar .status-left,
-    .vscode-statusbar .status-right {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .vscode-statusbar .status-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      cursor: default;
-    }
-    .status-toast {
-      background: #0E639C;
-      padding: 1px 6px;
-      border-radius: 3px;
-      animation: pulse 1s infinite;
-    }
-
-    /* ---------------- 摸鱼模式：邮件模式 (Outlook / Work Mail) ---------------- */
-    .stealth-mode-switcher {
-      display: flex;
-      background: rgba(0, 0, 0, 0.28);
-      border-radius: 5px;
-      padding: 2px;
-      gap: 2px;
-    }
-    .stealth-mode-tab {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 9px;
-      border: none;
-      background: transparent;
-      color: #999999;
-      font-size: 11px;
-      border-radius: 3px;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.15s;
-    }
-    .stealth-mode-tab:hover {
-      color: #FFFFFF;
-    }
-    .stealth-mode-tab.active {
-      background: rgba(255, 255, 255, 0.18);
-      color: #FFFFFF;
-      font-weight: 600;
-    }
-
-    /* 邮件容器 */
-    #stealthMailView {
-      flex: 1;
-      display: none;
-      background: #F3F2F1;
-      color: #201F1E;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      overflow: hidden;
-    }
-    .mail-layout {
-      width: 100%;
-      height: 100%;
-      display: flex;
-    }
-
-    /* 邮箱左侧导航 */
-    .mail-sidebar {
-      width: 175px;
-      background: #EDEBE9;
-      border-right: 1px solid #E1DFDD;
-      display: flex;
-      flex-direction: column;
-      padding: 12px 0;
-      flex-shrink: 0;
-    }
-    .mail-brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 16px 12px 16px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #0078D4;
-      border-bottom: 1px solid #E1DFDD;
-    }
-    .mail-nav-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: 10px 8px;
-    }
-    .mail-nav-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 7px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #323130;
-      cursor: pointer;
-    }
-    .mail-nav-item:hover {
-      background: #E1DFDD;
-    }
-    .mail-nav-item.active {
-      background: #FFFFFF;
-      color: #0078D4;
-      font-weight: 600;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-    .mail-badge-count {
-      font-size: 10.5px;
-      background: #0078D4;
-      color: #FFFFFF;
-      padding: 1px 5px;
-      border-radius: 10px;
-      font-weight: 700;
-    }
-
-    /* 邮件中间列表栏 */
-    .mail-inbox-list {
-      width: 280px;
-      background: #FAF9F8;
-      border-right: 1px solid #E1DFDD;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      overflow-y: auto;
-    }
-    .inbox-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid #EDEBE9;
-      font-size: 13.5px;
-      font-weight: 700;
-      color: #201F1E;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .mail-card-item {
-      padding: 12px 16px;
-      border-bottom: 1px solid #EDEBE9;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      transition: background 0.12s;
-    }
-    .mail-card-item:hover {
-      background: #F3F2F1;
-    }
-    .mail-card-item.active {
-      background: #FFFFFF;
-      border-left: 3.5px solid #0078D4;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
-    }
-    .mail-card-sender {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: #201F1E;
-    }
-    .mail-card-time {
-      font-size: 11px;
-      color: #605E5C;
-      font-weight: 400;
-    }
-    .mail-card-subject {
-      font-size: 12px;
-      color: #323130;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-weight: 500;
-    }
-    .mail-card-snippet {
-      font-size: 11px;
-      color: #605E5C;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* 邮件右侧阅读主窗 */
-    .mail-reading-pane {
-      flex: 1;
-      background: #FFFFFF;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-    .mail-action-toolbar {
-      height: 40px;
-      border-bottom: 1px solid #EDEBE9;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 18px;
-      background: #FAF9F8;
-    }
-    .btn-mail-action {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      height: 26px;
-      padding: 0 9px;
-      border-radius: 4px;
-      border: 1px solid #D2D0CE;
-      background: #FFFFFF;
-      font-size: 11.5px;
-      color: #323130;
-      cursor: pointer;
-    }
-    .btn-mail-action:hover {
-      background: #F3F2F1;
-      color: #0078D4;
-      border-color: #0078D4;
-    }
-    .mail-content-wrap {
-      padding: 22px 28px;
-      max-width: 760px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .mail-subject-title {
-      font-size: 18px;
-      font-weight: 700;
-      color: #201F1E;
-      line-height: 1.4;
       letter-spacing: -0.2px;
     }
-    .mail-meta-row {
+
+    .brand-subtitle {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-left: 2px;
+      padding: 1px 5px;
+      background: var(--primary-subtle);
+      border-radius: 4px;
+      border: 1px solid rgba(204, 120, 92, 0.2);
+    }
+
+    .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid #EDEBE9;
+      gap: 8px;
     }
-    .mail-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #0078D4;
-      color: #FFFFFF;
-      font-weight: 700;
-      font-size: 13px;
+
+    .btn-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
+      font-size: 15px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
     }
-    .mail-sender-info {
+
+    .btn-icon:active {
+      transform: scale(0.94);
+      background: var(--bg-card-subtle);
+    }
+
+    .sync-dot {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-subtle);
+    }
+
+    .sync-dot.connected {
+      background: var(--accent-green);
+      box-shadow: 0 0 5px var(--accent-green);
+    }
+
+    .sync-dot.syncing {
+      background: var(--accent-amber);
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* 主体容器 */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 12px 16px 24px;
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      justify-content: flex-start;
+      gap: 12px;
+      overflow-y: auto;
     }
-    .mail-sender-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #201F1E;
-    }
-    .mail-recipient-line {
-      font-size: 11.5px;
-      color: #605E5C;
-    }
-    
-    .mail-body-paper {
-      font-size: 13.5px;
-      line-height: 1.65;
-      color: #323130;
-      user-select: text !important;
-      -webkit-user-select: text !important;
-    }
-    .mail-term-card {
-      background: #F8F7F6;
-      border: 1px solid #E1DFDD;
-      border-radius: 8px;
-      padding: 16px 20px;
-      margin: 14px 0;
-    }
-    .mail-word-hero {
+
+    /* 顶部自测定量与进度工具栏 */
+    .session-bar {
       display: flex;
-      align-items: baseline;
-      gap: 10px;
-      margin-bottom: 10px;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 2px 2px;
     }
-    .mail-word-text {
-      font-size: 22px;
-      font-weight: 700;
-      color: #0078D4;
+
+    .batch-selector {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      padding: 2px;
+      border-radius: 8px;
+    }
+
+    .batch-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .batch-btn.active {
+      background: var(--bg-card);
+      color: var(--text-title);
+      font-weight: 600;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .progress-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .progress-pill {
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .progress-track {
+      width: 50px;
+      height: 5px;
+      background: var(--border-color);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #CC785C, #D97706);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+
+    /* 核心记忆闪卡 */
+    .flashcard {
+      width: 100%;
+      min-height: 380px;
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      box-shadow: var(--shadow-md);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .flashcard:active {
+      border-color: var(--primary);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .stage-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .stage-new {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-blue);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .stage-review {
+      background: rgba(217, 119, 6, 0.1);
+      color: var(--accent-amber);
+      border: 1px solid rgba(217, 119, 6, 0.2);
+    }
+
+    .stage-mastered {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .card-hint {
+      font-size: 11.5px;
+      color: var(--text-subtle);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 16px 0;
+      width: 100%;
+    }
+
+    .word-title {
       font-family: var(--font-serif);
-      user-select: text !important;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-title);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      word-break: break-word;
     }
-    .mail-word-ipa {
+
+    .phonetic-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--primary);
+      font-size: 14.5px;
+      font-family: var(--font-sans);
+      margin-bottom: 16px;
+      padding: 3px 10px;
+      background: var(--primary-subtle);
+      border-radius: 99px;
+      cursor: pointer;
+    }
+
+    .phonetic-wrap:active {
+      opacity: 0.8;
+      transform: scale(0.96);
+    }
+
+    .speaker-icon {
       font-size: 13px;
-      color: #605E5C;
-      font-family: "Lucida Sans Unicode", sans-serif;
-      user-select: text !important;
     }
-    .mail-context-box {
+
+    .context-box {
+      width: 100%;
+      background: var(--bg-card-subtle);
+      border-left: 3px solid var(--primary);
+      border-radius: 4px 10px 10px 4px;
+      padding: 12px 14px;
+      text-align: left;
       font-size: 13.5px;
-      font-style: italic;
-      color: #201F1E;
       line-height: 1.6;
-      padding: 10px 14px;
-      background: #FFFFFF;
-      border-left: 3px solid #0078D4;
-      border-radius: 4px;
-      margin: 10px 0;
-      user-select: text !important;
+      color: var(--text-main);
+      margin-top: 4px;
+      word-break: break-word;
     }
-    .mail-context-box .highlight {
-      background: #FFF4CE;
-      color: #795B00;
+
+    .context-box mark {
+      background: rgba(204, 120, 92, 0.16);
+      color: var(--primary);
       font-weight: 600;
       padding: 1px 4px;
       border-radius: 3px;
-      font-style: normal;
     }
 
-    .mail-spec-box {
-      margin-top: 12px;
-      padding: 12px 16px;
-      background: #FFFFFF;
-      border: 1px dashed #C8C6C4;
-      border-radius: 6px;
+    /* 释义解析卡片区域（翻转揭晓） */
+    .answer-section {
+      width: 100%;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border-color);
+      display: none;
+      animation: fadeIn 0.2s ease forwards;
+      text-align: left;
     }
-    .mail-spec-header {
-      font-size: 11.5px;
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .meaning-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-title);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .notes-box {
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      background: var(--bg-card-subtle);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    /* 底部交互操作区 */
+    .action-container {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .btn-reveal {
+      width: 100%;
+      height: 48px;
+      background: linear-gradient(135deg, #CC785C, #D97706);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(204, 120, 92, 0.3);
+      transition: all 0.15s ease;
+    }
+
+    .btn-reveal:active {
+      transform: scale(0.98);
+      filter: brightness(0.95);
+    }
+
+    .srs-bar {
+      display: none;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .btn-srs {
+      height: 48px;
+      border-radius: 13px;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s ease;
+    }
+
+    .btn-srs:active {
+      transform: scale(0.96);
+    }
+
+    .btn-srs-sub {
+      font-size: 10px;
+      opacity: 0.85;
+      font-weight: 400;
+      margin-top: 1px;
+    }
+
+    .btn-srs-again {
+      background: #FEE2E2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
+    }
+    [data-applied-theme="dark"] .btn-srs-again {
+      background: #451A1A;
+      color: #FCA5A5;
+      border-color: #5C2424;
+    }
+
+    .btn-srs-hard {
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FDE68A;
+    }
+    [data-applied-theme="dark"] .btn-srs-hard {
+      background: #3B2D14;
+      color: #FCD34D;
+      border-color: #523F1C;
+    }
+
+    .btn-srs-good {
+      background: #D1FAE5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+    [data-applied-theme="dark"] .btn-srs-good {
+      background: #133929;
+      color: #6EE7B7;
+      border-color: #1F543D;
+    }
+
+    /* 空状态卡片：友好引导 */
+    .empty-card {
+      width: 100%;
+      min-height: 380px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      box-shadow: var(--shadow-md);
+      padding: 32px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 16px;
+    }
+
+    .empty-emoji {
+      font-size: 42px;
+      margin-bottom: -4px;
+    }
+
+    .empty-title {
+      font-family: var(--font-serif);
+      font-size: 20px;
       font-weight: 700;
-      color: #605E5C;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: var(--text-title);
+    }
+
+    .empty-desc {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 290px;
       margin-bottom: 6px;
     }
-    .mail-spec-trans {
-      font-size: 14.5px;
+
+    .btn-primary-action {
+      width: 100%;
+      max-width: 280px;
+      height: 44px;
+      background: linear-gradient(135deg, #CC785C, #D97706);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
       font-weight: 600;
-      color: #201F1E;
-      line-height: 1.6;
-      white-space: pre-line;
-      margin-bottom: 8px;
-      user-select: text !important;
-    }
-    .mail-spec-notes {
-      font-size: 13px;
-      color: #494544;
-      line-height: 1.6;
-      white-space: pre-line;
-      padding-top: 8px;
-      border-top: 1px solid #EDEBE9;
-      user-select: text !important;
-    }
-    .mail-unrevealed-badge {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: #EFF6FC;
-      border: 1px dashed #0078D4;
-      border-radius: 6px;
-      color: #0078D4;
-      font-size: 12.5px;
+      justify-content: center;
+      gap: 7px;
       cursor: pointer;
-      user-select: none;
+      box-shadow: 0 4px 12px rgba(204, 120, 92, 0.25);
     }
-    .mail-unrevealed-badge:hover {
-      background: #DEECF9;
+
+    .btn-primary-action:active {
+      transform: scale(0.97);
     }
-    .mail-feedback-bar {
+
+    .btn-sub-action {
+      width: 100%;
+      max-width: 280px;
+      height: 42px;
+      background: var(--bg-card-subtle);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .btn-sub-action:active {
+      transform: scale(0.97);
+      background: var(--border-color);
+    }
+
+    /* 通用半透明弹窗遮罩 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .modal-sheet {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-modal);
+      border-radius: 20px 20px 0 0;
+      padding: 16px 20px 32px;
+      box-shadow: var(--shadow-lg);
+      border-top: 1px solid var(--border-color);
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border-color);
+      margin: 0 auto 14px;
+    }
+
+    .sheet-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 16px;
-      padding-top: 14px;
-      border-top: 1px solid #EDEBE9;
+      margin-bottom: 18px;
     }
-    .mail-srs-btns {
+
+    .sheet-title {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-title);
+    }
+
+    .sheet-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--bg-card-subtle);
+      border: none;
+      color: var(--text-muted);
+      font-size: 15px;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      width: 100%;
+      height: 40px;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--text-title);
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .theme-option {
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card-subtle);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .theme-option.active {
+      border-color: var(--primary);
+      background: var(--primary-subtle);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .setting-label {
+      font-size: 14px;
+      color: var(--text-title);
+      display: flex;
+      align-items: center;
       gap: 8px;
     }
-    .btn-mail-srs {
-      padding: 5px 12px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
       cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.15s;
+      inset: 0;
+      background-color: var(--border-color);
+      transition: .2s;
+      border-radius: 24px;
     }
-    .btn-mail-srs-0 {
-      background: #FDE7E9;
-      color: #A80000;
-      border-color: #F8D7DA;
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
     }
-    .btn-mail-srs-0:hover { background: #FCD2D6; }
-    .btn-mail-srs-1 {
-      background: #FFF4CE;
-      color: #795B00;
-      border-color: #FFECA8;
+
+    input:checked + .slider {
+      background-color: var(--primary);
     }
-    .btn-mail-srs-1:hover { background: #FFE896; }
-    .btn-mail-srs-3 {
-      background: #DFF6DD;
-      color: #107C10;
-      border-color: #C7E0C4;
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
     }
-    .btn-mail-srs-3:hover { background: #CEEFCA; }
   </style>
 </head>
-<body data-current-view="flashcard">
-  <!-- 苹果液态极光背景氛围光斑层 (Apple Ambient Liquid Glow Layer) -->
-  <div class="ambient-glow-layer" aria-hidden="true">
-    <div class="glow-orb orb-1"></div>
-    <div class="glow-orb orb-2"></div>
-    <div class="glow-orb orb-3"></div>
-  </div>
+<body>
+  <!-- 极简顶栏：两端对齐，绝不挤压 -->
   <header>
-    <div class="logo-area">
-      <div class="logo-brand-wrap">
-        <div class="logo-icon">A</div>
-        <div class="logo-title"><span class="logo-brand">Antigravity </span>Notebook</div>
-      </div>
-      <div class="view-switcher">
-        <button class="view-tab active" id="tabTableView">📋 笔记本</button>
-        <button class="view-tab" id="tabFlashcardView">🎴 闪卡自测</button>
-      </div>
-      <div class="header-right-actions">
-        <div class="sync-status-badge" id="btnSyncStatus" title="点击配置坚果云与欧路词典同步 (点击图标立即刷新)">
-          <span class="sync-icon-dot" id="syncDot" title="点击立即同步">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-            </svg>
-          </span>
-          <span id="syncText">未同步</span>
-        </div>
-
-        <!-- 整合后的极简“⋯”更多菜单按钮 -->
-        <div class="dropdown-container" id="moreMenuContainer">
-          <button class="dropdown-btn more-menu-btn" id="btnMoreMenu" title="更多功能与设置" aria-label="更多功能与设置">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2"></circle>
-              <circle cx="12" cy="12" r="2"></circle>
-              <circle cx="19" cy="12" r="2"></circle>
-            </svg>
-          </button>
-          <div class="dropdown-menu more-dropdown-menu" id="moreDropdownMenu">
-            <div class="dropdown-item theme-item selected" data-theme-val="system">
-              <span style="display:flex; align-items:center; gap:7px;"><span>💻</span>跟随系统</span>
-              <span class="check-mark">✓</span>
-            </div>
-            <div class="dropdown-item theme-item" data-theme-val="light">
-              <span style="display:flex; align-items:center; gap:7px;"><span>☀️</span>浅色模式</span>
-            </div>
-            <div class="dropdown-item theme-item" data-theme-val="dark">
-              <span style="display:flex; align-items:center; gap:7px;"><span>🌙</span>黑色模式</span>
-            </div>
-            
-            <div class="menu-divider"></div>
-
-            <div class="dropdown-item" id="menuToggleSound" title="点击开关拟真物理微触感音效">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span id="soundMenuIcon">🔊</span>
-                <span id="soundMenuText">交互音效</span>
-              </span>
-              <span class="check-mark" id="soundMenuCheck">✓</span>
-            </div>
-
-            <div class="dropdown-item" id="menuToggleAccent" title="切换发音口音：美式发音 (US) / 英式发音 (UK)">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span id="accentMenuIcon">🇺🇸</span>
-                <span id="accentMenuText">美式发音</span>
-              </span>
-              <span class="check-mark" id="accentMenuBadge" style="font-size: 11px; opacity: 0.85; font-family: -apple-system, BlinkMacSystemFont, monospace; font-weight: 600;">US</span>
-            </div>
-
-            <div class="dropdown-item" id="menuFindVariants" title="检索词库中的复数、过去式等词根重复变体">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span style="font-size: 13px;">🔍</span>
-                <span>词根变体检索</span>
-              </span>
-            </div>
-
-            <div class="dropdown-item" id="menuFindNoContext" title="筛选全库中缺少语境例句的生词">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span style="font-size: 13px;">📝</span>
-                <span>筛选无例句单词</span>
-              </span>
-            </div>
-
-            <div class="dropdown-item" id="menuExportJson">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span style="font-size: 13px;">📥</span>
-                <span>导出词库 (JSON)</span>
-              </span>
-            </div>
-
-            <div class="dropdown-item" id="menuImportJson">
-              <span style="display:flex; align-items:center; gap:7px;">
-                <span style="font-size: 13px;">📤</span>
-                <span>导入词库 (JSON)</span>
-              </span>
-            </div>
-            <input type="file" id="importJsonInput" accept=".json,application/json" style="display: none;">
-          </div>
-        </div>
-      </div>
+    <div class="brand">
+      <div class="brand-icon">A</div>
+      <div class="brand-title">Antigravity</div>
+      <div class="brand-subtitle">FLASHCARD</div>
     </div>
-    <div class="controls" id="headerControls">
-      <!-- 苹果风格自定义下拉浮层菜单 -->
-      <div class="dropdown-container">
-        <button class="dropdown-btn" id="srsDropdownBtn">
-          <div class="dropdown-btn-left">
-            <span class="dropdown-dot dot-all" id="currentSrsDot"></span>
-            <span id="currentSrsLabel">全部熟练度</span>
-          </div>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="dropdown-menu" id="srsDropdownMenu">
-          <div class="dropdown-item selected" data-value="all">
-            <span><span class="dropdown-dot dot-all"></span>全部熟练度</span>
-            <span class="check-mark">✓</span>
-          </div>
-          <div class="dropdown-item" data-value="0">
-            <span><span class="dropdown-dot dot-0"></span>生疏待背</span>
-          </div>
-          <div class="dropdown-item" data-value="1">
-            <span><span class="dropdown-dot dot-1"></span>初识阶段</span>
-          </div>
-          <div class="dropdown-item" data-value="2">
-            <span><span class="dropdown-dot dot-2"></span>巩固阶段</span>
-          </div>
-          <div class="dropdown-item" data-value="3">
-            <span><span class="dropdown-dot dot-3"></span>熟练掌握</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="search-box-wrap" id="searchBoxWrap">
-        <input type="text" id="searchInput" class="search-input" placeholder="搜索单词...">
-        <button type="button" class="search-clear-btn" id="btnSearchClear" title="清除搜索内容" aria-label="清除搜索内容">✕</button>
-      </div>
-      <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
+    <div class="header-actions">
+      <button class="btn-icon" id="btnSync" title="坚果云 WebDAV 同步">
+        <span>☁️</span>
+        <div class="sync-dot" id="syncDot"></div>
+      </button>
+      <button class="btn-icon" id="btnSettings" title="设置与外观">
+        <span>⚙️</span>
+      </button>
     </div>
   </header>
 
+  <!-- 主体区域 -->
   <main>
-    <!-- 视图 1: 笔记本列表 (默认隐藏，移动端闪卡优先) -->
-    <div id="viewTableContainer" style="display: none;">
-      <div id="variantFilterBanner" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border-radius: 9px; background: var(--bg-muted); border: 1px solid var(--border-warm); font-size: 13px; color: var(--text-main); box-shadow: var(--glass-shadow);">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 15px;">🔍</span>
-          <span id="variantFilterText">已检索到 <strong>0</strong> 组词根重复变体</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button id="btnMergeAllVariants" type="button" class="btn" style="height: 28px; padding: 0 12px; font-size: 12px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #CC785C, #D97706); border: none; border-radius: 6px; cursor: pointer; transition: transform 0.15s, opacity 0.15s;">🪄 一键合并到原型</button>
-          <button id="btnCloseVariantFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
-        </div>
+    <!-- 定量与进度控制栏 -->
+    <div class="session-bar" id="sessionBar">
+      <div class="batch-selector">
+        <button class="batch-btn active" data-batch="10">10词</button>
+        <button class="batch-btn" data-batch="20">20词</button>
+        <button class="batch-btn" data-batch="50">50词</button>
+        <button class="batch-btn" data-batch="all">全部</button>
       </div>
-      <div id="noContextFilterBanner" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border-radius: 9px; background: var(--bg-muted); border: 1px solid var(--border-warm); font-size: 13px; color: var(--text-main); box-shadow: var(--glass-shadow);">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 15px;">📝</span>
-          <span id="noContextFilterText">已筛选出 <strong>0</strong> 个缺少语境例句的生词</span>
+      <div class="progress-info">
+        <span>进度 <span class="progress-pill" id="progressText">0 / 0</span></span>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button id="btnCloseNoContextFilter" type="button" class="btn" style="height: 28px; padding: 0 10px; font-size: 12px; color: var(--text-muted); background: var(--bg-card); border: 1px solid var(--border-warm); border-radius: 6px; cursor: pointer;">退出筛选 ✕</button>
-        </div>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 18%;">单词</th>
-              <th style="width: 38%;">语境例句</th>
-              <th style="width: 20%;">释义</th>
-              <th style="width: 16%;">笔记</th>
-              <th style="width: 8%; text-align: center;"></th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
       </div>
     </div>
 
-    <!-- 视图 2: 苹果美学级艾宾浩斯交互式闪卡自测模式 -->
-    <div id="viewFlashcardContainer">
-      <!-- 闪卡顶栏：定量自测选择器 + 进度条 -->
-      <div class="flashcard-header-bar">
-        <div class="flashcard-batch-group">
-          <span class="batch-label">每组定量:</span>
-          <div class="batch-tabs" id="batchSizeTabs">
-            <button class="batch-tab" data-size="10">10 词</button>
-            <button class="batch-tab active" data-size="20">20 词</button>
-            <button class="batch-tab" data-size="50">50 词</button>
-            <button class="batch-tab" data-size="all">全部</button>
-          </div>
+    <!-- 闪卡主体（有词汇时） -->
+    <div class="flashcard" id="flashcardBox" style="display: none;">
+      <div class="card-top">
+        <div class="stage-badge stage-new" id="cardStageBadge">🌱 待自测</div>
+        <div class="card-hint">
+          <span>👆 点击卡片翻转</span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="word-title" id="cardWord">ephemeral</div>
+        <div class="phonetic-wrap" id="cardPhoneticWrap">
+          <span id="cardPhonetic">/ɪˈfem.ər.əl/</span>
+          <span class="speaker-icon">🔊</span>
+        </div>
+        <div class="context-box" id="cardContext">
+          "Fame in the digital media ecosystem is increasingly <mark>ephemeral</mark>, fading within a single news cycle."
         </div>
 
-        <div class="flashcard-header-right">
-          <div class="flashcard-progress-box">
-            <span class="flashcard-progress-text">当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
-            <div class="flashcard-progress-bar">
-              <div class="flashcard-progress-fill" id="cardProgressFill"></div>
-            </div>
-            <span class="kbd-hint">按 <kbd>空格</kbd> 揭晓</span>
-          </div>
+        <div class="answer-section" id="answerSection">
+          <div class="meaning-text" id="cardMeaning">adj. 短暂的，转瞬即逝的</div>
+          <div class="notes-box" id="cardNotes">【词根助记】e- (出) + phem (出现，显现) + -eral -> 刚出现就消失 -> 转瞬即逝</div>
+        </div>
+      </div>
 
-          <button class="btn-stealth-trigger" id="btnEnterStealth" title="开启摸鱼模式 (模拟 VS Code 工作环境，按 Esc 快速退出)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 18 22 12 16 6"></polyline>
-              <polyline points="8 6 2 12 8 18"></polyline>
-            </svg>
-            <span>摸鱼模式</span>
+      <div class="action-container">
+        <!-- 未翻开时的大按钮 -->
+        <button class="btn-reveal" id="btnReveal">
+          <span>💡 点击查看释义</span>
+        </button>
+
+        <!-- 翻开后的 SRS 艾宾浩斯三档记忆按钮 -->
+        <div class="srs-bar" id="srsBar">
+          <button class="btn-srs btn-srs-again" data-rating="again">
+            <span>生疏</span>
+            <span class="btn-srs-sub">1天后</span>
+          </button>
+          <button class="btn-srs btn-srs-hard" data-rating="hard">
+            <span>犹豫</span>
+            <span class="btn-srs-sub">3天后</span>
+          </button>
+          <button class="btn-srs btn-srs-good" data-rating="good">
+            <span>牢记</span>
+            <span class="btn-srs-sub">7天后</span>
           </button>
         </div>
       </div>
+    </div>
 
-      <!-- 闪卡主卡片 -->
-      <div class="flashcard-card-box" id="flashcardBox">
-        <div class="flashcard-top-meta">
-          <span class="srs-badge srs-level-0" id="fcSrsBadge">
-            <span class="srs-dot"></span>
-            <span id="fcSrsText">生疏待背</span>
-          </span>
-          <div class="flashcard-top-right">
-            <div class="flashcard-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-              <span id="cardHintText">点击卡片翻转揭晓释义</span>
-            </div>
-            <button class="fc-edit-btn" id="btnFcEdit" title="编辑当前词条 (实时保存)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              <span>编辑</span>
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
-            <div class="flashcard-word" id="fcWord">magnitude</div>
-            <span class="nb-dialect-badge" id="fcDialectTag" style="display: none;"></span>
-          </div>
-          <div class="flashcard-phonetic-wrap">
-            <span class="flashcard-phonetic" id="fcPhonetic" title="点击朗读发音">/ˈmæɡnɪtuːd/</span>
-          </div>
-          <div class="flashcard-context" id="fcContext">
-            The <span class="highlight">magnitude</span> of the economic shift was unprecedented.
-          </div>
-        </div>
-
-        <div class="flashcard-answer-box" id="fcAnswerBox" style="display: none;">
-          <div class="flashcard-trans" id="fcTrans">n. 巨大；重要性；震级</div>
-          <div class="flashcard-notes" id="fcNotes" style="display: none;">
-            <div class="fc-notes-divider"></div>
-            <div class="trans-line trans-line-pos trans-line-note">
-              <span class="trans-pos-tag trans-notes-tag">随记</span>
-              <div class="trans-meaning fc-notes-body" id="fcNotesBody"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 智能底栏 1: 未揭晓状态 (正面思考期：纯粹、对称、轻盈) -->
-      <div class="flashcard-smart-bar" id="smartBarUnrevealed">
-        <button class="btn-nav" id="btnCardPrev" title="上一个 (← / A)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span>上一个</span>
-        </button>
-        <button class="btn-nav btn-nav-center" id="btnCardShuffle" title="随机打乱本组顺序">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
-          <span>随机乱序</span>
-        </button>
-        <button class="btn-nav" id="btnCardNext" title="下一个 (→ / D)">
-          <span>下一个</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-      </div>
-
-      <!-- 智能底栏 2: 已揭晓状态 (反面 3 大纯净评分按钮) -->
-      <div class="flashcard-smart-bar" id="smartBarRevealed" style="display: none;">
-        <button class="btn-srs-action btn-srs-again" id="btnSrsAgain">
-          <span class="srs-btn-dot dot-0"></span>
-          <span class="srs-btn-title">忘了</span>
-        </button>
-        <button class="btn-srs-action btn-srs-hard" id="btnSrsHard">
-          <span class="srs-btn-dot dot-1"></span>
-          <span class="srs-btn-title">模糊</span>
-        </button>
-        <button class="btn-srs-action btn-srs-good" id="btnSrsGood">
-          <span class="srs-btn-dot dot-3"></span>
-          <span class="srs-btn-title">熟练</span>
-        </button>
-      </div>
-
-      <!-- 闪卡完成小结卡片 -->
-      <div class="flashcard-summary-card" id="flashcardSummaryCard">
-        <div class="summary-trophy">🎉</div>
-        <div class="summary-title">太棒了！已完成本组自测</div>
-        <div class="summary-subtitle" id="summarySubtitle">您已完成本组 20 个单词的艾宾浩斯强化复习</div>
-        <div class="summary-stats-grid">
-          <div class="stat-pill" style="border-color: rgba(239, 68, 68, 0.25);">
-            <span class="stat-num" id="statForgotCount" style="color: #DC2626;">0</span>
-            <span class="stat-label">忘了待强化</span>
-          </div>
-          <div class="stat-pill" style="border-color: rgba(245, 158, 11, 0.25);">
-            <span class="stat-num" id="statHardCount" style="color: #D97706;">0</span>
-            <span class="stat-label">模糊待巩固</span>
-          </div>
-          <div class="stat-pill" style="border-color: rgba(16, 185, 129, 0.25);">
-            <span class="stat-num" id="statGoodCount" style="color: #059669;">0</span>
-            <span class="stat-label">熟练掌握</span>
-          </div>
-        </div>
-        <div class="summary-actions">
-          <button class="btn btn-primary" id="btnRestartBatch">🔄 再来一组</button>
-          <button class="btn" id="btnBackToTable">📋 返回生词列表</button>
-        </div>
-      </div>
+    <!-- 空词库引导（首次打开或词库为空时） -->
+    <div class="empty-card" id="emptyCard">
+      <div class="empty-emoji">✨</div>
+      <div class="empty-title">欢迎使用 Antigravity 随身闪卡</div>
+      <div class="empty-desc">随时随地自测外刊生词，艾宾浩斯智能排期，支持与电脑端插件双向云同步。</div>
+      
+      <button class="btn-primary-action" id="btnLoadSample">
+        <span>📚 载入 10 个精选生词体验</span>
+      </button>
+      <button class="btn-sub-action" id="btnEmptySync">
+        <span>☁️ 连接坚果云 WebDAV 同步</span>
+      </button>
+      <button class="btn-sub-action" id="btnEmptyImport">
+        <span>📥 导入本地 JSON 词库</span>
+      </button>
     </div>
   </main>
 
-  <!-- 云端与欧路词典同步设置模态弹窗 -->
-  <div class="modal-backdrop" id="webdavModal">
-    <div class="modal-card" style="max-width: 520px;">
-      <div class="modal-header">
-        <span class="modal-title">☁️ 多端云同步与欧路词典设置</span>
-        <button class="modal-close" id="davModalClose">✕</button>
+  <!-- 隐藏的文件选择器 -->
+  <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+
+  <!-- 设置底部抽屉 (Modal Sheet) -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">设置与外观</div>
+        <button class="sheet-close" id="btnCloseSettings">✕</button>
       </div>
+
+      <div class="form-group">
+        <div class="form-label">界面主题</div>
+        <div class="theme-grid">
+          <div class="theme-option" data-theme="system">💻 跟随系统</div>
+          <div class="theme-option" data-theme="light">☀️ 浅色</div>
+          <div class="theme-option" data-theme="dark">🌙 深色</div>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>🔊 翻牌微音效</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="switchSound" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">
+          <span>🗣️ 发音口音</span>
+        </div>
+        <select id="selectAccent" style="background:var(--bg-card-subtle); border:1px solid var(--border-color); color:var(--text-title); padding:4px 8px; border-radius:8px; font-size:13px;">
+          <option value="en-US">美式英语 (US)</option>
+          <option value="en-GB">英式英语 (UK)</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 18px; display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn-sub-action" id="btnExportJson" style="max-width: 100%;">
+          <span>📤 导出当前词库为 JSON</span>
+        </button>
+        <button class="btn-sub-action" id="btnImportJson" style="max-width: 100%;">
+          <span>📥 导入 JSON 词库文件</span>
+        </button>
+        <button class="btn-sub-action" id="btnClearVocab" style="max-width: 100%; color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3);">
+          <span>🗑️ 清空本地词库</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WebDAV 同步弹窗 (Modal Sheet) -->
+  <div class="modal-backdrop" id="syncModal">
+    <div class="modal-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">坚果云 WebDAV 同步</div>
+        <button class="sheet-close" id="btnCloseSync">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">服务器地址</label>
+        <input type="text" class="form-input" id="davUrl" placeholder="https://dav.jianguoyun.com/dav/">
+      </div>
+      <div class="form-group">
+        <label class="form-label">坚果云账号 (邮箱)</label>
+        <input type="text" class="form-input" id="davUser" placeholder="your_email@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">应用专属授权密码</label>
+        <input type="password" class="form-input" id="davPass" placeholder="在坚果云网页版-账户信息-安全设置生成">
+      </div>
+
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <button class="btn-primary-action" id="btnSaveSync" style="flex: 1; max-width: none;">
+          <span>立即双向同步</span>
+        </button>
+      </div>
+      <div id="syncStatusTip" style="font-size: 12px; color: var(--text-muted); margin-top: 10px; text-align: center;"></div>
+    </div>
+  </div>
+
+  <!-- 移动端轻量核心逻辑 -->
+  <script>
+    const SAMPLE_WORDS = [
+      {
+        word: "ephemeral",
+        phonetic: "/ɪˈfem.ər.əl/",
+        meaning: "adj. 短暂的，转瞬即逝的",
+        context: "Fame in the digital media ecosystem is increasingly <mark>ephemeral</mark>, fading within a single news cycle.",
+        notes: "【词根助记】e- (出) + phem (出现，显现) + -eral -> 刚出现就消失 -> 转瞬即逝",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "ubiquitous",
+        phonetic: "/juːˈbɪk.wə.təs/",
+        meaning: "adj. 无所不在的，普遍存在的",
+        context: "Smartphones have become so <mark>ubiquitous</mark> that modern life is almost unimaginable without them.",
+        notes: "【同义词】omnipresent, pervasive",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "resilience",
+        phonetic: "/rɪˈzɪl.jəns/",
+        meaning: "n. 韧性，快速恢复力",
+        context: "Economic <mark>resilience</mark> during geopolitical shocks relies heavily on diversified global supply chains.",
+        notes: "【搭配】show remarkable resilience (展现出非凡的韧性)",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "scrutinize",
+        phonetic: "/ˈskruː.tə.naɪz/",
+        meaning: "vt. 仔细审查，详尽审视",
+        context: "Regulators around the world are beginning to <mark>scrutinize</mark> the safety practices of artificial intelligence labs.",
+        notes: "【派生】scrutiny n. 审查，细看",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "paradigm",
+        phonetic: "/ˈpær.ə.daɪm/",
+        meaning: "n. 范式，典范，思维模型",
+        context: "Large language models represent a fundamental <mark>paradigm</mark> shift in computing and natural language interfaces.",
+        notes: "【搭配】paradigm shift (范式转变 / 革命性变革)",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "pragmatic",
+        phonetic: "/præɡˈmæt.ɪk/",
+        meaning: "adj. 务实的，注重实效的",
+        context: "The engineering team adopted a <mark>pragmatic</mark> approach to ship the minimal viable product before deadlines.",
+        notes: "【反义词】idealistic (理想主义的)",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "lucid",
+        phonetic: "/ˈluː.sɪd/",
+        meaning: "adj. 清晰明了的，表达透彻的",
+        context: "His writing was so <mark>lucid</mark> that even readers without a technical background grasped the core concept instantly.",
+        notes: "【词根】luc- (光，明白) -> 像光一样照彻 -> 清晰透彻的",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "mitigate",
+        phonetic: "/ˈmɪt.ɪ.ɡeɪt/",
+        meaning: "vt. 缓解，减轻，缓和",
+        context: "Global organizations took coordinated measures to <mark>mitigate</mark> the systemic risks in the financial market.",
+        notes: "【搭配】mitigate the risks (降低风险)",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "conundrum",
+        phonetic: "/kəˈnʌn.drəm/",
+        meaning: "n. 错综复杂的难题，困境",
+        context: "Policymakers face the delicate <mark>conundrum</mark> of curbing inflation without stifling economic growth.",
+        notes: "【同义词】dilemma, puzzle, enigma",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      },
+      {
+        word: "tenacious",
+        phonetic: "/təˈneɪ.ʃəs/",
+        meaning: "adj. 顽强的，坚韧不拔的",
+        context: "Through <mark>tenacious</mark> effort and rigorous experimentation, the scientists finally validated the hypothesis.",
+        notes: "【词根】ten- (握住，坚持) -> 牢牢握住不放 -> 顽强的",
+        created_at: new Date().toISOString(),
+        review_count: 0,
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: new Date().toISOString()
+      }
+    ];
+
+    let vocabList = [];
+    let reviewQueue = [];
+    let currentIndex = 0;
+    let isRevealed = false;
+    let batchSize = 10;
+    let audioCtx = null;
+
+    function playChime(freq = 600, duration = 0.08) {
+      if (!document.getElementById("switchSound").checked) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function speakWord(text) {
+      if (!("speechSynthesis" in window)) return;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = document.getElementById("selectAccent").value || "en-US";
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+
+    function loadVocabFromStorage() {
+      try {
+        const raw = localStorage.getItem("antigravity_vocabulary");
+        if (raw) {
+          vocabList = JSON.parse(raw);
+        } else {
+          vocabList = [];
+        }
+      } catch (e) {
+        vocabList = [];
+      }
+      initSession();
+    }
+
+    function saveVocabToStorage() {
+      try {
+        localStorage.setItem("antigravity_vocabulary", JSON.stringify(vocabList));
+      } catch (e) {}
+    }
+
+    function initSession() {
+      if (!vocabList || vocabList.length === 0) {
+        document.getElementById("flashcardBox").style.display = "none";
+        document.getElementById("emptyCard").style.display = "flex";
+        document.getElementById("sessionBar").style.display = "none";
+        return;
+      }
+
+      document.getElementById("emptyCard").style.display = "none";
+      document.getElementById("flashcardBox").style.display = "flex";
+      document.getElementById("sessionBar").style.display = "flex";
+
+      const listCopy = [...vocabList];
+      if (batchSize === "all") {
+        reviewQueue = listCopy;
+      } else {
+        const count = parseInt(batchSize, 10) || 10;
+        reviewQueue = listCopy.slice(0, count);
+      }
+
+      currentIndex = 0;
+      renderCurrentCard();
+    }
+
+    function renderCurrentCard() {
+      if (currentIndex >= reviewQueue.length) {
+        showCompletion();
+        return;
+      }
+
+      isRevealed = false;
+      document.getElementById("answerSection").style.display = "none";
+      document.getElementById("btnReveal").style.display = "flex";
+      document.getElementById("srsBar").style.display = "none";
+
+      const item = reviewQueue[currentIndex];
+      document.getElementById("cardWord").innerText = item.word || "";
+      document.getElementById("cardPhonetic").innerText = item.phonetic || "";
+      document.getElementById("cardMeaning").innerText = item.meaning || "暂无详细中文释义";
       
-      <!-- 模块 1: 坚果云 WebDAV 同步 -->
-      <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
-        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-          <span>坚果云 WebDAV 实时云同步</span>
-          <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">多设备双向实时漫游</span>
-        </div>
-        <form id="davForm">
-          <div class="form-group">
-            <label class="form-label">服务器地址</label>
-            <input type="url" id="davServer" class="form-input" required value="https://dav.jianguoyun.com/dav/">
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="form-group">
-              <label class="form-label">账户邮箱</label>
-              <input type="text" id="davUsername" class="form-input" required placeholder="如: your_name@qq.com">
-            </div>
-            <div class="form-group">
-              <label class="form-label">应用授权密码</label>
-              <input type="password" id="davPassword" class="form-input" required placeholder="坚果云第三方应用密码">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">云端同步文件路径</label>
-            <input type="text" id="davPath" class="form-input" required value="antigravity/antigravity.json">
-          </div>
-          <div style="margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="davEnable" checked style="width: 15px; height: 15px; accent-color: var(--claude-terracotta);">
-            <label for="davEnable" style="font-size: 12px; color: var(--text-body); cursor: pointer;">开启划词与自测自动双向同步</label>
-          </div>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button type="button" class="btn" id="davTestBtn" style="font-size: 12px; height: 32px;">⚡ 测试并同步坚果云</button>
-            <button type="submit" class="btn btn-primary" style="font-size: 12px; height: 32px;">保存配置</button>
-          </div>
-        </form>
-      </div>
+      const ctx = item.context || `No sample sentence recorded for "${item.word}".`;
+      const regex = new RegExp(`(${item.word})`, "gi");
+      document.getElementById("cardContext").innerHTML = ctx.includes("<mark>") 
+        ? ctx 
+        : ctx.replace(regex, "<mark>$1</mark>");
 
-      <!-- 模块 2: 欧路词典 (Eudic) 生词本双向拉取合并 -->
-      <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
-        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-          <span>📚 欧路词典 (Eudic) 生词本拉取合并</span>
-          <a href="https://my.eudic.net/OpenAPI/Authorization" target="_blank" style="font-size: 11.5px; color: var(--claude-terracotta); text-decoration: none; font-weight: 500;">👉 获取授权 Token</a>
-        </div>
-        <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
-          拉取欧路词典生词本，智能比对当前云笔记本，将未收录的生词按标准格式自动入库并同步至坚果云。
-        </div>
-        <div class="form-group">
-          <label class="form-label">欧路词典 OpenAPI Token (Authorization)</label>
-          <input type="password" id="eudicTokenInput" class="form-input" placeholder="粘贴从 my.eudic.net 获取的个人授权 Token">
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
-          <span id="eudicSyncStatus" style="font-size: 11.5px; color: var(--text-muted);"></span>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn" id="btnFilterNoContext" style="font-size: 12px; height: 32px; background: var(--bg-card); border: 1px solid var(--border-warm); color: var(--text-main);">
-              📝 筛选无例句单词
-            </button>
-            <button type="button" class="btn btn-primary" id="btnEudicSync" style="font-size: 12px; height: 32px; background: #059669; border-color: #047857;">
-              📥 立即从欧路词典拉取合并
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+      document.getElementById("cardNotes").innerText = item.notes || "【笔记】点击右上角设置可编辑词库";
 
-  <!-- 增/改 模态弹窗 -->
-  <div class="modal-backdrop" id="editModal">
-    <div class="modal-card">
-      <div class="modal-header">
-        <span class="modal-title" id="modalTitle">添加新词条</span>
-        <button class="modal-close" id="modalClose">✕</button>
-      </div>
-      <form id="vocabForm">
-        <input type="hidden" id="editIndex" value="-1">
-        <input type="hidden" id="editUid" value="">
-        <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label class="form-label">单词 / 短语 *</label>
-            <span id="wordAutoFillStatus" style="font-size: 11.5px; color: var(--claude-terracotta); display: none;">✨ 正在智能联想音标与释义...</span>
-          </div>
-          <input type="text" id="inputWord" class="form-input" required placeholder="输入英文单词或短语 (自动补全音标与释义)" autocomplete="off">
-          <div id="wordVariantWarning" style="display:none; margin-top: 8px; padding: 8px 12px; background: rgba(217, 119, 6, 0.1); border: 1px solid rgba(217, 119, 6, 0.3); border-radius: 7px; font-size: 12px; color: var(--text-main); line-height: 1.45;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-              <div style="display: flex; align-items: center; gap: 6px;">
-                <span>💡</span>
-                <span id="variantWarningText">词库中已存在原型词条</span>
-              </div>
-              <button type="button" id="btnSwitchToRootEdit" class="btn" style="height: 24px; padding: 0 8px; font-size: 11px; font-weight: 600; color: #fff; background: #D97706; border: none; border-radius: 5px; cursor: pointer;">改为编辑已有原型</button>
-            </div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">国际标准音标</label>
-          <input type="text" id="inputPhonetic" class="form-input" placeholder="如: /ˈæbstrækt/">
-        </div>
-        <div class="form-group">
-          <label class="form-label">权威释义 * (支持换行分行编辑)</label>
-          <textarea id="inputTrans" class="form-textarea" required placeholder="如: adj. 抽象的；n. 摘要 (支持 Enter 键换行分行)" style="min-height: 70px;"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">上下文例句 (Context)</label>
-          <textarea id="inputContext" class="form-textarea" placeholder="包含该词的原汁原味上下文例句"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">专属心得笔记 (Notes)</label>
-          <textarea id="inputNotes" class="form-textarea" placeholder="写下你的记忆法、深度词根拆解或例句体会..."></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn" id="modalCancel">取消</button>
-          <button type="submit" class="btn btn-primary" id="modalSubmitBtn">保存入库</button>
-        </div>
-      </form>
-    </div>
-  </div>
+      const badge = document.getElementById("cardStageBadge");
+      const count = item.review_count || 0;
+      if (count === 0) {
+        badge.className = "stage-badge stage-new";
+        badge.innerText = "🌱 新词待背";
+      } else if (count < 3) {
+        badge.className = "stage-badge stage-review";
+        badge.innerText = "🔄 艾宾浩斯复习";
+      } else {
+        badge.className = "stage-badge stage-mastered";
+        badge.innerText = "⭐ 已牢记";
+      }
 
-  <!-- Apple 风格五彩礼花微动效画布 -->
-  <canvas id="confettiCanvas" style="position:fixed; top:0; left:0; width:100vw; height:100vh; pointer-events:none; z-index:99999; display:none;"></canvas>
+      document.getElementById("progressText").innerText = `${currentIndex + 1} / ${reviewQueue.length}`;
+      const pct = Math.round(((currentIndex + 1) / reviewQueue.length) * 100);
+      document.getElementById("progressFill").style.width = `${pct}%`;
+    }
 
-  <!-- 笔记本内嵌即时划词微标与卡片 -->
-  <div id="nb-trigger-icon" title="点击查词">
-    <div class="nb-icon-inner">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#CC785C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2 17L12 22L22 17" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2 12L12 17L22 12" stroke="#8C533E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-  </div>
-  <div id="nb-vocab-popup">
-    <div class="nb-header">
-      <span class="nb-word" id="nbWord">Word</span>
-      <div class="nb-phonetic-pill" id="nbSpeakPill" title="点击朗读发音" style="display:none;">
-        <span id="nbPhonetic"></span>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-        </svg>
-      </div>
-    </div>
-    <div class="nb-skeleton" id="nbLoading">
-      <div class="nb-sk-line"></div>
-    </div>
-    <div class="nb-definition" id="nbDefinition" style="display:none;"></div>
-  </div>
+    function revealCard() {
+      if (isRevealed) return;
+      isRevealed = true;
+      playChime(700, 0.06);
+      document.getElementById("answerSection").style.display = "block";
+      document.getElementById("btnReveal").style.display = "none";
+      document.getElementById("srsBar").style.display = "grid";
+    }
 
-  <!-- 摸鱼模式全屏工作台 (VS Code 深度伪装层) -->
-  <div id="stealthOverlay" class="stealth-workbench" style="display: none;">
-    <!-- VS Code 顶栏 -->
-    <div class="vscode-titlebar">
-      <div class="vscode-window-controls">
-        <span class="dot dot-red" id="stealthCloseBtn" title="关闭摸鱼模式 (Esc)"></span>
-        <span class="dot dot-yellow"></span>
-        <span class="dot dot-green"></span>
-      </div>
-      <div class="vscode-title-text" id="stealthTitleText">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3178C6" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        <span id="stealthTitleBarLabel">memoryCache.ts — antigravity-core — Visual Studio Code</span>
-      </div>
-      <div class="stealth-mode-switcher">
-        <button type="button" class="stealth-mode-tab active" id="btnStealthCodeMode" title="切换为 VS Code 代码模式">
-          <span>💻 代码模式</span>
+    function handleSRS(rating) {
+      playChime(rating === "good" ? 880 : (rating === "hard" ? 520 : 380), 0.08);
+      const item = reviewQueue[currentIndex];
+      
+      if (!item.review_count) item.review_count = 0;
+      if (!item.interval) item.interval = 1;
+      if (!item.ease_factor) item.ease_factor = 2.5;
+
+      item.review_count += 1;
+      if (rating === "again") {
+        item.interval = 1;
+        item.ease_factor = Math.max(1.3, item.ease_factor - 0.2);
+      } else if (rating === "hard") {
+        item.interval = Math.round(item.interval * 1.2);
+        item.ease_factor = Math.max(1.3, item.ease_factor - 0.15);
+      } else {
+        item.interval = Math.round(item.interval * item.ease_factor);
+        item.ease_factor += 0.1;
+      }
+      
+      item.next_review = new Date(Date.now() + item.interval * 86400000).toISOString();
+      saveVocabToStorage();
+
+      currentIndex += 1;
+      renderCurrentCard();
+    }
+
+    function showCompletion() {
+      document.getElementById("flashcardBox").style.display = "none";
+      document.getElementById("sessionBar").style.display = "none";
+      const empty = document.getElementById("emptyCard");
+      empty.style.display = "flex";
+      empty.innerHTML = `
+        <div class="empty-emoji">🎉</div>
+        <div class="empty-title">本组自测完成！</div>
+        <div class="empty-desc">太棒了！您已顺利完成本轮 ${reviewQueue.length} 个生词的复习与记忆巩固。</div>
+        <button class="btn-primary-action" onclick="initSession()">
+          <span>🔄 再来一组自测</span>
         </button>
-        <button type="button" class="stealth-mode-tab" id="btnStealthMailMode" title="切换为企业邮件模式 (Outlook 风格)">
-          <span>✉️ 邮件模式</span>
+        <button class="btn-sub-action" onclick="location.reload()">
+          <span>🏠 返回主界面</span>
         </button>
-      </div>
-      <div class="vscode-top-actions">
-        <span class="stealth-badge-exit" id="stealthExitHint" title="按 Esc 立即恢复正常模式">按 Esc 恢复</span>
-      </div>
-    </div>
+      `;
+    }
 
-    <!-- 模式 1: VS Code 界面容器 -->
-    <div id="stealthCodeView" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
-      <!-- 标签页栏 -->
-      <div class="vscode-tabs-bar">
-        <div class="vscode-tab active">
-          <span class="tab-ts-icon">TS</span>
-          <span class="tab-label">memoryCache.ts</span>
-          <span class="tab-close-icon">×</span>
-        </div>
-        <div class="vscode-tab">
-          <span class="tab-json-icon">{}</span>
-          <span class="tab-label">package.json</span>
-        </div>
-        <div class="vscode-tab">
-          <span class="tab-env-icon">⚙</span>
-          <span class="tab-label">.env.local</span>
-        </div>
-      </div>
+    document.addEventListener("DOMContentLoaded", () => {
+      loadVocabFromStorage();
 
-      <!-- 面包屑导航 -->
-      <div class="vscode-breadcrumbs">
-        <span>antigravity-core</span>
-        <span class="bc-sep">›</span>
-        <span>src</span>
-        <span class="bc-sep">›</span>
-        <span>services</span>
-        <span class="bc-sep">›</span>
-        <span class="bc-file">memoryCache.ts</span>
-        <span class="bc-sep">›</span>
-        <span class="bc-symbol" id="stealthBreadcrumbSymbol">process_word()</span>
-      </div>
+      document.getElementById("flashcardBox").addEventListener("click", (e) => {
+        if (e.target.closest("#btnPhonetic") || e.target.closest("#cardPhoneticWrap") || e.target.closest(".btn-srs")) {
+          return;
+        }
+        revealCard();
+      });
 
-      <!-- 主体区域：Activity Bar + Explorer 文件树 + 编辑器代码区 -->
-      <div class="vscode-main-body">
-        <!-- 最左侧 Activity Bar -->
-        <div class="vscode-activity-bar">
-          <div class="act-item active" title="Explorer">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div class="act-item" title="Search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div class="act-item" title="Source Control">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
-          </div>
-          <div class="act-item" title="Run and Debug">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </div>
-        </div>
+      document.getElementById("cardPhoneticWrap").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const word = document.getElementById("cardWord").innerText;
+        speakWord(word);
+      });
 
-        <!-- 次级侧边栏 Explorer 文件树 -->
-        <div class="vscode-sidebar">
-          <div class="sidebar-header">EXPLORER: ANTIGRAVITY</div>
-          <div class="tree-item tree-folder expanded">▼ src</div>
-          <div class="tree-item tree-folder sub expanded">  ▼ services</div>
-          <div class="tree-item tree-file sub active">    <span class="ts-file-badge">TS</span> memoryCache.ts</div>
-          <div class="tree-item tree-file sub">    <span class="ts-file-badge">TS</span> authService.ts</div>
-          <div class="tree-item tree-folder sub">  ▶ utils</div>
-          <div class="tree-item tree-folder sub">  ▶ controllers</div>
-          <div class="tree-item tree-file">📄 package.json</div>
-          <div class="tree-item tree-file">📄 tsconfig.json</div>
-          <div class="tree-item tree-file">📄 README.md</div>
-        </div>
+      document.getElementById("btnReveal").addEventListener("click", (e) => {
+        e.stopPropagation();
+        revealCard();
+      });
 
-        <!-- 代码主编辑区 -->
-        <div class="vscode-editor-pane" id="stealthEditorSurface">
-          <div class="editor-code-container" id="stealthCodeContent">
-            <!-- 动态渲染代码 -->
-          </div>
-        </div>
-      </div>
-    </div>
+      document.querySelectorAll(".btn-srs").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const rating = btn.getAttribute("data-rating");
+          handleSRS(rating);
+        });
+      });
 
-    <!-- 模式 2: 企业邮件伪装界面容器 (Outlook / Work Mail) -->
-    <div id="stealthMailView">
-      <div class="mail-layout">
-        <!-- 邮箱左侧导航栏 -->
-        <div class="mail-sidebar">
-          <div class="mail-brand">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            <span>Outlook Mail</span>
-          </div>
-          <div class="mail-nav-list">
-            <div class="mail-nav-item active">
-              <span style="display:flex; align-items:center; gap:6px;">📥 <span>收件箱</span></span>
-              <span class="mail-badge-count" id="mailInboxCount">20</span>
-            </div>
-            <div class="mail-nav-item">
-              <span style="display:flex; align-items:center; gap:6px;">⭐ <span>已加星标</span></span>
-            </div>
-            <div class="mail-nav-item">
-              <span style="display:flex; align-items:center; gap:6px;">📤 <span>已发送</span></span>
-            </div>
-            <div class="mail-nav-item">
-              <span style="display:flex; align-items:center; gap:6px;">📁 <span>团队归档</span></span>
-            </div>
-            <div class="mail-nav-item">
-              <span style="display:flex; align-items:center; gap:6px;">🗑️ <span>废件箱</span></span>
-            </div>
-          </div>
-        </div>
+      document.querySelectorAll(".batch-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".batch-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          batchSize = btn.getAttribute("data-batch");
+          initSession();
+        });
+      });
 
-        <!-- 邮件中间列表栏 -->
-        <div class="mail-inbox-list">
-          <div class="inbox-header">
-            <span>重点收件箱</span>
-            <span style="font-size: 11px; font-weight: normal; color: #605E5C;">筛选 ▾</span>
-          </div>
+      document.getElementById("btnLoadSample").addEventListener("click", () => {
+        vocabList = [...SAMPLE_WORDS];
+        saveVocabToStorage();
+        initSession();
+      });
 
-          <!-- 待办审核邮件 (当前单词卡片) -->
-          <div class="mail-card-item active" id="mailCardActiveItem">
-            <div class="mail-card-sender">
-              <span>Language Operations</span>
-              <span class="mail-card-time" id="mailCardTime">10:48</span>
-            </div>
-            <div class="mail-card-subject" id="mailCardSubject">[Action Required] Terminology Spec Review</div>
-            <div class="mail-card-snippet" id="mailCardSnippet">Please verify term definition and context before release...</div>
-          </div>
+      document.getElementById("btnSettings").addEventListener("click", () => {
+        document.getElementById("settingsModal").style.display = "flex";
+      });
+      document.getElementById("btnCloseSettings").addEventListener("click", () => {
+        document.getElementById("settingsModal").style.display = "none";
+      });
 
-          <!-- 模拟企业真实日常工作邮件 -->
-          <div class="mail-card-item">
-            <div class="mail-card-sender">
-              <span>DevSecOps Audit</span>
-              <span class="mail-card-time">09:30</span>
-            </div>
-            <div class="mail-card-subject">[Notice] Quarterly SOC2 compliance scan completed</div>
-            <div class="mail-card-snippet">The pipeline scan completed with 0 high risk vulnerabilities detected.</div>
-          </div>
+      const openSyncModal = () => {
+        document.getElementById("syncModal").style.display = "flex";
+        try {
+          const cfg = JSON.parse(localStorage.getItem("antigravity_webdav_config") || "{}");
+          if (cfg.url) document.getElementById("davUrl").value = cfg.url;
+          if (cfg.user) document.getElementById("davUser").value = cfg.user;
+          if (cfg.pass) document.getElementById("davPass").value = cfg.pass;
+        } catch (e) {}
+      };
+      document.getElementById("btnSync").addEventListener("click", openSyncModal);
+      document.getElementById("btnEmptySync").addEventListener("click", openSyncModal);
+      document.getElementById("btnCloseSync").addEventListener("click", () => {
+        document.getElementById("syncModal").style.display = "none";
+      });
 
-          <div class="mail-card-item">
-            <div class="mail-card-sender">
-              <span>Architecture Guild</span>
-              <span class="mail-card-time">Yesterday</span>
-            </div>
-            <div class="mail-card-subject">Re: Microservices schema consolidation RFC</div>
-            <div class="mail-card-snippet">Thanks everyone for attending yesterday's design meeting. Notes attached.</div>
-          </div>
+      document.querySelectorAll(".modal-backdrop").forEach(modal => {
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.style.display = "none";
+        });
+      });
 
-          <div class="mail-card-item">
-            <div class="mail-card-sender">
-              <span>HR &amp; Culture Team</span>
-              <span class="mail-card-time">May 12</span>
-            </div>
-            <div class="mail-card-subject">Internal Tech Sharing: Q2 Best Practices</div>
-            <div class="mail-card-snippet">Don't forget to register for this Friday's lightning talks session.</div>
-          </div>
-        </div>
+      document.querySelectorAll(".theme-option").forEach(opt => {
+        opt.addEventListener("click", () => {
+          const th = opt.getAttribute("data-theme");
+          document.querySelectorAll(".theme-option").forEach(o => o.classList.remove("active"));
+          opt.classList.add("active");
+          localStorage.setItem("antigravity_theme", th);
+          const isDark = th === "dark" || (th === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", th);
+          document.documentElement.setAttribute("data-applied-theme", isDark ? "dark" : "light");
+        });
+      });
 
-        <!-- 邮件右侧阅读正文栏 -->
-        <div class="mail-reading-pane">
-          <!-- 邮件顶部操作栏 -->
-          <div class="mail-action-toolbar">
-            <button type="button" class="btn-mail-action" id="btnMailReply">↩️ 回复</button>
-            <button type="button" class="btn-mail-action" id="btnMailForward">↪️ 转发</button>
-            <button type="button" class="btn-mail-action" id="btnMailArchive">📁 归档</button>
-            <button type="button" class="btn-mail-action" id="btnMailPrev" title="上一封 (K / ↑)">▲ 上一封</button>
-            <button type="button" class="btn-mail-action" id="btnMailNext" title="下一封 (J / ↓)">▼ 下一封</button>
-          </div>
+      const triggerImport = () => document.getElementById("jsonFileInput").click();
+      document.getElementById("btnEmptyImport").addEventListener("click", triggerImport);
+      document.getElementById("btnImportJson").addEventListener("click", triggerImport);
 
-          <!-- 邮件详情主体 -->
-          <div class="mail-content-wrap">
-            <div class="mail-subject-title" id="mailDetailSubject">[Action Required] Terminology Spec Review - Item #1</div>
-            <div class="mail-meta-row">
-              <div class="mail-avatar">LO</div>
-              <div class="mail-sender-info">
-                <div class="mail-sender-name">Language Operations Support &lt;ops@corp.internal&gt;</div>
-                <div class="mail-recipient-line">收件人: me &lt;dev@corp.internal&gt;; core-engineering@corp.internal</div>
-              </div>
-            </div>
+      document.getElementById("jsonFileInput").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            const importedList = Array.isArray(data) ? data : (data.words || data.vocabulary || []);
+            if (importedList.length > 0) {
+              vocabList = importedList;
+              saveVocabToStorage();
+              document.getElementById("settingsModal").style.display = "none";
+              initSession();
+              alert(`成功导入 ${importedList.length} 个生词！`);
+            } else {
+              alert("未在文件中找到有效的单词数据格式");
+            }
+          } catch (err) {
+            alert("文件解析失败，请确保是有效的 JSON 词库文件");
+          }
+        };
+        reader.readAsText(file);
+      });
 
-            <!-- 邮件正文 -->
-            <div class="mail-body-paper">
-              <p>Hi Team,</p>
-              <p style="margin: 8px 0;">Please review the vocabulary specification and contextual application below to ensure team terminology consensus for our upcoming documentation sync:</p>
+      document.getElementById("btnExportJson").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(vocabList, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `antigravity-vocab-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
 
-              <!-- 单词卡片区块 -->
-              <div class="mail-term-card">
-                <div class="mail-word-hero">
-                  <span class="mail-word-text" id="mailWordText">Word</span>
-                  <span class="mail-word-ipa" id="mailWordIpa">/ipa/</span>
-                </div>
+      document.getElementById("btnClearVocab").addEventListener("click", () => {
+        if (confirm("确定清空手机本地词库吗？清空后可通过 WebDAV 重新拉取。")) {
+          vocabList = [];
+          saveVocabToStorage();
+          document.getElementById("settingsModal").style.display = "none";
+          initSession();
+        }
+      });
 
-                <div style="font-size: 11.5px; font-weight: 700; color: #605E5C; margin-bottom: 4px;">CONTEXTUAL USAGE:</div>
-                <div class="mail-context-box" id="mailContextText">Context sentence appears here...</div>
+      document.getElementById("btnSaveSync").addEventListener("click", async () => {
+        const url = document.getElementById("davUrl").value.trim();
+        const user = document.getElementById("davUser").value.trim();
+        const pass = document.getElementById("davPass").value.trim();
+        const tip = document.getElementById("syncStatusTip");
 
-                <!-- 折叠提示微标 / 展开内容 -->
-                <div class="mail-unrevealed-badge" id="mailFoldTrigger" title="按空格键或点击展开">
-                  <span>📎 Specification_Attachment.enc (已加密暂扣)</span>
-                  <span style="font-size: 11.5px; font-weight: 600;">按 [空格] 或点击展开核验 ▾</span>
-                </div>
+        if (!url || !user || !pass) {
+          tip.innerText = "请完整填写服务器地址、账号和密码";
+          tip.style.color = "var(--accent-red)";
+          return;
+        }
 
-                <div class="mail-spec-box" id="mailSpecBox" style="display: none;">
-                  <div class="mail-spec-header">Verified Definitions &amp; Semantic Scope</div>
-                  <div class="mail-spec-trans" id="mailSpecTrans"></div>
-                  <div class="mail-spec-notes" id="mailSpecNotes" style="display: none;"></div>
-                </div>
+        const cfg = { url, user, pass };
+        localStorage.setItem("antigravity_webdav_config", JSON.stringify(cfg));
+        tip.innerText = "正在连接坚果云并同步词库...";
+        tip.style.color = "var(--primary)";
 
-                <!-- 邮件内审核快捷反馈栏 (SRS) -->
-                <div class="mail-feedback-bar">
-                  <span style="font-size: 12px; color: #605E5C;">Review Decision:</span>
-                  <div class="mail-srs-btns">
-                    <button type="button" class="btn-mail-srs btn-mail-srs-0" id="btnMailSrs0" title="快捷键 1">[1] 拒绝/重背 (生疏)</button>
-                    <button type="button" class="btn-mail-srs btn-mail-srs-1" id="btnMailSrs1" title="快捷键 2">[2] 待定/复核 (模糊)</button>
-                    <button type="button" class="btn-mail-srs btn-mail-srs-3" id="btnMailSrs3" title="快捷键 3">[3] 批准/采纳 (熟练)</button>
-                  </div>
-                </div>
-              </div>
+        const dot = document.getElementById("syncDot");
+        dot.className = "sync-dot syncing";
 
-              <p style="font-size: 12px; color: #8A8886; margin-top: 14px;">
-                CONFIDENTIALITY NOTICE: This transmission is intended solely for internal verification. If you received this by error, please press Esc to restore normal screen immediately.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        try {
+          const auth = btoa(`${user}:${pass}`);
+          const targetUrl = url.endsWith("/") ? url + "antigravity_vocab.json" : url + "/antigravity_vocab.json";
+          
+          const getRes = await fetch(targetUrl, {
+            headers: { "Authorization": `Basic ${auth}` }
+          });
 
-    <!-- 底部状态栏 -->
-    <div class="vscode-statusbar">
-      <div class="status-left">
-        <span class="status-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3"/></svg> main*</span>
-        <span class="status-item">⊗ 0  ⚠ 0</span>
-        <span class="status-item" id="stealthProgressStatus">Tests: 1/20 passing (5%)</span>
-        <span class="status-item" id="stealthToastMsg" style="display:none; background: #0E639C; padding: 1px 6px; border-radius: 2px;"></span>
-      </div>
-      <div class="status-right">
-        <span class="status-item" id="stealthShortcutHint">按 [Space] 展开释义 | 1忘了 2模糊 3熟练 | [Esc] 快速恢复</span>
-        <span class="status-item">Ln 24, Col 16</span>
-        <span class="status-item">UTF-8</span>
-        <span class="status-item">TypeScript 5.3</span>
-        <span class="status-item" id="stealthExitTrigger" style="cursor: pointer; background: rgba(255,255,255,0.18); padding: 0 6px; border-radius: 2px;">[退出]</span>
-      </div>
-    </div>
-  </div>
+          if (getRes.status === 200) {
+            const remoteData = await getRes.json();
+            const remoteList = Array.isArray(remoteData) ? remoteData : (remoteData.words || []);
+            
+            const map = new Map();
+            vocabList.forEach(w => map.set(w.word.toLowerCase(), w));
+            remoteList.forEach(w => {
+              const k = w.word.toLowerCase();
+              if (!map.has(k) || (w.updated_at && (!map.get(k).updated_at || w.updated_at > map.get(k).updated_at))) {
+                map.set(k, w);
+              }
+            });
+            vocabList = Array.from(map.values());
+            saveVocabToStorage();
 
-  <!-- 移动端专属 iOS 原生设置抽屉 (Mobile Settings Bottom Sheet) -->
-  <div class="mobile-sheet-overlay" id="mobileSheetOverlay" style="display: none;">
-    <div class="mobile-sheet-backdrop" id="mobileSheetBackdrop"></div>
-    <div class="mobile-sheet-container" id="mobileSheetContainer">
-      <div class="mobile-sheet-handle"></div>
-      <div class="mobile-sheet-header">
-        <span class="mobile-sheet-title">偏好与词库设置</span>
-        <button type="button" class="mobile-sheet-close" id="mobileSheetClose" aria-label="关闭">✕</button>
-      </div>
-      <div class="mobile-sheet-body">
-        <!-- 外观主题 -->
-        <div class="mobile-sheet-section">
-          <div class="mobile-section-label">外观主题</div>
-          <div class="mobile-theme-group" id="mobileThemeGroup">
-            <button type="button" class="mobile-theme-btn" data-theme-val="system">💻 跟随系统</button>
-            <button type="button" class="mobile-theme-btn" data-theme-val="light">☀️ 浅色</button>
-            <button type="button" class="mobile-theme-btn" data-theme-val="dark">🌙 深色</button>
-          </div>
-        </div>
+            await fetch(targetUrl, {
+              method: "PUT",
+              headers: {
+                "Authorization": `Basic ${auth}`,
+                "Content-Type": "application/json; charset=utf-8"
+              },
+              body: JSON.stringify(vocabList, null, 2)
+            });
 
-        <!-- 触感与发音 -->
-        <div class="mobile-sheet-section">
-          <div class="mobile-section-label">触感与发音</div>
-          <div class="mobile-setting-row" id="mobileSoundRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon" id="mobileSoundIcon">🔊</span>
-              <span>交互触感微音效</span>
-            </div>
-            <span class="mobile-setting-badge" id="mobileSoundStatusBadge">已开启</span>
-          </div>
-          <div class="mobile-setting-row" id="mobileAccentRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon" id="mobileAccentIcon">🇺🇸</span>
-              <span id="mobileAccentText">母语发音口音</span>
-            </div>
-            <span class="mobile-setting-badge" id="mobileAccentBadge">美式 US</span>
-          </div>
-        </div>
-
-        <!-- 云同步与词库 -->
-        <div class="mobile-sheet-section">
-          <div class="mobile-section-label">云漫游与词库</div>
-          <div class="mobile-setting-row" id="mobileOpenSyncRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon">☁️</span>
-              <span>坚果云 WebDAV &amp; 欧路同步</span>
-            </div>
-            <span style="font-size: 13px; color: var(--text-muted);">配置 ›</span>
-          </div>
-          <div class="mobile-setting-row" id="mobileLoadSampleRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon">📚</span>
-              <span>导入精选示例词库 (快速体验)</span>
-            </div>
-            <span style="font-size: 13px; color: var(--claude-terracotta); font-weight: 600;">载入 +</span>
-          </div>
-          <div class="mobile-setting-row" id="mobileExportJsonRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon">📥</span>
-              <span>导出词库 (JSON)</span>
-            </div>
-            <span style="font-size: 13px; color: var(--text-muted);">下载 ›</span>
-          </div>
-          <div class="mobile-setting-row" id="mobileImportJsonRow">
-            <div class="mobile-setting-left">
-              <span class="mobile-setting-icon">📤</span>
-              <span>导入词库 (JSON)</span>
-            </div>
-            <span style="font-size: 13px; color: var(--text-muted);">选取 ›</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 手机端原生 iOS 底部导航栏 (Mobile Bottom Tab Bar) -->
-  <nav class="mobile-tab-bar" id="mobileTabBar" aria-label="移动端底部导航">
-    <button type="button" class="mobile-tab-item active" id="mobileTabFlashcard">
-      <span class="mobile-tab-icon">🎴</span>
-      <span class="mobile-tab-label">闪卡自测</span>
-    </button>
-    <button type="button" class="mobile-tab-item" id="mobileTabTable">
-      <span class="mobile-tab-icon">📋</span>
-      <span class="mobile-tab-label">生词库</span>
-    </button>
-    <button type="button" class="mobile-tab-item" id="mobileTabSync">
-      <span class="mobile-tab-icon" id="mobileSyncIcon">☁️</span>
-      <span class="mobile-tab-label" id="mobileSyncLabel">云同步</span>
-    </button>
-    <button type="button" class="mobile-tab-item" id="mobileTabMore">
-      <span class="mobile-tab-icon">⚙️</span>
-      <span class="mobile-tab-label">设置</span>
-    </button>
-  </nav>
-
-  <script src="webdav.js?v=1.0.2"></script>
-  <script src="notebook.js?v=1.0.2"></script>
+            dot.className = "sync-dot connected";
+            tip.innerText = `同步成功！当前共 ${vocabList.length} 个生词`;
+            tip.style.color = "var(--accent-green)";
+            setTimeout(() => {
+              document.getElementById("syncModal").style.display = "none";
+              initSession();
+            }, 1200);
+          } else if (getRes.status === 404) {
+            await fetch(targetUrl, {
+              method: "PUT",
+              headers: {
+                "Authorization": `Basic ${auth}`,
+                "Content-Type": "application/json; charset=utf-8"
+              },
+              body: JSON.stringify(vocabList, null, 2)
+            });
+            dot.className = "sync-dot connected";
+            tip.innerText = "已将本地生词上传至坚果云！";
+            tip.style.color = "var(--accent-green)";
+            setTimeout(() => {
+              document.getElementById("syncModal").style.display = "none";
+              initSession();
+            }, 1200);
+          } else {
+            throw new Error(`HTTP ${getRes.status}`);
+          }
+        } catch (err) {
+          dot.className = "sync-dot";
+          tip.innerText = `同步失败: ${err.message || "网络或密码错误"}`;
+          tip.style.color = "var(--accent-red)";
+        }
+      });
+    });
+  </script>
 </body>
 </html>
