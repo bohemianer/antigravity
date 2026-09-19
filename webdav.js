@@ -320,13 +320,13 @@ class EudicSyncEngine {
     return data && data.data ? data.data : [];
   }
 
-  // 2. 分页递归拉取指定生词本的所有单词 (page 从 0 开始，支持增量早停加速)
-  async fetchAllWords(categoryId = "0", existingKeys = null) {
+  // 2. 分页递归拉取指定生词本的所有单词 (欧路 API 按时间升序返回，必须全量翻页拉取，每页最多 100 词，上限 50 页)
+  async fetchAllWords(categoryId = "0") {
     let page = 0;
     let allWords = [];
     const pageSize = 100;
 
-    while (page < 10) { // 限制单次同步最多检查前 1000 词
+    while (page <= 50) {
       const url = `https://api.frdic.com/api/open/v1/studylist/words?language=en&category_id=${encodeURIComponent(categoryId)}&page=${page}&page_size=${pageSize}`;
       const resp = await fetchWithTimeout(url, {
         headers: {
@@ -343,17 +343,6 @@ class EudicSyncEngine {
 
       allWords = allWords.concat(list);
 
-      // 智能早停优化：如果开启了已有词比对，且这一页的所有单词都已存在，说明后续都是历史老词，直接早停！
-      if (existingKeys && list.length > 0) {
-        const allExisted = list.every(item => {
-          const k = (item.word || item.text || item.key || "").toLowerCase().trim();
-          return k && existingKeys.has(k);
-        });
-        if (allExisted) {
-          break; // 提前退出，节省 90% 以上的网络耗时！
-        }
-      }
-
       if (list.length < pageSize) break;
       page++;
     }
@@ -362,7 +351,7 @@ class EudicSyncEngine {
   }
 
   // 3. 自动多分类并行扫描并汇总全量单词 (Promise.all 并发极速提速)
-  async fetchAllCategoriesAndWords(existingWords = []) {
+  async fetchAllCategoriesAndWords() {
     let categories = [];
     try {
       categories = await this.getCategories();
@@ -379,11 +368,9 @@ class EudicSyncEngine {
       });
     }
 
-    const existingKeys = new Set(existingWords.map(w => (w.text || w.word || "").toLowerCase().trim()).filter(Boolean));
-
     const catArray = Array.from(categoryIds);
     const fetchPromises = catArray.map(catId => 
-      this.fetchAllWords(catId, existingKeys).catch(err => {
+      this.fetchAllWords(catId).catch(err => {
         console.warn(`拉取生词本分类 ${catId} 失败:`, err);
         return [];
       })
@@ -463,19 +450,24 @@ class EudicSyncEngine {
           srsLevel: 0,
           srsNextReview: 0,
           srsReviews: 0,
-          _uid: ""
+          _uid: "",
+          _eudicAddTime: item.add_time ? new Date(item.add_time).getTime() : 0
         };
         newItems.push(newItem);
         existingMap.set(k, newItem);
       }
     });
 
-    // 为所有新词赋予递增的顶端时间戳：最新在欧路中添加的排在最前
+    // 将新发现的欧路生词按在欧路中的添加时间降序排列（最新查词排在最前）
+    newItems.sort((a, b) => (b._eudicAddTime || 0) - (a._eudicAddTime || 0));
+
+    // 为所有新词赋予递增的顶端时间戳：最新查词获得最高的时间戳，排在列表第 1 位
     const totalNew = newItems.length;
     newItems.forEach((item, idx) => {
       const itemDate = baseTime + (totalNew - idx) * 1000;
       item.date = itemDate;
       item._uid = 'w_' + itemDate + '_' + Math.random().toString(36).slice(2, 9);
+      delete item._eudicAddTime;
     });
 
     // 新词排在最前
@@ -484,7 +476,8 @@ class EudicSyncEngine {
     return {
       mergedList: resultList,
       newAddedCount: totalNew,
-      totalEudicScanned: eudicRawList.length
+      totalEudicScanned: eudicRawList.length,
+      deletionsMap: deletionsMap
     };
   }
 

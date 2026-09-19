@@ -915,18 +915,19 @@ async function doFullSync(notifyUser = false) {
     if (token) {
       try {
         const engine = new EudicSyncEngine(token);
-        const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
+        const eudicWords = await engine.fetchAllCategoriesAndWords();
         eudicTotalScanned = eudicWords.length;
         
-        const { mergedList, newAddedCount } = engine.mergeEudicWords(currentWords, eudicWords, deletions);
+        const { mergedList, newAddedCount, deletionsMap } = engine.mergeEudicWords(currentWords, eudicWords, deletions);
         eudicNewCount = newAddedCount;
         if (newAddedCount > 0) {
           currentWords = mergedList;
           await new Promise(resolve => {
-            chrome.storage.local.set({ savedWords: currentWords }, resolve);
+            chrome.storage.local.set({ savedWords: currentWords, deletedWords: deletionsMap || deletions }, resolve);
           });
           if (currentView !== 'flashcard') {
             applyFilter();
+            updateStats();
           }
         }
       } catch (err) {
@@ -3131,16 +3132,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const engine = new EudicSyncEngine(token);
         if (statusEl) statusEl.innerText = "正在验证授权并扫描全部分类生词本...";
-        const eudicWords = await engine.fetchAllCategoriesAndWords(currentWords);
+        const eudicWords = await engine.fetchAllCategoriesAndWords();
 
         if (statusEl) statusEl.innerText = `已拉取 ${eudicWords.length} 词，正在比对合并...`;
         const localDelRes = await new Promise(r => chrome.storage.local.get({ deletedWords: {} }, r));
         const delMap = localDelRes.deletedWords || {};
-        const { mergedList, newAddedCount, totalEudicScanned } = engine.mergeEudicWords(currentWords, eudicWords, delMap);
+        const { mergedList, newAddedCount, totalEudicScanned, deletionsMap } = engine.mergeEudicWords(currentWords, eudicWords, delMap);
 
         currentWords = mergedList;
-        chrome.storage.local.set({ savedWords: currentWords }, () => {
+        chrome.storage.local.set({ savedWords: currentWords, deletedWords: deletionsMap || delMap }, () => {
           applyFilter();
+          updateStats();
           doWebDAVSync(false);
           alert(`🎉 欧路词典同步成功！\n\n• 扫描欧路生词: ${totalEudicScanned} 个\n• 成功新增入库: ${newAddedCount} 个未收录单词\n• 当前生词库总量: ${currentWords.length} 个\n\n新数据已自动同步至坚果云多端漫游！`);
           if (statusEl) statusEl.innerText = `已同步: 新增 ${newAddedCount} 词 (总计: ${currentWords.length})`;

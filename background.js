@@ -488,19 +488,21 @@ async function autoSyncWebDAV(wordsList) {
   });
 }
 
-async function autoSyncEudic(wordsList) {
+async function autoSyncEudic(wordsList = null) {
   chrome.storage.sync.get({ eudicToken: '' }, async (r) => {
     const token = (r.eudicToken || '').trim();
     if (!token) return;
     try {
-      chrome.storage.local.get({ deletedWords: {} }, async (delRes) => {
+      chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
+        const currentList = wordsList || localRes.savedWords || [];
+        const deletions = Object.assign({}, localRes.deletedWords || {});
         const engine = new EudicSyncEngine(token);
-        const eudicWords = await engine.fetchAllCategoriesAndWords(wordsList);
-        const deletions = delRes.deletedWords || {};
-        const { mergedList, newAddedCount } = engine.mergeEudicWords(wordsList, eudicWords, deletions);
+        const eudicWords = await engine.fetchAllCategoriesAndWords();
+        const { mergedList, newAddedCount, deletionsMap } = engine.mergeEudicWords(currentList, eudicWords, deletions);
 
         if (newAddedCount > 0) {
-          chrome.storage.local.set({ savedWords: mergedList }, () => {
+          chrome.storage.local.set({ savedWords: mergedList, deletedWords: deletionsMap || deletions }, () => {
+            console.log(`[Eudic AutoSync] 成功从欧路同步新增 ${newAddedCount} 个生词，总计 ${mergedList.length} 词`);
             autoSyncWebDAV(mergedList);
           });
         }
