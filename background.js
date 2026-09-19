@@ -488,6 +488,39 @@ async function autoSyncWebDAV(wordsList) {
   });
 }
 
+async function autoSyncEudic(wordsList) {
+  chrome.storage.sync.get({ eudicToken: '' }, async (r) => {
+    const token = (r.eudicToken || '').trim();
+    if (!token) return;
+    try {
+      chrome.storage.local.get({ deletedWords: {} }, async (delRes) => {
+        const engine = new EudicSyncEngine(token);
+        const eudicWords = await engine.fetchAllCategoriesAndWords(wordsList);
+        const deletions = delRes.deletedWords || {};
+        const { mergedList, newAddedCount } = engine.mergeEudicWords(wordsList, eudicWords, deletions);
+
+        if (newAddedCount > 0) {
+          chrome.storage.local.set({ savedWords: mergedList }, () => {
+            autoSyncWebDAV(mergedList);
+          });
+        }
+
+        // 反向补全：若 Antigravity 本地有未在欧路中的词条，推送到欧路云端
+        const eudicWordSet = new Set(eudicWords.map(w => (w.word || w.text || w.key || '').toLowerCase().trim()).filter(Boolean));
+        const wordsToPush = wordsList.filter(w => {
+          const k = (w.text || w.word || '').toLowerCase().trim();
+          return k && !eudicWordSet.has(k) && (!deletions || !deletions[k]);
+        });
+        if (wordsToPush.length > 0) {
+          engine.addWords(wordsToPush).catch(err => console.warn("后台反向推送至欧路异常:", err));
+        }
+      });
+    } catch (e) {
+      console.warn("Eudic auto sync warning:", e);
+    }
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "LOOKUP_WORD") {
     const cleanWord = (request.word || "").trim().toLowerCase();
@@ -626,6 +659,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
         autoSyncWebDAV(list);
+        chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+          if (r.eudicToken) {
+            const engine = new EudicSyncEngine(r.eudicToken);
+            engine.addWord(canonicalWord).catch(err => console.warn("实时同步推送至欧路失败:", err));
+          }
+        });
         sendResponse({ success: true, count: list.length });
 
         // 若当前单词缺少音标，后台自动发起多源音标补充
@@ -705,3 +744,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 });
+
+// 后台周期性静默双向同步 (每 10 分钟自动与坚果云及欧路词典核对拉取)
+try {
+  if (chrome.alarms) {
+    chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 10 });
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'antigravity_auto_sync') {
+        chrome.storage.local.get({ savedWords: [] }, (res) => {
+          const list = res.savedWords || [];
+          autoSyncWebDAV(list);
+          autoSyncEudic(list);
+        });
+      }
+    });
+  }
+} catch (e) {}
+
+// 浏览器启动 / 插件安装初始化时发起一次静默同步
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.get({ savedWords: [] }, (res) => {
+    const list = res.savedWords || [];
+    autoSyncWebDAV(list);
+    autoSyncEudic(list);
+  });
+});
+
+if (chrome.runtime.onStartup) {
+  chrome.runtime.onStartup.addListener(() => {
+    chrome.storage.local.get({ savedWords: [] }, (res) => {
+      const list = res.savedWords || [];
+      autoSyncWebDAV(list);
+      autoSyncEudic(list);
+    });
+  });
+}

@@ -532,6 +532,46 @@ class EudicSyncEngine {
       }
     }
   }
+
+  // 6. 向欧路生词本中同步新增单词 (支持单个或批量，秒级实时推入)
+  async addWords(words = [], categoryId = "0") {
+    if (!this.authHeader) return { success: false, error: "未配置欧路 Token" };
+    const list = (Array.isArray(words) ? words : [words])
+      .map(w => (typeof w === 'string' ? w : (w.text || w.word || "")).trim())
+      .filter(Boolean);
+    if (list.length === 0) return { success: true, count: 0 };
+
+    // 欧路官方 API 限制单次批量添加最多 50 词，自动按 50 分批处理
+    const batchSize = 50;
+    for (let i = 0; i < list.length; i += batchSize) {
+      const batch = list.slice(i, i + batchSize);
+      try {
+        const resp = await fetchWithTimeout("https://api.frdic.com/api/open/v1/studylist/words", {
+          method: "POST",
+          headers: {
+            "Authorization": this.authHeader,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            id: String(categoryId || "0"),
+            category_id: String(categoryId || "0"),
+            language: "en",
+            words: batch
+          })
+        }, 10000);
+        if (!resp.ok) {
+          console.warn(`向欧路生词本添加单词失败 (${resp.status}):`, resp.statusText);
+        }
+      } catch (err) {
+        console.warn("向欧路添加单词网络异常:", err);
+      }
+    }
+    return { success: true, count: list.length };
+  }
+
+  async addWord(word = "", categoryId = "0") {
+    return this.addWords([word], categoryId);
+  }
 }
 
 if (typeof module !== 'undefined') {

@@ -76,14 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('reviewWordsCount').innerText = needReview.toString();
   });
 
-  // 2. 获取并渲染 WebDAV 云同步状态
-  chrome.storage.sync.get({ webdavConfig: null }, (res) => {
+  // 2. 获取并渲染 WebDAV / 欧路云同步状态
+  chrome.storage.sync.get({ webdavConfig: null, eudicToken: '' }, (res) => {
     const cfg = res.webdavConfig;
+    const hasWebDAV = cfg && cfg.enabled && cfg.username && cfg.password;
+    const hasEudic = !!(res.eudicToken && res.eudicToken.trim());
     const dot = document.getElementById('syncDot');
     const txt = document.getElementById('syncText');
-    if (cfg && cfg.enabled && cfg.username && cfg.password) {
+    if (hasWebDAV && hasEudic) {
       if (dot) dot.className = "sync-dot active";
-      if (txt) txt.innerText = "已配置云同步";
+      if (txt) txt.innerText = "坚果云 + 欧路已同步";
+    } else if (hasWebDAV) {
+      if (dot) dot.className = "sync-dot active";
+      if (txt) txt.innerText = "坚果云已同步";
+    } else if (hasEudic) {
+      if (dot) dot.className = "sync-dot active";
+      if (txt) txt.innerText = "欧路词典已同步";
     } else {
       if (dot) dot.className = "sync-dot";
       if (txt) txt.innerText = "未同步";

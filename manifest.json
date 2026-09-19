@@ -8,12 +8,14 @@
     "unlimitedStorage",
     "activeTab",
     "tabs",
-    "contextMenus"
+    "contextMenus",
+    "alarms"
   ],
   "host_permissions": [
     "https://*.youdao.com/*",
     "https://translate.googleapis.com/*",
     "https://dav.jianguoyun.com/*",
+    "https://api.frdic.com/*",
     "https://*/*"
   ],
   "action": {
