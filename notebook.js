@@ -929,16 +929,6 @@ async function doFullSync(notifyUser = false) {
             applyFilter();
           }
         }
-
-        // 关键：将本地独有、欧路尚未收录的生词反向推送到欧路云端，实现真正 100% 双向对齐
-        const eudicWordSet = new Set(eudicWords.map(w => (w.word || w.text || w.key || '').toLowerCase().trim()).filter(Boolean));
-        const wordsToPushToEudic = currentWords.filter(w => {
-          const k = (w.text || w.word || '').toLowerCase().trim();
-          return k && !eudicWordSet.has(k) && (!deletions || !deletions[k]);
-        });
-        if (wordsToPushToEudic.length > 0) {
-          engine.addWords(wordsToPushToEudic).catch(err => console.warn("反向推送到欧路异常:", err));
-        }
       } catch (err) {
         console.warn("欧路词典自动拉取失败:", err);
         eudicError = err.message;
@@ -3318,12 +3308,6 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
             closeModal();
             saveAndRefresh();
-            chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-              if (r.eudicToken) {
-                const engine = new EudicSyncEngine(r.eudicToken);
-                engine.addWord(word).catch(err => console.warn("添加新词推送到欧路失败:", err));
-              }
-            });
             try {
               if (typeof showToast === 'function') {
                 showToast(`✨ 生词「${word}」已成功收录入库！`, 'success');
@@ -3369,20 +3353,6 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
               // 关键：立即执行 WebDAV 覆盖同步与墓碑上传，彻底抹除云端的旧词，防止云端拉取时双份合并！
               doWebDAVOverwrite();
-              // 检查生词本中是否还有 oldWordText 的其他副本；若全库无副本，才从欧路词典中同步删除旧词
-              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-                if (r.eudicToken) {
-                  const engine = new EudicSyncEngine(r.eudicToken);
-                  if (!hasOldWord) {
-                    engine.deleteWord(oldWordText).catch(err => {
-                      console.warn(`从欧路同步删除旧词 ${oldWordText} 失败:`, err);
-                    });
-                  }
-                  engine.addWord(word).catch(err => {
-                    console.warn(`向欧路同步新增修改词 ${word} 失败:`, err);
-                  });
-                }
-              });
               applyFilter();
               updateStats();
               try {

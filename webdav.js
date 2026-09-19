@@ -379,10 +379,8 @@ class EudicSyncEngine {
       });
     }
 
-    // 构建已有词哈希表用于早停加速
     const existingKeys = new Set(existingWords.map(w => (w.text || w.word || "").toLowerCase().trim()).filter(Boolean));
 
-    // 并发拉取各个分类
     const catArray = Array.from(categoryIds);
     const fetchPromises = catArray.map(catId => 
       this.fetchAllWords(catId, existingKeys).catch(err => {
@@ -406,7 +404,7 @@ class EudicSyncEngine {
     return Array.from(wordMap.values());
   }
 
-  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并 (严格遵从删除墓碑，杜绝死词复活，新词置顶)
+  // 4. 欧路生词比对当前词库，按 Antigravity 标准格式合并（单向拉取入库，新词排在最前）
   mergeEudicWords(existingWords = [], eudicRawList = [], deletionsMap = {}) {
     const existingMap = new Map();
     existingWords.forEach(w => {
@@ -422,17 +420,24 @@ class EudicSyncEngine {
     const baseTime = Math.max(Date.now(), maxExistingDate + 1000);
 
     const newItems = [];
-    const wordsToDeleteFromEudic = [];
 
     eudicRawList.forEach(item => {
       const wText = (item.word || item.text || item.key || "").trim();
       if (!wText) return;
       const k = wText.toLowerCase();
 
-      // 核心防线：如果该词已被用户标记删除，坚决绝不拉取！绝不允许死词复生！
+      // 删除墓碑检测：若本地曾经删除过该词，检查欧路添加时间是否晚于删除时间
       if (deletionsMap && deletionsMap[k]) {
-        wordsToDeleteFromEudic.push(wText);
-        return;
+        const delTime = deletionsMap[k];
+        let isReAdded = false;
+        if (item.add_time) {
+          const addTime = new Date(item.add_time).getTime();
+          if (!isNaN(addTime) && addTime > delTime) {
+            isReAdded = true;
+            delete deletionsMap[k]; // 用户在欧路重新添加了该词，清除删除墓碑并正常收录
+          }
+        }
+        if (!isReAdded) return;
       }
 
       if (!existingMap.has(k)) {
@@ -452,7 +457,7 @@ class EudicSyncEngine {
           context: ctx || "来自欧路词典同步",
           title: "欧路词典 (Eudic)",
           url: "https://dict.eudic.net",
-          date: 0, // 稍后按顺序统一定制时间戳
+          date: 0,
           updatedAt: Date.now(),
           notes: "",
           srsLevel: 0,
@@ -465,23 +470,13 @@ class EudicSyncEngine {
       }
     });
 
-    // 为所有新词赋予递增的顶端时间戳：
-    // eudicRawList 中排在前面的（最新在欧路中添加的）赋予最高的时间戳，确保在列表中排在最前面第 1 位
+    // 为所有新词赋予递增的顶端时间戳：最新在欧路中添加的排在最前
     const totalNew = newItems.length;
     newItems.forEach((item, idx) => {
       const itemDate = baseTime + (totalNew - idx) * 1000;
       item.date = itemDate;
       item._uid = 'w_' + itemDate + '_' + Math.random().toString(36).slice(2, 9);
     });
-
-    // 发现已被本地删除但仍残留在欧路云端的词条，异步顺手向欧路发送删除指令，清空云端残留
-    if (wordsToDeleteFromEudic.length > 0) {
-      setTimeout(() => {
-        wordsToDeleteFromEudic.forEach(w => {
-          this.deleteWord(w).catch(err => console.warn("后台异步清理欧路已删词失败:", err));
-        });
-      }, 100);
-    }
 
     // 新词排在最前
     const resultList = [...newItems, ...existingWords];

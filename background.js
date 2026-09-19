@@ -504,16 +504,6 @@ async function autoSyncEudic(wordsList) {
             autoSyncWebDAV(mergedList);
           });
         }
-
-        // 反向补全：若 Antigravity 本地有未在欧路中的词条，推送到欧路云端
-        const eudicWordSet = new Set(eudicWords.map(w => (w.word || w.text || w.key || '').toLowerCase().trim()).filter(Boolean));
-        const wordsToPush = wordsList.filter(w => {
-          const k = (w.text || w.word || '').toLowerCase().trim();
-          return k && !eudicWordSet.has(k) && (!deletions || !deletions[k]);
-        });
-        if (wordsToPush.length > 0) {
-          engine.addWords(wordsToPush).catch(err => console.warn("后台反向推送至欧路异常:", err));
-        }
       });
     } catch (e) {
       console.warn("Eudic auto sync warning:", e);
@@ -659,12 +649,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
         autoSyncWebDAV(list);
-        chrome.storage.sync.get({ eudicToken: '' }, (r) => {
-          if (r.eudicToken) {
-            const engine = new EudicSyncEngine(r.eudicToken);
-            engine.addWord(canonicalWord).catch(err => console.warn("实时同步推送至欧路失败:", err));
-          }
-        });
         sendResponse({ success: true, count: list.length });
 
         // 若当前单词缺少音标，后台自动发起多源音标补充
@@ -745,10 +729,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// 后台周期性静默双向同步 (每 10 分钟自动与坚果云及欧路词典核对拉取)
+// 后台周期性静默同步 (每 5 分钟自动与坚果云及欧路词典核对拉取新词)
 try {
   if (chrome.alarms) {
-    chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 10 });
+    chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 5 });
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'antigravity_auto_sync') {
         chrome.storage.local.get({ savedWords: [] }, (res) => {
