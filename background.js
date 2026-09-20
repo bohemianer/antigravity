@@ -516,20 +516,25 @@ async function autoSyncEudic(wordsList = null) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "LOOKUP_WORD") {
     const cleanWord = (request.word || "").trim().toLowerCase();
+    const strippedWord = cleanWord.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
     
-    // 并行检查本地数据库是否已收录（包括精确词或词根原型）
+    // 并行检查本地数据库是否已收录（包括精确词、去标点词或词根原型）
     chrome.storage.local.get({ savedWords: [] }, (localRes) => {
       const savedList = (localRes && localRes.savedWords) || [];
-      const exactItem = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord);
+      const exactItem = savedList.find(x => {
+        const wt = (x.text || x.word || "").toLowerCase().trim();
+        return wt === cleanWord || (strippedWord && wt === strippedWord);
+      });
       const isSaved = !!exactItem;
       const existingNotes = exactItem ? (exactItem.notes || "") : "";
 
       // 词根原型检测：若用户划了复数/过去式/进行时等变体词，检索词库中是否已收录其词根原型
-      const baseForms = getBaseForms(cleanWord);
+      const baseForms = getBaseForms(strippedWord || cleanWord);
       let canonicalRootItem = null;
       if (!exactItem && baseForms.length > 1) {
+        const targetWord = strippedWord || cleanWord;
         for (const bf of baseForms) {
-          if (bf === cleanWord) continue;
+          if (bf === targetWord) continue;
           const found = savedList.find(x => (x.text || x.word || "").toLowerCase().trim() === bf);
           if (found) {
             canonicalRootItem = found;

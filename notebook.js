@@ -2698,33 +2698,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (editIndexInput.value === "-1") {
       const lowerWord = text.toLowerCase();
-      const forms = getBaseForms(lowerWord);
-      let foundRootItem = null;
-      let foundRootIdx = -1;
-
-      for (const f of forms) {
-        if (f === lowerWord) continue;
-        const idx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === f);
-        if (idx !== -1) {
-          foundRootItem = currentWords[idx];
-          foundRootIdx = idx;
-          break;
-        }
-      }
-
-      if (foundRootItem && variantWarn && variantWarnText && btnSwitchToRoot) {
-        const rootWord = foundRootItem.text || foundRootItem.word || "";
-        const srsLv = foundRootItem.srsLevel !== undefined ? foundRootItem.srsLevel : 0;
+      
+      // 1. 优先检测生词库中是否已存在完全相同的生词 (彻底解决新增词条漏查重的问题)
+      const exactIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === lowerWord);
+      if (exactIdx !== -1) {
+        const exactItem = currentWords[exactIdx];
+        const srsLv = exactItem.srsLevel !== undefined ? exactItem.srsLevel : 0;
         const lvName = ["生疏待背", "初识阶段", "巩固阶段", "熟练掌握"][srsLv] || `Lv.${srsLv}`;
-        variantWarnText.innerHTML = `检测到词库中已存在原型词条 <strong>「${rootWord}」</strong> (${lvName})`;
-        variantWarn.style.display = 'block';
+        if (variantWarn && variantWarnText && btnSwitchToRoot) {
+          variantWarnText.innerHTML = `⚠️ 词库中已收录该生词 <strong>「${exactItem.text || exactItem.word}」</strong> (${lvName})`;
+          btnSwitchToRoot.innerText = "改为编辑已有词条";
+          btnSwitchToRoot.style.background = "#E11D48";
+          btnSwitchToRoot.onclick = () => {
+            SoundFx.playClick();
+            openEditModal(exactIdx);
+          };
+          variantWarn.style.display = 'block';
+        }
+        if (autoFillStatus) {
+          autoFillStatus.innerText = `⚠️ 已在生词库 (${lvName})`;
+          autoFillStatus.style.display = 'inline';
+        }
+        
+        // 自动将已有词条的释义、音标、例句和笔记带出，避免用户重复输入
+        const phoneticInp = document.getElementById('inputPhonetic');
+        const transInp = document.getElementById('inputTrans');
+        const contextInp = document.getElementById('inputContext');
+        const notesInp = document.getElementById('inputNotes');
+        if (phoneticInp && !phoneticInp.value.trim() && exactItem.phonetic) phoneticInp.value = exactItem.phonetic;
+        if (transInp && !transInp.value.trim() && exactItem.trans) transInp.value = exactItem.trans;
+        if (contextInp && !contextInp.value.trim() && exactItem.context) contextInp.value = exactItem.context;
+        if (notesInp && !notesInp.value.trim() && exactItem.notes) notesInp.value = exactItem.notes;
+      } else {
+        // 2. 若无完全同名词，检测词根变体/原型 (如输入 deficits，库中已有 deficit)
+        const forms = getBaseForms(lowerWord);
+        let foundRootItem = null;
+        let foundRootIdx = -1;
 
-        btnSwitchToRoot.onclick = () => {
-          SoundFx.playClick();
-          openEditModal(foundRootIdx);
-        };
-      } else if (variantWarn) {
-        variantWarn.style.display = 'none';
+        for (const f of forms) {
+          if (f === lowerWord) continue;
+          const idx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === f);
+          if (idx !== -1) {
+            foundRootItem = currentWords[idx];
+            foundRootIdx = idx;
+            break;
+          }
+        }
+
+        if (foundRootItem && variantWarn && variantWarnText && btnSwitchToRoot) {
+          const rootWord = foundRootItem.text || foundRootItem.word || "";
+          const srsLv = foundRootItem.srsLevel !== undefined ? foundRootItem.srsLevel : 0;
+          const lvName = ["生疏待背", "初识阶段", "巩固阶段", "熟练掌握"][srsLv] || `Lv.${srsLv}`;
+          variantWarnText.innerHTML = `💡 检测到词库中已存在原型词条 <strong>「${rootWord}」</strong> (${lvName})`;
+          btnSwitchToRoot.innerText = "改为编辑已有原型";
+          btnSwitchToRoot.style.background = "#D97706";
+          btnSwitchToRoot.onclick = () => {
+            SoundFx.playClick();
+            openEditModal(foundRootIdx);
+          };
+          variantWarn.style.display = 'block';
+        } else if (variantWarn) {
+          variantWarn.style.display = 'none';
+        }
       }
     } else if (variantWarn) {
       variantWarn.style.display = 'none';
@@ -3221,13 +3256,73 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (idx === -1) {
-        // 1. 手动添加新词条：检测词库中是否已存在该词的同名词或词根原型 (如输入 deficits，库中已有 deficit)
-        const lowerWord = word.toLowerCase().trim();
-        const forms = getBaseForms(lowerWord);
+        const cleanWord = word.toLowerCase().trim();
+
+        // 1. 完全同名词查重拦截：生词库中已存在该词条时，弹出明确确认，绝不静默覆盖洗掉复习进度
+        const exactIdx = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === cleanWord);
+        if (exactIdx !== -1) {
+          const exactItem = currentWords[exactIdx];
+          const srsLv = exactItem.srsLevel !== undefined ? exactItem.srsLevel : 0;
+          const lvName = ["生疏待背", "初识阶段", "巩固阶段", "熟练掌握"][srsLv] || `Lv.${srsLv}`;
+          const shouldMerge = confirm(
+            `💡 词库查重提醒：\n\n` +
+            `生词库中已收录该单词「${exactItem.text || exactItem.word}」！\n` +
+            `• 当前阶段：${lvName} (已复习 ${exactItem.srsReviews || 0} 次)\n` +
+            `• 原有释义：${exactItem.trans || '暂无'}\n\n` +
+            `点击【确定】：保留原有学习进度与时间，将本次录入的释义、例句与笔记合并更新到该词条；\n` +
+            `点击【取消】：返回重新修改单词。`
+          );
+
+          if (!shouldMerge) {
+            return;
+          }
+
+          if (trans) exactItem.trans = trans;
+          if (phonetic) exactItem.phonetic = cleanIPA(phonetic);
+          if (context) {
+            if (!exactItem.context) {
+              exactItem.context = context;
+            } else if (!exactItem.context.includes(context)) {
+              exactItem.context = exactItem.context + "\n" + context;
+            }
+          }
+          if (notes) {
+            if (!exactItem.notes) {
+              exactItem.notes = notes;
+            } else if (!exactItem.notes.includes(notes)) {
+              exactItem.notes = exactItem.notes + "；" + notes;
+            }
+          }
+          exactItem.updatedAt = Date.now();
+
+          chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
+            const delMap = Object.assign({}, rDel.deletedWords || {});
+            if (delMap[cleanWord]) {
+              delete delMap[cleanWord];
+            }
+            chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+              closeModal();
+              saveAndRefresh();
+              doWebDAVSync(false);
+              try {
+                if (SoundFx && typeof SoundFx.playSuccess === 'function') SoundFx.playSuccess();
+                if (typeof showToast === 'function') {
+                  showToast(`✨ 已成功将内容合并更新至已有词条「${exactItem.text || exactItem.word}」！`, 'success');
+                }
+              } catch (tErr) {
+                console.warn(tErr);
+              }
+            });
+          });
+          return;
+        }
+
+        // 2. 词根原型查重：检测词库中是否已收录其原型 (如输入 deficits，库中已有 deficit)
+        const forms = getBaseForms(cleanWord);
         let rootIdx = -1;
         
         for (const f of forms) {
-          if (f === lowerWord) continue;
+          if (f === cleanWord) continue;
           const found = currentWords.findIndex(w => (w.text || w.word || "").toLowerCase().trim() === f);
           if (found !== -1) {
             rootIdx = found;
