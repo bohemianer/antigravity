@@ -2617,7 +2617,7 @@ function initTheme() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function initNotebookApp() {
   initTheme();
   initCard3DTilt();
   PronunciationEngine.init();
@@ -3394,7 +3394,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // 若库中已存在同名单词，先完全清理旧记录再置顶更新 (防止重复条目堆积)
-        const cleanWord = word.toLowerCase().trim();
         chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
           const delMap = Object.assign({}, rDel.deletedWords || {});
           if (delMap[cleanWord]) {
@@ -4041,4 +4040,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNotebookApp);
+} else {
+  initNotebookApp();
+}
