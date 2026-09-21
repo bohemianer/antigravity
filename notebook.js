@@ -1344,11 +1344,16 @@ let batchTotalTarget = 20;
 function formatTrans(s) {
   if (!s) return "";
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  str = str.replace(/\uFF0E/g, ".");
 
   // 1. 标准化分号与逗号
   str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
 
-  // 2. 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. a. ad. prep. conj. pron. art. num. interj. aux. abbr. pl. sing. pref. suff. link-v. 等)
+  // 2. 清理词性缩写后的多余分号逗号并换行 (如 "v.；" -> "v. ")
+  const posCleanRegex = /\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)[；，,;\s]*/gi;
+  str = str.replace(posCleanRegex, "$1 ");
+
+  // 识别所有英文常见词性缩写并自动换行 (如 vt. vi. n. adj. adv. a. ad. prep. conj. pron. art. num. interj. aux. abbr. pl. sing. pref. suff. link-v. 等)
   const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
   str = str.replace(posRegex, "\n$1 ");
 
@@ -1370,7 +1375,7 @@ function formatTrans(s) {
 function formatTransHtml(s) {
   const formatted = formatTrans(s);
   if (!formatted) return "";
-  const POS_RE = /^([a-zA-Z\-]+\.|[\u2460-\u2473]|\(\d+\)|\[\d+\]|\d+[\.、]|\[.+?\]|【.+?】)\s*/;
+  const POS_RE = /^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】)\s*/;
   return formatted.split('\n').map(line => {
     const escaped = escapeHtml(line.trim());
     if (!escaped) return '';

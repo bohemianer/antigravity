@@ -174,15 +174,21 @@ function deriveInflectedPhonetic(basePhonetic, originalWord, baseForm) {
 function cleanAndStreamlineDictDefinition(s) {
   if (!s) return "";
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  // 统一全角点号 ． 为半角英文句点 .
+  str = str.replace(/\uFF0E/g, ".");
 
   // 1. 标准化分号与逗号
   str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
 
-  // 2. 识别所有英文常见词性缩写并自动换行
+  // 2. 清理词性缩写后的多余分号逗号并换行 (如 "v.；" -> "v. ")
+  const posCleanRegex = /\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)[；，,;\s]*/gi;
+  str = str.replace(posCleanRegex, "$1 ");
+
+  // 识别所有英文常见词性缩写并自动换行
   const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
   str = str.replace(posRegex, "\n$1 ");
 
-  // 3. 识别序号列表分项并自动换行
+  // 3. 识别序号列表分项并自动换行 (如 1. 2. 3.)
   const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
   str = str.replace(numRegex, "\n$1 ");
 
@@ -202,43 +208,80 @@ function cleanAndStreamlineDictDefinition(s) {
     return clauses.some(c => !isNameClause(c));
   });
 
-  const resultLines = [];
+  // 合并裸词性行（如只有 "v." 的行）与后续子条目，严禁将数字序号识别为词性
+  const groupedSections = [];
+  let currentGroup = { pos: "", lines: [] };
+  const POS_LINE_RE = /^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】)\s*(.*)$/;
 
   for (const line of rawLines) {
     if (/^(?:【名】|\[名\])/.test(line) && hasAnyLexical) {
       continue;
     }
+    const pm = line.match(POS_LINE_RE);
+    if (pm) {
+      if (currentGroup.pos || currentGroup.lines.length > 0) {
+        groupedSections.push(currentGroup);
+      }
+      currentGroup = { pos: pm[1], lines: [] };
+      if (pm[2].trim()) {
+        currentGroup.lines.push(pm[2].trim());
+      }
+    } else {
+      currentGroup.lines.push(line);
+    }
+  }
+  if (currentGroup.pos || currentGroup.lines.length > 0) {
+    groupedSections.push(currentGroup);
+  }
 
-    const posMatch = line.match(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|\d+[\.、]|\(\d+\)|[\u2460-\u2473])\s*(.*)$/);
-    const prefix = posMatch ? (posMatch[1] + " ") : "";
-    const content = posMatch ? posMatch[2] : line;
+  const resultLines = [];
 
-    const clauses = content.split(/[；;]/).map(c => c.trim()).filter(Boolean);
-    const hasLexicalInLine = clauses.some(c => !isNameClause(c));
+  for (const group of groupedSections) {
+    if (/^(?:【名】|\[名\])/.test(group.pos) && hasAnyLexical) {
+      continue;
+    }
+    const prefix = group.pos ? (group.pos + " ") : "";
+    let clauses = [];
+
+    for (let rawLine of group.lines) {
+      let lineText = rawLine.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
+                            .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
+                            .trim();
+      const colonIdx = lineText.search(/[:：]/);
+      if (colonIdx !== -1) {
+        const before = lineText.slice(0, colonIdx).trim();
+        const after = lineText.slice(colonIdx + 1).trim();
+        if (/(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级)/.test(before)) {
+          lineText = before + ": " + after;
+        } else if (before && before.length <= 30 && !/[。！!？?]/.test(before)) {
+          lineText = before;
+        }
+      }
+      const parts = lineText.split(/[；;]/).map(c => c.trim()).filter(Boolean);
+      clauses.push(...parts);
+    }
 
     const filteredClauses = [];
     const seenMeanings = new Set();
 
     for (let c of clauses) {
+      c = c.replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "").trim();
       if (isNameClause(c)) {
-        if (hasLexicalInLine || hasAnyLexical) {
+        if (hasAnyLexical) {
           continue;
         } else {
           c = c.replace(/（(?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?）|\((?:英|美|法|德|意|西|俄|葡|日|拉|朝|波|匈|罗|瑞典|加|塞).*?\)/g, "");
           c = c.replace(/[（\(](?:人名|男子名|女子名|男名|女名|姓氏|教名|英语姓氏)[）\)]/g, "").trim();
         }
       }
-
       c = c.replace(/<(?:英|美|澳|古|罕|非正式)>(?:燃气|赛马|英橄|澳橄|板球|棒球跑垒)[^，；;]*/g, "");
       c = c.replace(/^[（\(][a-zA-Z\s]+[）\)]/g, "").trim();
-      c = c.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "").trim();
-
+      c = c.replace(/^[\s；，,;、]+|[\s；，,;]+$/g, "").trim();
       if (!c) continue;
 
       const key = c.replace(/[\s，、\(\)（）]/g, "");
       if (seenMeanings.has(key)) continue;
       seenMeanings.add(key);
-
       filteredClauses.push(c);
     }
 
@@ -260,6 +303,73 @@ function cleanAndStreamlineDictDefinition(s) {
   return resultLines.join("\n");
 }
 
+function streamlineSubClause(text) {
+  let s = (text || "").trim();
+  s = s.replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "");
+  const colonIdx = s.search(/[:：]/);
+  if (colonIdx !== -1) {
+    const before = s.slice(0, colonIdx).trim();
+    const after = s.slice(colonIdx + 1).trim();
+    if (/(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级)/.test(before)) {
+      return before + ": " + after;
+    }
+    if (before && before.length <= 30 && !/[。！!？?]/.test(before)) {
+      return before;
+    }
+  }
+  return s;
+}
+
+function parseYoudaoTrs(trs) {
+  if (!Array.isArray(trs)) return "";
+  const rawItems = trs.map(t => (t.tr && t.tr[0] && t.tr[0].l && t.tr[0].l.i) ? t.tr[0].l.i.join("") : "").filter(Boolean);
+  
+  const results = [];
+  let currentPos = "";
+  let currentSubMeanings = [];
+
+  const flushPos = () => {
+    if (currentPos || currentSubMeanings.length > 0) {
+      const posStr = currentPos ? (currentPos.endsWith(".") ? currentPos + " " : currentPos + ". ") : "";
+      if (currentSubMeanings.length > 0) {
+        results.push(posStr + currentSubMeanings.join("； "));
+      } else if (currentPos) {
+        results.push(posStr.trim());
+      }
+      currentPos = "";
+      currentSubMeanings = [];
+    }
+  };
+
+  const posOnlyRegex = /^\s*([a-zA-Z\-]+)[\.．]\s*$/;
+  const posPrefixRegex = /^\s*([a-zA-Z\-]+)[\.．]\s*(.*)$/;
+
+  for (let item of rawItems) {
+    const onlyMatch = item.match(posOnlyRegex);
+    if (onlyMatch) {
+      flushPos();
+      currentPos = onlyMatch[1] + ".";
+      continue;
+    }
+
+    const prefixMatch = item.match(posPrefixRegex);
+    if (prefixMatch) {
+      flushPos();
+      currentPos = prefixMatch[1] + ".";
+      const cleanSub = streamlineSubClause(prefixMatch[2]);
+      if (cleanSub) currentSubMeanings.push(cleanSub);
+      continue;
+    }
+
+    const cleanSub = streamlineSubClause(item);
+    if (cleanSub) {
+      currentSubMeanings.push(cleanSub);
+    }
+  }
+  flushPos();
+  return results.join("\n");
+}
+
 async function queryYoudaoDict(word) {
   const forms = getBaseForms(word);
   
@@ -279,7 +389,7 @@ async function queryYoudaoDict(word) {
         const w = data.ec.word[0];
         usphone = w.usphone || w.ukphone || w.phone || "";
         if (w.trs && Array.isArray(w.trs)) {
-          explain = w.trs.map(t => (t.tr && t.tr[0] && t.tr[0].l && t.tr[0].l.i) ? t.tr[0].l.i.join("") : "").filter(Boolean).join("； ");
+          explain = parseYoudaoTrs(w.trs);
         }
       }
 

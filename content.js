@@ -264,25 +264,60 @@ function getDialectLabel(word) {
 function formatDefinition(def) {
   if (!def) return "";
   let str = String(def).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  str = str.replace(/\uFF0E/g, ".");
   str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
+
+  const posCleanRegex = /\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)[；，,;\s]*/gi;
+  str = str.replace(posCleanRegex, "$1 ");
 
   const posRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)\b((?:n|v|vt|vi|adj|adv|a|ad|prep|conj|pron|art|num|int|interj|aux|abbr|pl|sing|pref|suff|link-v)\.)\s*/gi;
   str = str.replace(posRegex, "\n$1 ");
 
-  const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
-  str = str.replace(numRegex, "\n$1 ");
-
   const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】|时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]?)\s*/gi;
   str = str.replace(metaRegex, "\n$1 ");
 
-  return str.split("\n")
+  const rawLines = str.split("\n")
     .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, "").trim())
-    .filter(Boolean)
-    .map(line => {
-      const safe = escapeHtml(line);
-      const highlighted = safe.replace(/^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\b(?:\[.+?\]|【.+?】|\(\d+\)|\[\d+\]|\d+[\.、]|[\u2460-\u2473]))\s*/, '<span class="agy-pos-tag">$1</span> ');
-      return `<div style="margin-bottom: 3px;">${highlighted}</div>`;
-    }).join("");
+    .filter(Boolean);
+
+  const POS_TAG_RE = /^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】)\s*(.*)$/;
+  const groups = [];
+  let currentGroup = { pos: "", contentParts: [] };
+
+  for (const line of rawLines) {
+    const pm = line.match(POS_TAG_RE);
+    if (pm) {
+      if (currentGroup.pos || currentGroup.contentParts.length > 0) {
+        groups.push(currentGroup);
+      }
+      currentGroup = { pos: pm[1], contentParts: [] };
+      if (pm[2].trim()) {
+        currentGroup.contentParts.push(pm[2].trim());
+      }
+    } else {
+      currentGroup.contentParts.push(line);
+    }
+  }
+  if (currentGroup.pos || currentGroup.contentParts.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  return groups.map(group => {
+    let content = group.contentParts.map(p => {
+      return p.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
+              .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
+              .trim();
+    }).filter(Boolean).join("； ");
+
+    if (group.pos && content) {
+      return `<div style="margin-bottom: 3px;"><span class="agy-pos-tag">${escapeHtml(group.pos)}</span> ${escapeHtml(content)}</div>`;
+    } else if (group.pos) {
+      return `<div style="margin-bottom: 3px;"><span class="agy-pos-tag">${escapeHtml(group.pos)}</span></div>`;
+    } else if (content) {
+      return `<div style="margin-bottom: 3px;">${escapeHtml(content)}</div>`;
+    }
+    return "";
+  }).filter(Boolean).join("");
 }
 
 function isExtensionValid() {
