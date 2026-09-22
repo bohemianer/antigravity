@@ -151,7 +151,17 @@ class WebDAVClient {
     if (resp.status === 200 || resp.status === 201 || resp.status === 204) {
       return true;
     }
-    throw new Error(`WebDAV PUT failed (${resp.status}): ${resp.statusText}`);
+    let bodyText = "";
+    try {
+      bodyText = (await resp.text()).slice(0, 300);
+    } catch (e) {}
+    let reason = resp.statusText || bodyText || "";
+    if (resp.status === 507) {
+      reason = "507 存储空间不足 (Insufficient Storage)";
+    } else if (resp.status === 429) {
+      reason = "429 请求过于频繁 (Too Many Requests)";
+    }
+    throw new Error(`WebDAV PUT failed (${resp.status}): ${reason}`);
   }
 
   // 3.1 上传删除墓碑记录到云端 (Tombstones PUT)

@@ -1000,13 +1000,22 @@ async function doFullSync(notifyUser = false) {
     if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
       shortTxt = "密码错误(401)";
       detailAdvice = "坚果云授权失败 (401)：请检查坚果云用户名与「应用专用密码」是否正确（注意必须在坚果云官网生成“第三方应用密码”，不能使用主账号登录密码）！";
+    } else if (errMsg.includes('507') || errMsg.toLowerCase().includes('insufficient storage') || errMsg.includes('存储空间不足')) {
+      shortTxt = "空间已满(507)";
+      detailAdvice = "坚果云存储空间已满 (507)：坚果云个人存储空间或同步文件夹配额已耗尽，请登录坚果云网页端清理冗余文件或扩容！";
+    } else if (errMsg.includes('429') || errMsg.toLowerCase().includes('too many requests') || errMsg.includes('频繁')) {
+      shortTxt = "频次受限(429)";
+      detailAdvice = "坚果云请求过于频繁 (429)：触发了坚果云 WebDAV 的频次限制，请暂停频繁点击同步，稍等 3~5 分钟后再试！";
+    } else if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('traffic') || errMsg.includes('流量')) {
+      shortTxt = "流量超限";
+      detailAdvice = "坚果云当月流量已用尽：坚果云免费版每月仅有 1GB 上传流量，超额后将无法上传写入。需等待下月 1 日重置，或升级会员！";
     } else if (errMsg.includes('403') || errMsg.includes('404') || errMsg.includes('409')) {
-      shortTxt = "路径错误";
+      shortTxt = "路径/流量异常";
       const folderName = (webdavConfig && webdavConfig.filePath) ? webdavConfig.filePath.split('/')[0] : 'antigravity';
-      detailAdvice = `坚果云路径错误 (${errMsg})：坚果云必须先存在该同步文件夹。请在坚果云网页版中新建「${folderName}」文件夹，或在设置中将文件路径改为「我的坚果云/antigravity.json」！`;
+      detailAdvice = `坚果云同步异常 (${errMsg})：\n1. 若为新配置，坚果云根目录必须先手动新建「${folderName}」文件夹（或在设置中将文件路径改为「我的坚果云/antigravity.json」）；\n2. 若文件夹已存在，极大概率是坚果云免费版【当月 1GB 上传流量已耗尽】导致写保护！`;
     } else if (errMsg.includes('超时') || errMsg.toLowerCase().includes('timeout')) {
       shortTxt = "网络超时";
-      detailAdvice = "连接坚果云服务器超时，请检查网络连接或系统代理设置！";
+      detailAdvice = "连接坚果云服务器超时，请检查网络连接或系统代理设置（尝试将 dav.jianguoyun.com 设为直连）！";
     }
 
     lastSyncDetailError = detailAdvice;
