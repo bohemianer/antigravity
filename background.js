@@ -705,24 +705,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === "SAVE_WORD") {
     const payload = request.data;
-    const cleanWord = (payload.text || payload.word || "").trim();
+    // 无论划词单词首字母是否大写，入库一律全部转为小写存储
+    const cleanWord = (payload.text || payload.word || "").trim().toLowerCase();
 
     chrome.storage.local.get({ savedWords: [], deletedWords: {} }, (result) => {
       const list = result.savedWords || [];
       const delMap = Object.assign({}, result.deletedWords || {});
 
       // 智能词形关联检测：优先完全匹配 cleanWord；若未命中，自动检索是否已收录该词的原型词条 (如 deficits -> deficit, halted -> halt)
-      let existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord.toLowerCase());
+      let existsIndex = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === cleanWord);
       const baseForms = getBaseForms(cleanWord);
       let canonicalWord = cleanWord;
 
       if (existsIndex === -1 && baseForms.length > 1) {
         for (const bf of baseForms) {
-          if (bf === cleanWord.toLowerCase()) continue;
-          const bIdx = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === bf.toLowerCase());
+          const lowerBf = bf.toLowerCase();
+          if (lowerBf === cleanWord) continue;
+          const bIdx = list.findIndex(x => (x.text || x.word || "").toLowerCase().trim() === lowerBf);
           if (bIdx !== -1) {
             existsIndex = bIdx;
-            canonicalWord = list[bIdx].text || list[bIdx].word || bf;
+            canonicalWord = (list[bIdx].text || list[bIdx].word || lowerBf).toLowerCase();
             break;
           }
         }
@@ -738,7 +740,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const newDate = Math.max(Date.now(), maxExistingDate + 1);
 
       const item = {
-        text: canonicalWord,
+        text: canonicalWord.toLowerCase(),
         trans: payload.trans || payload.definition || (prevItem ? prevItem.trans : ""),
         phonetic: cleanIPA(payload.phonetic || (prevItem ? prevItem.phonetic : "")),
         context: payload.context || payload.sentence || (prevItem ? prevItem.context : ""),

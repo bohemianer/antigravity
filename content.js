@@ -471,7 +471,8 @@ function showCard(rect, text, sentence) {
   const card = getPopupCard();
   const wordsCount = text.trim().split(/\s+/).length;
   const isWordMode = wordsCount <= 2;
-  const safeText = escapeHtml(text);
+  const displayText = isWordMode ? text.toLowerCase() : text;
+  const safeText = escapeHtml(displayText);
 
   if (isWordMode) {
     card.innerHTML = `
@@ -621,7 +622,7 @@ function showCard(rect, text, sentence) {
         safeSendMessage({
           action: "SAVE_WORD",
           data: {
-            text: text,
+            text: isWordMode ? text.toLowerCase() : text,
             trans: rawResult,
             phonetic: currentPhonetic,
             context: sentence || "",

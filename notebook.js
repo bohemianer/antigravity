@@ -2668,6 +2668,14 @@ function initNotebookApp() {
     currentWords = validList.map(item => {
       item.notes = cleanNotes(item.notes);
       if (item.phonetic) item.phonetic = cleanIPA(item.phonetic);
+      if (item.text && item.text !== item.text.toLowerCase()) {
+        item.text = item.text.toLowerCase();
+        needSave = true;
+      }
+      if (item.word && item.word !== item.word.toLowerCase()) {
+        item.word = item.word.toLowerCase();
+        needSave = true;
+      }
       if (typeof item.srsLevel === 'undefined') item.srsLevel = 0;
       if (!item._uid) {
         item._uid = 'w_' + (item.date || Date.now()) + '_' + Math.random().toString(36).slice(2, 9);
@@ -3253,7 +3261,7 @@ function initNotebookApp() {
         }
       }
 
-      const word = document.getElementById('inputWord').value.trim();
+      const word = document.getElementById('inputWord').value.trim().toLowerCase();
       const phonetic = document.getElementById('inputPhonetic').value.trim();
       const trans = document.getElementById('inputTrans').value.trim();
       const context = document.getElementById('inputContext').value.trim();

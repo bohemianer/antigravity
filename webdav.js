@@ -247,10 +247,9 @@ class WebDAVClient {
         const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
         const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
         // 若本地版本较新，以本地设定的 date 为准（新添加词置顶，已修改词保持原位）
-        const targetDate = isLocalNewer ? (lItem.date || lCreate) : (rItem.date || rCreate);
-
+        const rawMergedText = (isLocalNewer ? (lItem.text || rItem.text || lItem.word || rItem.word) : (rItem.text || lItem.text || rItem.word || lItem.word)) || "";
         const mergedWord = {
-          text: lItem.text || rItem.text || lItem.word || rItem.word,
+          text: rawMergedText.toLowerCase().trim(),
           trans: (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
           phonetic: lItem.phonetic || rItem.phonetic || "",
           context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
@@ -467,7 +466,7 @@ class EudicSyncEngine {
         let ctx = (item.context_line || item.context || item.sentence || "").replace(/<[^>]+>/g, '').trim();
 
         const newItem = {
-          text: wText,
+          text: wText.toLowerCase().trim(),
           trans: exp || "暂无中文释义",
           phonetic: cleanIPA(p),
           context: ctx || "来自欧路词典同步",
