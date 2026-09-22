@@ -93,36 +93,6 @@ class WebDAVClient {
       }
     }, 12000);
 
-    // 智能兼容：若在坚果云且原路径返回 404/403，尝试检查默认自带的 "我的坚果云/antigravity.json"
-    if ((resp.status === 404 || resp.status === 403) && this.serverUrl.includes('jianguoyun.com') && !this.filePath.startsWith('我的坚果云/')) {
-      const fallbackPath = '我的坚果云/' + this.filePath.replace(/^antigravity\//i, '');
-      const fallbackUrl = encodeURI(this.serverUrl + fallbackPath);
-      try {
-        const fbResp = await fetchWithTimeout(fallbackUrl, {
-          method: "GET",
-          headers: {
-            "Authorization": this.getAuthHeader(),
-            "Cache-Control": "no-cache"
-          }
-        }, 12000);
-        if (fbResp.ok) {
-          this.filePath = fallbackPath;
-          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-            chrome.storage.sync.get({ webdavConfig: null }, (r) => {
-              if (r && r.webdavConfig) {
-                r.webdavConfig.filePath = fallbackPath;
-                chrome.storage.sync.set({ webdavConfig: r.webdavConfig });
-              }
-            });
-          }
-          const text = await fbResp.text();
-          if (!text || !text.trim()) return [];
-          const parsed = JSON.parse(text);
-          return Array.isArray(parsed) ? parsed : [];
-        }
-      } catch (fbErr) {}
-    }
-
     if (resp.status === 404) {
       return []; // 云端尚无文件，返回空数组
     }
@@ -182,36 +152,6 @@ class WebDAVClient {
       return true;
     }
 
-    // 智能坚果云根目录 403 容错自愈：
-    // 坚果云严禁 WebDAV 客户端在根目录新建顶层文件夹，导致 antigravity/... 写入直接报 403
-    // 此时自动转存到坚果云全员自带的 "我的坚果云/antigravity.json" 并自动持久化配置
-    if (resp.status === 403 && this.serverUrl.includes('jianguoyun.com') && !this.filePath.startsWith('我的坚果云/')) {
-      const fallbackPath = '我的坚果云/' + this.filePath.replace(/^antigravity\//i, '');
-      const fallbackUrl = encodeURI(this.serverUrl + fallbackPath);
-      try {
-        const fbResp = await fetchWithTimeout(fallbackUrl, {
-          method: "PUT",
-          headers: {
-            "Authorization": this.getAuthHeader(),
-            "Content-Type": "application/json; charset=utf-8"
-          },
-          body: jsonStr
-        }, 15000);
-        if (fbResp.status === 200 || fbResp.status === 201 || fbResp.status === 204) {
-          this.filePath = fallbackPath;
-          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-            chrome.storage.sync.get({ webdavConfig: null }, (r) => {
-              if (r && r.webdavConfig) {
-                r.webdavConfig.filePath = fallbackPath;
-                chrome.storage.sync.set({ webdavConfig: r.webdavConfig });
-              }
-            });
-          }
-          return true;
-        }
-      } catch (fbErr) {}
-    }
-
     let bodyText = "";
     try {
       bodyText = (await resp.text()).slice(0, 300);
@@ -221,6 +161,8 @@ class WebDAVClient {
       reason = "507 存储空间不足 (Insufficient Storage)";
     } else if (resp.status === 429) {
       reason = "429 请求过于频繁 (Too Many Requests)";
+    } else if (resp.status === 403) {
+      reason = "403 禁止写入 (Forbidden) - 坚果云免费版当月 1GB 上传流量已耗尽（或应用密码为只读权限）";
     }
     throw new Error(`WebDAV PUT failed (${resp.status}): ${reason}`);
   }
