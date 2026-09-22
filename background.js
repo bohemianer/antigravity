@@ -846,10 +846,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// 后台周期性静默同步 (每 5 分钟自动与坚果云及欧路词典核对拉取新词)
+// 后台周期性静默同步 (每 30 分钟自动与坚果云及欧路词典核对拉取新词)
 try {
   if (chrome.alarms) {
-    chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 5 });
+    chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 30 });
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'antigravity_auto_sync') {
         chrome.storage.local.get({ savedWords: [] }, (res) => {

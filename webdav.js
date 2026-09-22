@@ -352,9 +352,25 @@ class WebDAVClient {
     // 3. 遵从墓碑规则与时间线的双向字段级深度合并
     const mergedList = this.mergeWords(localList || [], remoteList || [], mergedDeletions, lastSyncTime);
 
-    // 4. 上传合并后的全集与墓碑表到云端
-    await this.uploadWords(mergedList);
-    const cleanedDeletions = await this.uploadDeletions(mergedDeletions);
+    // 4. 智能差异校验 (Smart Dirty Check)：
+    // 只有当本地合并数据与云端真正存在新增、修改或删除差异时，才发起 PUT 上传！
+    // 彻底杜绝在数据未变更时盲目上传，100% 保护坚果云当月 1GB 免费上传流量
+    const isWordsChanged = (mergedList.length !== remoteList.length) || mergedList.some((w, i) => {
+      const rw = remoteList[i];
+      if (!rw) return true;
+      return (w.text !== rw.text) || (w.trans !== rw.trans) || (w.updatedAt !== rw.updatedAt) || (w.date !== rw.date);
+    });
+
+    const isDeletionsChanged = Object.keys(mergedDeletions).length !== Object.keys(remoteDeletions).length ||
+      Object.entries(mergedDeletions).some(([k, ts]) => remoteDeletions[k] !== ts);
+
+    let cleanedDeletions = mergedDeletions;
+    if (isWordsChanged) {
+      await this.uploadWords(mergedList);
+    }
+    if (isDeletionsChanged) {
+      cleanedDeletions = await this.uploadDeletions(mergedDeletions);
+    }
 
     return {
       mergedList,
