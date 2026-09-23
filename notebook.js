@@ -3335,12 +3335,74 @@ function initNotebookApp() {
   if (tabBtnWebdav) tabBtnWebdav.onclick = () => switchSyncTab('webdav');
   if (tabBtnEudic) tabBtnEudic.onclick = () => switchSyncTab('eudic');
 
+  // 智能解析仓库网址（如用户直接粘贴 https://gitee.com/freshwater-sea/english 自动拆分空间与仓库名）
+  function parseGiteeRepoUrl(input) {
+    if (!input || typeof input !== 'string') return null;
+    let str = input.trim();
+    str = str.replace(/\.git$/i, '').replace(/\/+$/, '');
+
+    // 匹配 SSH: git@gitee.com:owner/repo
+    let m = str.match(/gitee\.com:([^\/\s]+)\/([^\/\s]+)/i);
+    if (!m) {
+      // 匹配 HTTP(S): https://gitee.com/owner/repo
+      m = str.match(/gitee\.com\/([^\/\s]+)\/([^\/\s]+)/i);
+    }
+    if (!m) {
+      // 匹配直接的 owner/repo 格式
+      m = str.match(/^([a-zA-Z0-9_\-\.]+)\/([a-zA-Z0-9_\-\.]+)$/);
+    }
+
+    if (m && m[1] && m[2]) {
+      return { owner: m[1].trim(), repo: m[2].trim() };
+    }
+    return null;
+  }
+
+  function parseAndApplyGiteeUrl(text) {
+    const parsed = parseGiteeRepoUrl(text);
+    if (parsed) {
+      const ownerEl = document.getElementById('giteeOwner');
+      const repoEl = document.getElementById('giteeRepo');
+      if (ownerEl) ownerEl.value = parsed.owner;
+      if (repoEl) repoEl.value = parsed.repo;
+      showToast(`✨ 识别到仓库网址：空间「${parsed.owner}」，仓库「${parsed.repo}」`, 'info', 2800);
+      return true;
+    }
+    return false;
+  }
+
+  const giteeOwnerInput = document.getElementById('giteeOwner');
+  const giteeRepoInput = document.getElementById('giteeRepo');
+
+  [giteeOwnerInput, giteeRepoInput].forEach(inp => {
+    if (!inp) return;
+    inp.addEventListener('paste', (e) => {
+      const pasted = (e.clipboardData || window.clipboardData)?.getData('text');
+      if (pasted && parseAndApplyGiteeUrl(pasted)) {
+        e.preventDefault();
+      }
+    });
+    inp.addEventListener('input', (e) => {
+      parseAndApplyGiteeUrl(e.target.value);
+    });
+  });
+
   const giteeTestBtn = document.getElementById('giteeTestBtn');
   if (giteeTestBtn) {
     giteeTestBtn.onclick = () => {
+      let ownerVal = (document.getElementById('giteeOwner').value || '').trim();
+      let repoVal = (document.getElementById('giteeRepo').value || '').trim();
+      const autoParsed = parseGiteeRepoUrl(ownerVal) || parseGiteeRepoUrl(repoVal);
+      if (autoParsed) {
+        ownerVal = autoParsed.owner;
+        repoVal = autoParsed.repo;
+        document.getElementById('giteeOwner').value = ownerVal;
+        document.getElementById('giteeRepo').value = repoVal;
+      }
+
       const cfg = {
-        owner: (document.getElementById('giteeOwner').value || '').trim(),
-        repo: (document.getElementById('giteeRepo').value || '').trim(),
+        owner: ownerVal,
+        repo: repoVal,
         token: (document.getElementById('giteeToken').value || '').trim(),
         filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
         enabled: document.getElementById('giteeEnable').checked
@@ -3360,9 +3422,19 @@ function initNotebookApp() {
   if (giteeForm) {
     giteeForm.onsubmit = (e) => {
       e.preventDefault();
+      let ownerVal = (document.getElementById('giteeOwner').value || '').trim();
+      let repoVal = (document.getElementById('giteeRepo').value || '').trim();
+      const autoParsed = parseGiteeRepoUrl(ownerVal) || parseGiteeRepoUrl(repoVal);
+      if (autoParsed) {
+        ownerVal = autoParsed.owner;
+        repoVal = autoParsed.repo;
+        document.getElementById('giteeOwner').value = ownerVal;
+        document.getElementById('giteeRepo').value = repoVal;
+      }
+
       const cfg = {
-        owner: (document.getElementById('giteeOwner').value || '').trim(),
-        repo: (document.getElementById('giteeRepo').value || '').trim(),
+        owner: ownerVal,
+        repo: repoVal,
         token: (document.getElementById('giteeToken').value || '').trim(),
         filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
         enabled: document.getElementById('giteeEnable').checked

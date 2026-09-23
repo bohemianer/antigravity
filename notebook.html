@@ -2900,12 +2900,15 @@
           <form id="giteeForm">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div class="form-group">
-                <label class="form-label">空间地址 / 用户名</label>
-                <input type="text" id="giteeOwner" class="form-input" required placeholder="如: your_gitee_id">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>空间地址 / 用户名</span>
+                  <span style="font-size: 10.5px; color: var(--claude-terracotta); font-weight: normal;">支持直接粘贴仓库网址</span>
+                </label>
+                <input type="text" id="giteeOwner" class="form-input" required placeholder="如: freshwater-sea 或直接粘贴网址">
               </div>
               <div class="form-group">
                 <label class="form-label">仓库名称</label>
-                <input type="text" id="giteeRepo" class="form-input" required placeholder="如: my-vocab (私有仓库)">
+                <input type="text" id="giteeRepo" class="form-input" required placeholder="如: english (自动解析)">
               </div>
             </div>
             <div class="form-group">
