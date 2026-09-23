@@ -2585,8 +2585,14 @@ function openDavModal() {
   chrome.storage.sync.get({ giteeConfig: null, webdavConfig: null, eudicToken: "" }, (r) => {
     if (r.giteeConfig) {
       giteeConfig = r.giteeConfig;
-      if (document.getElementById('giteeOwner')) document.getElementById('giteeOwner').value = giteeConfig.owner || "";
-      if (document.getElementById('giteeRepo')) document.getElementById('giteeRepo').value = giteeConfig.repo || "";
+      const urlEl = document.getElementById('giteeRepoUrl');
+      if (urlEl) {
+        if (giteeConfig.repoUrl) {
+          urlEl.value = giteeConfig.repoUrl;
+        } else if (giteeConfig.owner && giteeConfig.repo) {
+          urlEl.value = `https://gitee.com/${giteeConfig.owner}/${giteeConfig.repo}`;
+        }
+      }
       if (document.getElementById('giteeToken')) document.getElementById('giteeToken').value = giteeConfig.token || "";
       if (document.getElementById('giteePath')) document.getElementById('giteePath').value = giteeConfig.filePath || "antigravity.json";
       if (document.getElementById('giteeEnable')) document.getElementById('giteeEnable').checked = (giteeConfig.enabled !== false);
@@ -3358,59 +3364,41 @@ function initNotebookApp() {
     return null;
   }
 
-  function parseAndApplyGiteeUrl(text) {
-    const parsed = parseGiteeRepoUrl(text);
-    if (parsed) {
-      const ownerEl = document.getElementById('giteeOwner');
-      const repoEl = document.getElementById('giteeRepo');
-      if (ownerEl) ownerEl.value = parsed.owner;
-      if (repoEl) repoEl.value = parsed.repo;
-      showToast(`✨ 识别到仓库网址：空间「${parsed.owner}」，仓库「${parsed.repo}」`, 'info', 2800);
-      return true;
+  function getGiteeConfigFromForm() {
+    const rawUrl = (document.getElementById('giteeRepoUrl')?.value || '').trim();
+    const token = (document.getElementById('giteeToken')?.value || '').trim();
+    const filePath = (document.getElementById('giteePath')?.value || 'antigravity.json').trim();
+    const enabled = document.getElementById('giteeEnable')?.checked ?? true;
+
+    if (!rawUrl) {
+      alert("请填写 Gitee 仓库网址！\n例如：https://gitee.com/freshwater-sea/english");
+      return null;
     }
-    return false;
+    const parsed = parseGiteeRepoUrl(rawUrl);
+    if (!parsed) {
+      alert("请输入有效的 Gitee 仓库网址或空间/仓库路径！\n例如：https://gitee.com/freshwater-sea/english");
+      return null;
+    }
+    if (!token) {
+      alert("请填写 Gitee 私人令牌 (Token)！");
+      return null;
+    }
+
+    return {
+      repoUrl: rawUrl.startsWith('http') ? rawUrl : `https://gitee.com/${parsed.owner}/${parsed.repo}`,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      token: token,
+      filePath: filePath,
+      enabled: enabled
+    };
   }
-
-  const giteeOwnerInput = document.getElementById('giteeOwner');
-  const giteeRepoInput = document.getElementById('giteeRepo');
-
-  [giteeOwnerInput, giteeRepoInput].forEach(inp => {
-    if (!inp) return;
-    inp.addEventListener('paste', (e) => {
-      const pasted = (e.clipboardData || window.clipboardData)?.getData('text');
-      if (pasted && parseAndApplyGiteeUrl(pasted)) {
-        e.preventDefault();
-      }
-    });
-    inp.addEventListener('input', (e) => {
-      parseAndApplyGiteeUrl(e.target.value);
-    });
-  });
 
   const giteeTestBtn = document.getElementById('giteeTestBtn');
   if (giteeTestBtn) {
     giteeTestBtn.onclick = () => {
-      let ownerVal = (document.getElementById('giteeOwner').value || '').trim();
-      let repoVal = (document.getElementById('giteeRepo').value || '').trim();
-      const autoParsed = parseGiteeRepoUrl(ownerVal) || parseGiteeRepoUrl(repoVal);
-      if (autoParsed) {
-        ownerVal = autoParsed.owner;
-        repoVal = autoParsed.repo;
-        document.getElementById('giteeOwner').value = ownerVal;
-        document.getElementById('giteeRepo').value = repoVal;
-      }
-
-      const cfg = {
-        owner: ownerVal,
-        repo: repoVal,
-        token: (document.getElementById('giteeToken').value || '').trim(),
-        filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
-        enabled: document.getElementById('giteeEnable').checked
-      };
-      if (!cfg.owner || !cfg.repo || !cfg.token) {
-        alert("请先填写 Gitee 空间地址、仓库名与私人令牌 (Token)！");
-        return;
-      }
+      const cfg = getGiteeConfigFromForm();
+      if (!cfg) return;
       giteeConfig = cfg;
       chrome.storage.sync.set({ giteeConfig: cfg }, () => {
         doFullSync(true);
@@ -3422,23 +3410,8 @@ function initNotebookApp() {
   if (giteeForm) {
     giteeForm.onsubmit = (e) => {
       e.preventDefault();
-      let ownerVal = (document.getElementById('giteeOwner').value || '').trim();
-      let repoVal = (document.getElementById('giteeRepo').value || '').trim();
-      const autoParsed = parseGiteeRepoUrl(ownerVal) || parseGiteeRepoUrl(repoVal);
-      if (autoParsed) {
-        ownerVal = autoParsed.owner;
-        repoVal = autoParsed.repo;
-        document.getElementById('giteeOwner').value = ownerVal;
-        document.getElementById('giteeRepo').value = repoVal;
-      }
-
-      const cfg = {
-        owner: ownerVal,
-        repo: repoVal,
-        token: (document.getElementById('giteeToken').value || '').trim(),
-        filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
-        enabled: document.getElementById('giteeEnable').checked
-      };
+      const cfg = getGiteeConfigFromForm();
+      if (!cfg) return;
       giteeConfig = cfg;
       chrome.storage.sync.set({ giteeConfig: cfg }, () => {
         closeDavModal();
