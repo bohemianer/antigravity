@@ -2868,70 +2868,128 @@
 
   <!-- 云端与欧路词典同步设置模态弹窗 -->
   <div class="modal-backdrop" id="webdavModal">
-    <div class="modal-card" style="max-width: 520px;">
-      <div class="modal-header">
-        <span class="modal-title">☁️ 多端云同步与欧路词典设置</span>
+    <div class="modal-card" style="max-width: 530px; padding: 20px 22px;">
+      <div class="modal-header" style="margin-bottom: 12px;">
+        <span class="modal-title">☁️ 多端云同步与词典设置</span>
         <button class="modal-close" id="davModalClose">✕</button>
       </div>
+
+      <!-- 选项卡切换器 -->
+      <div class="sync-tab-bar" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-warm); padding-bottom: 10px;">
+        <button type="button" class="sync-tab-btn active" id="tabBtnGitee" style="padding: 7px 14px; border-radius: 8px; border: none; background: #c2410c; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+          <span>🌲</span> Gitee 码云 (推荐)
+        </button>
+        <button type="button" class="sync-tab-btn" id="tabBtnWebdav" style="padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border-warm); background: var(--bg-card); color: var(--text-main); font-size: 12.5px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+          <span>☁️</span> WebDAV (坚果云)
+        </button>
+        <button type="button" class="sync-tab-btn" id="tabBtnEudic" style="padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border-warm); background: var(--bg-card); color: var(--text-main); font-size: 12.5px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+          <span>📚</span> 欧路词典
+        </button>
+      </div>
       
-      <!-- 模块 1: 坚果云 WebDAV 同步 -->
-      <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
-        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-          <span>坚果云 WebDAV 实时云同步</span>
-          <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">多设备双向实时漫游</span>
+      <!-- 面板 1: Gitee (码云) 私有仓库同步 -->
+      <div id="panelGitee" class="sync-panel" style="display: block;">
+        <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>🌲 Gitee 码云私有仓库同步</span>
+            <a href="https://gitee.com/profile/personal_access_tokens" target="_blank" style="font-size: 11.5px; color: var(--claude-terracotta); text-decoration: none; font-weight: 500;">👉 获取私人令牌 (Token)</a>
+          </div>
+          <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+            国内 100% 直连无需 VPN，无月上传流量限制。基于私有 Git 仓库，自带每次修改的历史版本时光机。
+          </div>
+          <form id="giteeForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label">空间地址 / 用户名</label>
+                <input type="text" id="giteeOwner" class="form-input" required placeholder="如: your_gitee_id">
+              </div>
+              <div class="form-group">
+                <label class="form-label">仓库名称</label>
+                <input type="text" id="giteeRepo" class="form-input" required placeholder="如: my-vocab (私有仓库)">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">私人令牌 Token (需勾选 projects 权限)</label>
+              <input type="password" id="giteeToken" class="form-input" required placeholder="粘贴 Gitee 个人设置中生成的 Token">
+            </div>
+            <div class="form-group">
+              <label class="form-label">存储文件路径</label>
+              <input type="text" id="giteePath" class="form-input" required value="antigravity.json">
+            </div>
+            <div style="margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="giteeEnable" checked style="width: 15px; height: 15px; accent-color: var(--claude-terracotta);">
+              <label for="giteeEnable" style="font-size: 12px; color: var(--text-body); cursor: pointer;">开启划词与自测自动双向同步</label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="button" class="btn" id="giteeTestBtn" style="font-size: 12px; height: 32px;">⚡ 测试并同步 Gitee</button>
+              <button type="submit" class="btn btn-primary" style="font-size: 12px; height: 32px; background: #c2410c; border-color: #9a3412;">保存 Gitee 配置</button>
+            </div>
+          </form>
         </div>
-        <form id="davForm">
-          <div class="form-group">
-            <label class="form-label">服务器地址</label>
-            <input type="url" id="davServer" class="form-input" required value="https://dav.jianguoyun.com/dav/">
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="form-group">
-              <label class="form-label">账户邮箱</label>
-              <input type="text" id="davUsername" class="form-input" required placeholder="如: your_name@qq.com">
-            </div>
-            <div class="form-group">
-              <label class="form-label">应用授权密码</label>
-              <input type="password" id="davPassword" class="form-input" required placeholder="坚果云第三方应用密码">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">云端同步文件路径</label>
-            <input type="text" id="davPath" class="form-input" required value="antigravity/antigravity.json">
-          </div>
-          <div style="margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="davEnable" checked style="width: 15px; height: 15px; accent-color: var(--claude-terracotta);">
-            <label for="davEnable" style="font-size: 12px; color: var(--text-body); cursor: pointer;">开启划词与自测自动双向同步</label>
-          </div>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button type="button" class="btn" id="davTestBtn" style="font-size: 12px; height: 32px;">⚡ 测试并同步坚果云</button>
-            <button type="submit" class="btn btn-primary" style="font-size: 12px; height: 32px;">保存配置</button>
-          </div>
-        </form>
       </div>
 
-      <!-- 模块 2: 欧路词典 (Eudic) 生词本双向拉取合并 -->
-      <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
-        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-          <span>📚 欧路词典 (Eudic) 生词本拉取合并</span>
-          <a href="https://my.eudic.net/OpenAPI/Authorization" target="_blank" style="font-size: 11.5px; color: var(--claude-terracotta); text-decoration: none; font-weight: 500;">👉 获取授权 Token</a>
+      <!-- 面板 2: 坚果云 WebDAV 同步 -->
+      <div id="panelWebdav" class="sync-panel" style="display: none;">
+        <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <span>坚果云 / InfiniCLOUD WebDAV 同步</span>
+            <span style="font-size: 11px; color: var(--text-muted); font-weight: normal;">多设备双向实时漫游</span>
+          </div>
+          <form id="davForm">
+            <div class="form-group">
+              <label class="form-label">服务器地址</label>
+              <input type="url" id="davServer" class="form-input" required value="https://dav.jianguoyun.com/dav/">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label class="form-label">账户邮箱 / 用户名</label>
+                <input type="text" id="davUsername" class="form-input" required placeholder="如: your_name@qq.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">应用授权密码</label>
+                <input type="password" id="davPassword" class="form-input" required placeholder="第三方应用密码">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">云端同步文件路径</label>
+              <input type="text" id="davPath" class="form-input" required value="antigravity/antigravity.json">
+            </div>
+            <div style="margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="davEnable" checked style="width: 15px; height: 15px; accent-color: var(--claude-terracotta);">
+              <label for="davEnable" style="font-size: 12px; color: var(--text-body); cursor: pointer;">开启划词与自测自动双向同步</label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="button" class="btn" id="davTestBtn" style="font-size: 12px; height: 32px;">⚡ 测试并同步 WebDAV</button>
+              <button type="submit" class="btn btn-primary" style="font-size: 12px; height: 32px;">保存配置</button>
+            </div>
+          </form>
         </div>
-        <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
-          拉取欧路词典生词本，智能比对当前云笔记本，将未收录的生词按标准格式自动入库并同步至坚果云。
-        </div>
-        <div class="form-group">
-          <label class="form-label">欧路词典 OpenAPI Token (Authorization)</label>
-          <input type="password" id="eudicTokenInput" class="form-input" placeholder="粘贴从 my.eudic.net 获取的个人授权 Token">
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
-          <span id="eudicSyncStatus" style="font-size: 11.5px; color: var(--text-muted);"></span>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn" id="btnFilterNoContext" style="font-size: 12px; height: 32px; background: var(--bg-card); border: 1px solid var(--border-warm); color: var(--text-main);">
-              📝 筛选无例句单词
-            </button>
-            <button type="button" class="btn btn-primary" id="btnEudicSync" style="font-size: 12px; height: 32px; background: #059669; border-color: #047857;">
-              📥 立即从欧路词典拉取合并
-            </button>
+      </div>
+
+      <!-- 面板 3: 欧路词典 (Eudic) 生词本双向拉取合并 -->
+      <div id="panelEudic" class="sync-panel" style="display: none;">
+        <div style="background: var(--bg-subtle); border: 1px solid var(--border-warm); border-radius: 10px; padding: 14px 16px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📚 欧路词典 (Eudic) 生词本拉取合并</span>
+            <a href="https://my.eudic.net/OpenAPI/Authorization" target="_blank" style="font-size: 11.5px; color: var(--claude-terracotta); text-decoration: none; font-weight: 500;">👉 获取授权 Token</a>
+          </div>
+          <div style="font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px;">
+            拉取欧路词典生词本，智能比对当前云笔记本，将未收录的生词按标准格式自动入库并漫游至云端。
+          </div>
+          <div class="form-group">
+            <label class="form-label">欧路词典 OpenAPI Token (Authorization)</label>
+            <input type="password" id="eudicTokenInput" class="form-input" placeholder="粘贴从 my.eudic.net 获取的个人授权 Token">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
+            <span id="eudicSyncStatus" style="font-size: 11.5px; color: var(--text-muted);"></span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn" id="btnFilterNoContext" style="font-size: 12px; height: 32px; background: var(--bg-card); border: 1px solid var(--border-warm); color: var(--text-main);">
+                📝 筛选无例句单词
+              </button>
+              <button type="button" class="btn btn-primary" id="btnEudicSync" style="font-size: 12px; height: 32px; background: #059669; border-color: #047857;">
+                📥 立即从欧路词典拉取合并
+              </button>
+            </div>
           </div>
         </div>
       </div>

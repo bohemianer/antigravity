@@ -598,6 +598,45 @@ async function autoSyncWebDAV(wordsList) {
   });
 }
 
+let giteeSyncDebounceTimer = null;
+function scheduleGiteeSync(wordsList = null, delayMs = 20000) {
+  if (giteeSyncDebounceTimer) clearTimeout(giteeSyncDebounceTimer);
+  giteeSyncDebounceTimer = setTimeout(() => {
+    autoSyncGitee(wordsList);
+  }, delayMs);
+}
+
+async function autoSyncGitee(wordsList = null) {
+  chrome.storage.sync.get({ giteeConfig: null }, async (res) => {
+    const cfg = res.giteeConfig;
+    if (cfg && cfg.enabled && cfg.owner && cfg.repo && cfg.token) {
+      try {
+        chrome.storage.local.get({ deletedWords: {}, lastGiteeSyncTime: 0, savedWords: [] }, async (delRes) => {
+          const list = wordsList || delRes.savedWords || [];
+          const client = new GiteeSyncClient(cfg);
+          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastGiteeSyncTime || 0);
+          chrome.storage.local.set({
+            savedWords: mergedList,
+            deletedWords: mergedDeletions,
+            lastGiteeSyncTime: syncTime || Date.now()
+          });
+        });
+      } catch (err) {
+        console.warn("Gitee Auto Sync warning:", err);
+      }
+    }
+  });
+}
+
+function autoSyncAll(wordsList, isDebounce = false) {
+  autoSyncWebDAV(wordsList);
+  if (isDebounce) {
+    scheduleGiteeSync(wordsList, 20000);
+  } else {
+    autoSyncGitee(wordsList);
+  }
+}
+
 async function autoSyncEudic(wordsList = null) {
   chrome.storage.sync.get({ eudicToken: '' }, async (r) => {
     const token = (r.eudicToken || '').trim();
@@ -613,7 +652,7 @@ async function autoSyncEudic(wordsList = null) {
         if (newAddedCount > 0) {
           chrome.storage.local.set({ savedWords: mergedList, deletedWords: deletionsMap || deletions }, () => {
             console.log(`[Eudic AutoSync] 成功从欧路同步新增 ${newAddedCount} 个生词，总计 ${mergedList.length} 词`);
-            autoSyncWebDAV(mergedList);
+            autoSyncAll(mergedList, false);
           });
         }
       });
@@ -690,7 +729,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (cleanWord) delMap[cleanWord] = Date.now();
       list = list.filter(x => (x.text || x.word || "").toLowerCase().trim() !== cleanWord);
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
-        autoSyncWebDAV(list);
+        autoSyncAll(list, false);
         chrome.storage.sync.get({ eudicToken: '' }, (r) => {
           if (r.eudicToken) {
             const engine = new EudicSyncEngine(r.eudicToken);
@@ -767,7 +806,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (delMap[lowerClean]) delete delMap[lowerClean];
       
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
-        autoSyncWebDAV(list);
+        autoSyncAll(list, true); // 划词启用 20 秒智能防抖
         sendResponse({ success: true, count: list.length });
 
         // 若当前单词缺少音标，后台自动发起多源音标补充
@@ -780,7 +819,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 if (target && !target.phonetic) {
                   target.phonetic = cleanIPA(ydRes.phonetic);
                   chrome.storage.local.set({ savedWords: curList }, () => {
-                    autoSyncWebDAV(curList);
+                    autoSyncAll(curList, true);
                   });
                 }
               });
@@ -846,9 +885,68 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
     return true;
   }
+
+  // Gitee 码云手动与强制同步动作
+  if (request.action === "MANUAL_GITEE_SYNC") {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastGiteeSyncTime: 0 }, async (localRes) => {
+      const list = localRes.savedWords || [];
+      const deletions = localRes.deletedWords || {};
+      const lastSync = localRes.lastGiteeSyncTime || 0;
+      try {
+        const client = new GiteeSyncClient(request.config);
+        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+        chrome.storage.local.set({
+          savedWords: mergedList,
+          deletedWords: mergedDeletions,
+          lastGiteeSyncTime: syncTime || Date.now()
+        }, () => {
+          sendResponse({ success: true, count: mergedList.length });
+        });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    });
+    return true;
+  }
+
+  if (request.action === "OVERWRITE_GITEE_SYNC") {
+    chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
+      const list = localRes.savedWords || [];
+      const deletions = localRes.deletedWords || {};
+      try {
+        const client = new GiteeSyncClient(request.config);
+        await client.uploadWords(list);
+        await client.uploadDeletions(deletions);
+        sendResponse({ success: true, count: list.length });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    });
+    return true;
+  }
+
+  if (request.action === "PULL_GITEE_FORCE") {
+    (async () => {
+      try {
+        const client = new GiteeSyncClient(request.config);
+        const remoteWordsRes = await client.downloadWords();
+        const remoteDeletionsRes = await client.downloadDeletions();
+        chrome.storage.local.set({
+          savedWords: remoteWordsRes.list || [],
+          deletedWords: remoteDeletionsRes.deletions || {},
+          lastGiteeSyncTime: Date.now()
+        }, () => {
+          sendResponse({ success: true, count: (remoteWordsRes.list || []).length });
+        });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
+      }
+    })();
+    return true;
+  }
 });
 
-// 后台周期性静默同步 (每 30 分钟自动与坚果云及欧路词典核对拉取新词)
+// 后台周期性静默同步 (每 30 分钟自动与 Gitee、坚果云及欧路词典核对拉取新词)
 try {
   if (chrome.alarms) {
     chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 30 });
@@ -856,7 +954,7 @@ try {
       if (alarm.name === 'antigravity_auto_sync') {
         chrome.storage.local.get({ savedWords: [] }, (res) => {
           const list = res.savedWords || [];
-          autoSyncWebDAV(list);
+          autoSyncAll(list, false);
           autoSyncEudic(list);
         });
       }
@@ -868,7 +966,7 @@ try {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get({ savedWords: [] }, (res) => {
     const list = res.savedWords || [];
-    autoSyncWebDAV(list);
+    autoSyncAll(list, false);
     autoSyncEudic(list);
   });
 });
@@ -877,7 +975,7 @@ if (chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
     chrome.storage.local.get({ savedWords: [] }, (res) => {
       const list = res.savedWords || [];
-      autoSyncWebDAV(list);
+      autoSyncAll(list, false);
       autoSyncEudic(list);
     });
   });

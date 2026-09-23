@@ -3,6 +3,7 @@
 let currentWords = [];
 let filteredWords = [];
 let webdavConfig = null;
+let giteeConfig = null;
 
 // 闪卡与艾宾浩斯状态
 let cardIndex = 0;
@@ -936,60 +937,115 @@ async function doFullSync(notifyUser = false) {
       }
     }
 
-    // 2. 坚果云 WebDAV 双向合并（直接在页面线程原生执行，彻底规避 MV3 Service Worker 30秒被杀导致的丢包卡死）
+    // 2. Gitee (码云) 私有仓库双向合并 (国内 100% 直连、无月流量限制、自带 Git 历史时光机)
+    let hasGitee = false;
+    let giteeSuccessCount = 0;
+    if (giteeConfig && giteeConfig.enabled && giteeConfig.owner && giteeConfig.repo && giteeConfig.token) {
+      hasGitee = true;
+      try {
+        const localRes = await new Promise(resolve => {
+          chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastGiteeSyncTime: 0 }, resolve);
+        });
+        const list = localRes.savedWords || [];
+        const deletions = localRes.deletedWords || {};
+        const lastSync = localRes.lastGiteeSyncTime || 0;
+
+        const client = new GiteeSyncClient(giteeConfig);
+        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+
+        await new Promise(resolve => {
+          chrome.storage.local.set({
+            savedWords: mergedList,
+            deletedWords: mergedDeletions,
+            lastGiteeSyncTime: syncTime || Date.now()
+          }, resolve);
+        });
+
+        currentWords = mergedList;
+        giteeSuccessCount = mergedList.length;
+        if (currentView !== 'flashcard') {
+          applyFilter();
+        }
+        updateStats();
+      } catch (err) {
+        console.error("Gitee 同步异常:", err);
+        throw err;
+      }
+    }
+
+    // 3. 坚果云 WebDAV 双向合并（直接在页面线程原生执行，彻底规避 MV3 Service Worker 30秒被杀导致的丢包卡死）
+    let hasWebDAV = false;
+    let webdavSuccessCount = 0;
     if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
       hasWebDAV = true;
-      const localRes = await new Promise(resolve => {
-        chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
-      });
-      const list = localRes.savedWords || [];
-      const deletions = localRes.deletedWords || {};
-      const lastSync = localRes.lastWebDAVSyncTime || 0;
+      try {
+        const localRes = await new Promise(resolve => {
+          chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
+        });
+        const list = localRes.savedWords || [];
+        const deletions = localRes.deletedWords || {};
+        const lastSync = localRes.lastWebDAVSyncTime || 0;
 
-      const client = new WebDAVClient(webdavConfig);
-      const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+        const client = new WebDAVClient(webdavConfig);
+        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
 
-      await new Promise(resolve => {
-        chrome.storage.local.set({
-          savedWords: mergedList,
-          deletedWords: mergedDeletions,
-          lastWebDAVSyncTime: syncTime || Date.now()
-        }, resolve);
-      });
+        await new Promise(resolve => {
+          chrome.storage.local.set({
+            savedWords: mergedList,
+            deletedWords: mergedDeletions,
+            lastWebDAVSyncTime: syncTime || Date.now()
+          }, resolve);
+        });
 
-      currentWords = mergedList;
-      webdavSuccessCount = mergedList.length;
-      if (currentView !== 'flashcard') {
-        applyFilter();
+        currentWords = mergedList;
+        webdavSuccessCount = mergedList.length;
+        if (currentView !== 'flashcard') {
+          applyFilter();
+        }
+        updateStats();
+      } catch (err) {
+        console.error("WebDAV 同步异常:", err);
+        // 如果已经成功同步了 Gitee，WebDAV 失败时不中断流程
+        if (!hasGitee) {
+          throw err;
+        }
       }
-      updateStats();
+    }
 
+    // 综合同步结果反馈
+    if (hasGitee && hasWebDAV) {
+      updateSyncBadge('connected', `多端已同步 (${currentWords.length} 词)`);
+      if (notifyUser) {
+        showToast(`🎉 多端云同步完成！词库共 ${currentWords.length} 词（Gitee & WebDAV 均已同步）`, 'success', 3500);
+      }
+    } else if (hasGitee) {
+      updateSyncBadge('connected', `Gitee已同步 (${giteeSuccessCount} 词)`);
+      if (notifyUser) {
+        let msg = `🎉 Gitee 码云同步完成！词库共 ${giteeSuccessCount} 词。`;
+        if (token && eudicNewCount > 0) msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
+        if (eudicError) msg += `\n⚠️ 欧路提示: ${eudicError}`;
+        showToast(msg, 'success', 3500);
+      }
+    } else if (hasWebDAV) {
       updateSyncBadge('connected', `已同步 (${webdavSuccessCount} 词)`);
       if (notifyUser) {
         let msg = `🎉 同步完成！词库共 ${webdavSuccessCount} 词。`;
-        if (token && eudicNewCount > 0) {
-          msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
-        }
-        if (eudicError) {
-          msg += `\n⚠️ 欧路提示: ${eudicError}`;
-        }
+        if (token && eudicNewCount > 0) msg += `\n• 欧路新增入库: ${eudicNewCount} 词`;
+        if (eudicError) msg += `\n⚠️ 欧路提示: ${eudicError}`;
         showToast(msg, 'success', 3500);
       }
-    } else {
-      // 仅欧路模式或未配置模式
-      if (token) {
-        updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
-        if (notifyUser) {
-          if (eudicError) {
-            showToast(`❌ 欧路同步失败: ${eudicError}`, 'error', 4000);
-          } else {
-            showToast(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 词。`, 'success', 3500);
-          }
+    } else if (token) {
+      updateSyncBadge('connected', `欧路已同步 (${currentWords.length} 词)`);
+      if (notifyUser) {
+        if (eudicError) {
+          showToast(`❌ 欧路同步失败: ${eudicError}`, 'error', 4000);
+        } else {
+          showToast(`🎉 欧路词典同步完成！共扫描 ${eudicTotalScanned} 词，新增入库 ${eudicNewCount} 词。`, 'success', 3500);
         }
-      } else {
-        updateSyncBadge('disconnected', '未配置同步');
-        if (notifyUser) showToast("请先在「☁️ 同步设置」中填写坚果云或欧路词典 Token！", 'warning');
       }
+    } else {
+      updateSyncBadge('disconnected', '未配置同步');
+      if (notifyUser) showToast("请先在「☁️ 同步设置」中配置 Gitee、坚果云或欧路词典 Token！", 'warning');
     }
   } catch (err) {
     console.error("同步异常:", err);
@@ -997,7 +1053,18 @@ async function doFullSync(notifyUser = false) {
     let shortTxt = "同步失败";
     let detailAdvice = errMsg;
 
-    if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
+    if (errMsg.includes('Gitee')) {
+      if (errMsg.includes('401')) {
+        shortTxt = "Token无效(401)";
+        detailAdvice = "Gitee 授权失败 (401)：私人令牌 (Token) 无效或过期，请前往 Gitee【个人设置】->【私人令牌】重新生成并勾选 projects 权限！";
+      } else if (errMsg.includes('404')) {
+        shortTxt = "仓库未找到(404)";
+        detailAdvice = "未找到指定的 Gitee 仓库 (404)：请检查空间地址与仓库名称是否正确，且已在 Gitee 成功新建私有仓库！";
+      } else if (errMsg.includes('403')) {
+        shortTxt = "权限受限(403)";
+        detailAdvice = "Gitee 访问受限 (403)：请确认私人令牌拥有该仓库的读写权限！";
+      }
+    } else if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized')) {
       shortTxt = "密码错误(401)";
       detailAdvice = "坚果云授权失败 (401)：请检查坚果云用户名与「应用专用密码」是否正确（注意必须在坚果云官网生成“第三方应用密码”，不能使用主账号登录密码）！";
     } else if (errMsg.includes('507') || errMsg.toLowerCase().includes('insufficient storage') || errMsg.includes('存储空间不足')) {
@@ -1008,14 +1075,14 @@ async function doFullSync(notifyUser = false) {
       detailAdvice = "坚果云请求过于频繁 (429)：触发了坚果云 WebDAV 的频次限制，请暂停频繁点击同步，稍等 3~5 分钟后再试！";
     } else if (errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('traffic') || errMsg.includes('流量')) {
       shortTxt = "流量超限";
-      detailAdvice = "坚果云当月流量已用尽：坚果云免费版每月仅有 1GB 上传流量，超额后将无法上传写入。需等待下月 1 日重置，或升级会员！";
+      detailAdvice = "坚果云当月流量已用尽：坚果云免费版每月仅有 1GB 上传流量，超额后将无法上传写入。建议切换到 Gitee 码云同步，永久免费且无流量限制！";
     } else if (errMsg.includes('403') || errMsg.includes('404') || errMsg.includes('409')) {
       shortTxt = "路径/流量异常";
       const folderName = (webdavConfig && webdavConfig.filePath) ? webdavConfig.filePath.split('/')[0] : 'antigravity';
-      detailAdvice = `坚果云同步异常 (${errMsg})：\n1. 若为新配置，坚果云根目录必须先手动新建「${folderName}」文件夹（或在设置中将文件路径改为「我的坚果云/antigravity.json」）；\n2. 若文件夹已存在，极大概率是坚果云免费版【当月 1GB 上传流量已耗尽】导致写保护！`;
+      detailAdvice = `坚果云同步异常 (${errMsg})：\n1. 若为新配置，坚果云根目录必须先手动新建「${folderName}」文件夹；\n2. 若文件夹已存在，极大概率是坚果云免费版【当月 1GB 上传流量已耗尽】导致写保护！\n建议改用 Gitee 码云同步彻底解决！`;
     } else if (errMsg.includes('超时') || errMsg.toLowerCase().includes('timeout')) {
       shortTxt = "网络超时";
-      detailAdvice = "连接坚果云服务器超时，请检查网络连接或系统代理设置（尝试将 dav.jianguoyun.com 设为直连）！";
+      detailAdvice = "网络连接超时，请检查网络连接或系统代理设置！";
     }
 
     lastSyncDetailError = detailAdvice;
@@ -2488,18 +2555,59 @@ function closeModal() {
   modal.style.display = "none";
 }
 
+function switchSyncTab(tabName) {
+  const tabs = [
+    { name: 'gitee', btn: document.getElementById('tabBtnGitee'), panel: document.getElementById('panelGitee') },
+    { name: 'webdav', btn: document.getElementById('tabBtnWebdav'), panel: document.getElementById('panelWebdav') },
+    { name: 'eudic', btn: document.getElementById('tabBtnEudic'), panel: document.getElementById('panelEudic') }
+  ];
+  tabs.forEach(t => {
+    if (!t.btn || !t.panel) return;
+    const isActive = t.name === tabName;
+    t.panel.style.display = isActive ? 'block' : 'none';
+    if (isActive) {
+      t.btn.classList.add('active');
+      t.btn.style.background = t.name === 'gitee' ? '#c2410c' : 'var(--claude-terracotta)';
+      t.btn.style.color = '#fff';
+      t.btn.style.border = 'none';
+      t.btn.style.fontWeight = '600';
+    } else {
+      t.btn.classList.remove('active');
+      t.btn.style.background = 'var(--bg-card)';
+      t.btn.style.color = 'var(--text-main)';
+      t.btn.style.border = '1px solid var(--border-warm)';
+      t.btn.style.fontWeight = '500';
+    }
+  });
+}
+
 function openDavModal() {
-  if (webdavConfig) {
-    document.getElementById('davServer').value = webdavConfig.serverUrl || "https://dav.jianguoyun.com/dav/";
-    document.getElementById('davUsername').value = webdavConfig.username || "";
-    document.getElementById('davPassword').value = webdavConfig.password || "";
-    document.getElementById('davPath').value = webdavConfig.filePath || "antigravity/antigravity.json";
-    document.getElementById('davEnable').checked = !!webdavConfig.enabled;
-  }
-  chrome.storage.sync.get({ eudicToken: "" }, (r) => {
+  chrome.storage.sync.get({ giteeConfig: null, webdavConfig: null, eudicToken: "" }, (r) => {
+    if (r.giteeConfig) {
+      giteeConfig = r.giteeConfig;
+      if (document.getElementById('giteeOwner')) document.getElementById('giteeOwner').value = giteeConfig.owner || "";
+      if (document.getElementById('giteeRepo')) document.getElementById('giteeRepo').value = giteeConfig.repo || "";
+      if (document.getElementById('giteeToken')) document.getElementById('giteeToken').value = giteeConfig.token || "";
+      if (document.getElementById('giteePath')) document.getElementById('giteePath').value = giteeConfig.filePath || "antigravity.json";
+      if (document.getElementById('giteeEnable')) document.getElementById('giteeEnable').checked = (giteeConfig.enabled !== false);
+    }
+    if (r.webdavConfig) {
+      webdavConfig = r.webdavConfig;
+      if (document.getElementById('davServer')) document.getElementById('davServer').value = webdavConfig.serverUrl || "https://dav.jianguoyun.com/dav/";
+      if (document.getElementById('davUsername')) document.getElementById('davUsername').value = webdavConfig.username || "";
+      if (document.getElementById('davPassword')) document.getElementById('davPassword').value = webdavConfig.password || "";
+      if (document.getElementById('davPath')) document.getElementById('davPath').value = webdavConfig.filePath || "antigravity/antigravity.json";
+      if (document.getElementById('davEnable')) document.getElementById('davEnable').checked = !!webdavConfig.enabled;
+    }
     const eudicInp = document.getElementById('eudicTokenInput');
     if (eudicInp && r.eudicToken) {
       eudicInp.value = r.eudicToken;
+    }
+    // 智能默认选项卡：若仅 WebDAV 开启，停留在 WebDAV；否则默认展示推荐的 Gitee
+    if (r.webdavConfig && r.webdavConfig.enabled && (!r.giteeConfig || !r.giteeConfig.enabled)) {
+      switchSyncTab('webdav');
+    } else {
+      switchSyncTab('gitee');
     }
   });
   davModal.style.display = "flex";
@@ -2636,13 +2744,18 @@ function initNotebookApp() {
   initCard3DTilt();
   PronunciationEngine.init();
 
-  chrome.storage.sync.get({ webdavConfig: null, eudicToken: '' }, (res) => {
+  chrome.storage.sync.get({ giteeConfig: null, webdavConfig: null, eudicToken: '' }, (res) => {
+    giteeConfig = res.giteeConfig;
     webdavConfig = res.webdavConfig;
+    const hasGitee = giteeConfig && giteeConfig.enabled && giteeConfig.owner && giteeConfig.repo && giteeConfig.token;
     const hasWebDAV = webdavConfig && webdavConfig.enabled;
     const hasEudic = !!(res.eudicToken && res.eudicToken.trim());
-    if (hasWebDAV) {
-      updateSyncBadge('connected', '坚果云已就绪');
-      doWebDAVSync(false);
+    if (hasGitee) {
+      updateSyncBadge('connected', 'Gitee已就绪');
+      doFullSync(false);
+    } else if (hasWebDAV) {
+      updateSyncBadge('connected', 'WebDAV已就绪');
+      doFullSync(false);
     } else if (hasEudic) {
       updateSyncBadge('connected', '欧路已就绪');
       doFullSync(false);
@@ -3211,6 +3324,54 @@ function initNotebookApp() {
         btnEudicSync.disabled = false;
         btnEudicSync.innerText = "📥 立即从欧路词典拉取合并";
       }
+    };
+  }
+
+  // Gitee 码云与多同步源选项卡交互绑定
+  const tabBtnGitee = document.getElementById('tabBtnGitee');
+  const tabBtnWebdav = document.getElementById('tabBtnWebdav');
+  const tabBtnEudic = document.getElementById('tabBtnEudic');
+  if (tabBtnGitee) tabBtnGitee.onclick = () => switchSyncTab('gitee');
+  if (tabBtnWebdav) tabBtnWebdav.onclick = () => switchSyncTab('webdav');
+  if (tabBtnEudic) tabBtnEudic.onclick = () => switchSyncTab('eudic');
+
+  const giteeTestBtn = document.getElementById('giteeTestBtn');
+  if (giteeTestBtn) {
+    giteeTestBtn.onclick = () => {
+      const cfg = {
+        owner: (document.getElementById('giteeOwner').value || '').trim(),
+        repo: (document.getElementById('giteeRepo').value || '').trim(),
+        token: (document.getElementById('giteeToken').value || '').trim(),
+        filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
+        enabled: document.getElementById('giteeEnable').checked
+      };
+      if (!cfg.owner || !cfg.repo || !cfg.token) {
+        alert("请先填写 Gitee 空间地址、仓库名与私人令牌 (Token)！");
+        return;
+      }
+      giteeConfig = cfg;
+      chrome.storage.sync.set({ giteeConfig: cfg }, () => {
+        doFullSync(true);
+      });
+    };
+  }
+
+  const giteeForm = document.getElementById('giteeForm');
+  if (giteeForm) {
+    giteeForm.onsubmit = (e) => {
+      e.preventDefault();
+      const cfg = {
+        owner: (document.getElementById('giteeOwner').value || '').trim(),
+        repo: (document.getElementById('giteeRepo').value || '').trim(),
+        token: (document.getElementById('giteeToken').value || '').trim(),
+        filePath: (document.getElementById('giteePath').value || 'antigravity.json').trim(),
+        enabled: document.getElementById('giteeEnable').checked
+      };
+      giteeConfig = cfg;
+      chrome.storage.sync.set({ giteeConfig: cfg }, () => {
+        closeDavModal();
+        doFullSync(true);
+      });
     };
   }
 

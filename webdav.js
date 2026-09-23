@@ -32,6 +32,90 @@ function cleanIPA(s) {
   return str;
 }
 
+// 通用双向智能逐词深度合并函数 (WebDAV 与 Gitee 共享算法，遵从删除墓碑表与时间戳)
+function mergeVocabLists(localList = [], remoteList = [], deletionsMap = {}, lastSyncTime = 0) {
+  const map = new Map();
+
+  // 1. 先存入云端所有词 (遵从删除墓碑判断，已被删除词坚决抹除)
+  remoteList.forEach(rItem => {
+    const k = (rItem.text || rItem.word || "").toLowerCase().trim();
+    if (!k) return;
+
+    const delTime = deletionsMap[k] || 0;
+    if (delTime > 0) {
+      // 该词已被用户在墓碑表中标记删除，坚决抹除，绝不复活
+      return;
+    }
+
+    map.set(k, Object.assign({}, rItem));
+  });
+
+  // 2. 逐词比对并合并本地词 (遵从删除墓碑与同步时间线判断)
+  localList.forEach(lItem => {
+    const k = (lItem.text || lItem.word || "").toLowerCase().trim();
+    if (!k) return;
+
+    const delTime = deletionsMap[k] || 0;
+    if (delTime > 0) {
+      // 该词已被标记删除，本地旧记录予以抹除，绝不复活
+      return;
+    }
+
+    const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
+
+    if (!map.has(k)) {
+      // 云端没有该词：
+      // 关键智能判定：该词是离线期间本地新增的？还是在其他设备上已被删除？
+      // 如果此设备曾经成功同步过 (lastSyncTime > 0)，且此词的创建/修改时间早于上次同步时间，
+      // 说明此词在上次同步时就已存在，但在云端却消失了 -> 这表明该词已被其他设备在云端删除！
+      // 此时绝不能将其当成新词传回云端复活，而应当从本地顺应删除！
+      const isOfflineNewAddition = (!lastSyncTime || lastSyncTime <= 0) ? true : (lUpdate > lastSyncTime);
+      if (isOfflineNewAddition) {
+        map.set(k, Object.assign({}, lItem));
+      }
+    } else {
+      // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
+      const rItem = map.get(k);
+      const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
+
+      const isLocalNewer = lUpdate >= rUpdate;
+
+      const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
+      const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
+      const targetDate = isLocalNewer ? lCreate : rCreate;
+
+      // 若本地版本较新，以本地设定的 date 为准（新添加词置顶，已修改词保持原位）
+      const rawMergedText = (isLocalNewer ? (lItem.text || rItem.text || lItem.word || rItem.word) : (rItem.text || lItem.text || rItem.word || lItem.word)) || "";
+      const mergedWord = {
+        text: rawMergedText.toLowerCase().trim(),
+        trans: (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
+        phonetic: lItem.phonetic || rItem.phonetic || "",
+        context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
+        title: (isLocalNewer ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
+        url: (isLocalNewer ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
+        date: targetDate, // 保持最新添加的词在最前，编辑修改的词保持原创建位置
+        updatedAt: Math.max(lUpdate, rUpdate) || Date.now(),
+        notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
+        srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),
+        srsNextReview: Math.max(lItem.srsNextReview || 0, rItem.srsNextReview || 0),
+        srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0),
+        _uid: lItem._uid || rItem._uid || ('w_' + targetDate + '_' + Math.random().toString(36).slice(2, 9))
+      };
+
+      map.set(k, mergedWord);
+    }
+  });
+
+  // 按创建时间倒序排列（新词在前，老词在后，编辑单词不改变其创建时间与排序位置）
+  const result = Array.from(map.values());
+  result.sort((a, b) => {
+    const dateA = a.date ? (typeof a.date === 'number' ? a.date : new Date(a.date).getTime()) : 0;
+    const dateB = b.date ? (typeof b.date === 'number' ? b.date : new Date(b.date).getTime()) : 0;
+    return dateB - dateA;
+  });
+  return result;
+}
+
 class WebDAVClient {
   constructor(config = {}) {
     this.serverUrl = (config.serverUrl || "https://dav.jianguoyun.com/dav/").replace(/\/+$/, '') + '/';
@@ -198,84 +282,7 @@ class WebDAVClient {
 
   // 4. 双向智能逐词深度合并 (Two-way Deep Word-by-Word Merge with Deletion Tombstones & Timeline)
   mergeWords(localList = [], remoteList = [], deletionsMap = {}, lastSyncTime = 0) {
-    const map = new Map();
-
-    // 1. 先存入云端所有词 (遵从删除墓碑判断，已被删除词坚决抹除)
-    remoteList.forEach(rItem => {
-      const k = (rItem.text || rItem.word || "").toLowerCase().trim();
-      if (!k) return;
-
-      const delTime = deletionsMap[k] || 0;
-      if (delTime > 0) {
-        // 该词已被用户在墓碑表中标记删除，坚决抹除，绝不复活
-        return;
-      }
-
-      map.set(k, Object.assign({}, rItem));
-    });
-
-    // 2. 逐词比对并合并本地词 (遵从删除墓碑与同步时间线判断)
-    localList.forEach(lItem => {
-      const k = (lItem.text || lItem.word || "").toLowerCase().trim();
-      if (!k) return;
-
-      const delTime = deletionsMap[k] || 0;
-      if (delTime > 0) {
-        // 该词已被标记删除，本地旧记录予以抹除，绝不复活
-        return;
-      }
-
-      const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
-
-      if (!map.has(k)) {
-        // 云端没有该词：
-        // 关键智能判定：该词是离线期间本地新增的？还是在其他设备上已被删除？
-        // 如果此设备曾经成功同步过 (lastSyncTime > 0)，且此词的创建/修改时间早于上次同步时间，
-        // 说明此词在上次同步时就已存在，但在云端却消失了 -> 这表明该词已被其他设备在云端删除！
-        // 此时绝不能将其当成新词传回云端复活，而应当从本地顺应删除！
-        const isOfflineNewAddition = (!lastSyncTime || lastSyncTime <= 0) ? true : (lUpdate > lastSyncTime);
-        if (isOfflineNewAddition) {
-          map.set(k, Object.assign({}, lItem));
-        }
-      } else {
-        // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
-        const rItem = map.get(k);
-        const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
-
-        const isLocalNewer = lUpdate >= rUpdate;
-
-        const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
-        const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
-        // 若本地版本较新，以本地设定的 date 为准（新添加词置顶，已修改词保持原位）
-        const rawMergedText = (isLocalNewer ? (lItem.text || rItem.text || lItem.word || rItem.word) : (rItem.text || lItem.text || rItem.word || lItem.word)) || "";
-        const mergedWord = {
-          text: rawMergedText.toLowerCase().trim(),
-          trans: (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
-          phonetic: lItem.phonetic || rItem.phonetic || "",
-          context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
-          title: (isLocalNewer ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
-          url: (isLocalNewer ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
-          date: targetDate, // 保持最新添加的词在最前，编辑修改的词保持原创建位置
-          updatedAt: Math.max(lUpdate, rUpdate) || Date.now(),
-          notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
-          srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),
-          srsNextReview: Math.max(lItem.srsNextReview || 0, rItem.srsNextReview || 0),
-          srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0),
-          _uid: lItem._uid || rItem._uid || ('w_' + targetDate + '_' + Math.random().toString(36).slice(2, 9))
-        };
-
-        map.set(k, mergedWord);
-      }
-    });
-
-    // 按创建时间倒序排列（新词在前，老词在后，编辑单词不改变其创建时间与排序位置）
-    const result = Array.from(map.values());
-    result.sort((a, b) => {
-      const dateA = a.date ? (typeof a.date === 'number' ? a.date : new Date(a.date).getTime()) : 0;
-      const dateB = b.date ? (typeof b.date === 'number' ? b.date : new Date(b.date).getTime()) : 0;
-      return dateB - dateA;
-    });
-    return result;
+    return mergeVocabLists(localList, remoteList, deletionsMap, lastSyncTime);
   }
 
   // 5. 执行一次完整的遵从墓碑规则与增量时间线的双向增量同步 (Sync)
@@ -590,6 +597,251 @@ class EudicSyncEngine {
   }
 }
 
+// UTF-8 安全 Base64 编解码辅助函数
+function utf8ToBase64(str) {
+  try {
+    return btoa(unescape(encodeURIComponent(str)));
+  } catch (e) {
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(str, 'utf-8').toString('base64');
+    }
+    throw e;
+  }
+}
+
+function base64ToUtf8(b64Str) {
+  try {
+    const cleanB64 = (b64Str || "").replace(/\s/g, '');
+    return decodeURIComponent(escape(atob(cleanB64)));
+  } catch (e) {
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(b64Str, 'base64').toString('utf-8');
+    }
+    throw e;
+  }
+}
+
+// Gitee (码云) OpenAPI v5 仓库文件双向增量同步引擎 (国内 100% 直连、无月流量限制、自带 Git 历史版本)
+class GiteeSyncClient {
+  constructor(config = {}) {
+    this.owner = (config.owner || "").trim();
+    this.repo = (config.repo || "").trim();
+    this.token = (config.token || "").trim();
+    this.filePath = (config.filePath || "antigravity.json").replace(/^\/+/, '').trim();
+  }
+
+  getDeletionsPath() {
+    const p = this.filePath;
+    return p.replace(/\.json$/i, '_deleted.json');
+  }
+
+  // 1. 获取文件内容与 Git SHA (GET)
+  async getFile(path) {
+    if (!this.owner || !this.repo || !this.token) {
+      throw new Error("请先完整填写 Gitee 仓库所有者、仓库名与私人令牌 (Token)");
+    }
+    const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}/contents/${encodeURI(path)}?access_token=${encodeURIComponent(this.token)}`;
+    const resp = await fetchWithTimeout(url, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json"
+      }
+    }, 12000);
+
+    if (resp.status === 404) {
+      return null; // 文件不存在
+    }
+    if (resp.status === 401) {
+      throw new Error("Gitee 私人令牌 (Token) 无效或已过期，请在 Gitee 设置中检查");
+    }
+    if (resp.status === 403) {
+      throw new Error("Gitee 访问受限 (403): 请确认私人令牌勾选了 projects 读写权限");
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      throw new Error(`Gitee GET 失败 (${resp.status}): ${resp.statusText} ${text.slice(0, 100)}`);
+    }
+
+    const data = await resp.json();
+    if (!data || !data.content) {
+      return { sha: data ? data.sha : null, content: "" };
+    }
+    const decoded = base64ToUtf8(data.content);
+    return {
+      sha: data.sha,
+      content: decoded
+    };
+  }
+
+  // 2. 保存文件 (无 SHA 时 POST 创建，有 SHA 时 PUT 更新，自动处理并发冲突)
+  async saveFile(path, contentStr, sha = null, message = "Antigravity Sync [skip ci]") {
+    if (!this.owner || !this.repo || !this.token) {
+      throw new Error("请先完整填写 Gitee 仓库所有者、仓库名与私人令牌 (Token)");
+    }
+    const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}/contents/${encodeURI(path)}`;
+    const b64 = utf8ToBase64(contentStr);
+
+    const payload = {
+      access_token: this.token,
+      content: b64,
+      message: message
+    };
+    let method = "POST";
+    if (sha) {
+      method = "PUT";
+      payload.sha = sha;
+    }
+
+    let resp = await fetchWithTimeout(url, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json;charset=UTF-8"
+      },
+      body: JSON.stringify(payload)
+    }, 15000);
+
+    // 智能冲突自愈：若 POST 报 400/409 说明文件已存在，或 PUT 报 SHA 不匹配，重新获取最新 SHA 并重试更新
+    if (!resp.ok && (resp.status === 400 || resp.status === 409 || resp.status === 422)) {
+      try {
+        const latestFile = await this.getFile(path);
+        if (latestFile && latestFile.sha) {
+          payload.sha = latestFile.sha;
+          resp = await fetchWithTimeout(url, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json;charset=UTF-8"
+            },
+            body: JSON.stringify(payload)
+          }, 15000);
+        }
+      } catch (retryErr) {
+        console.warn("Gitee retry PUT error:", retryErr);
+      }
+    }
+
+    if (resp.status === 401) {
+      throw new Error("Gitee 私人令牌 (Token) 无效或无写入权限，请确认勾选了 projects 权限");
+    }
+    if (!resp.ok) {
+      let errBody = "";
+      try { errBody = await resp.text(); } catch (e) {}
+      throw new Error(`Gitee 保存文件失败 (${resp.status}): ${resp.statusText} ${errBody.slice(0, 150)}`);
+    }
+
+    const resJson = await resp.json().catch(() => ({}));
+    return (resJson && resJson.content) ? resJson.content.sha : (sha || "updated");
+  }
+
+  // 3. 拉取远端生词库
+  async downloadWords() {
+    const res = await this.getFile(this.filePath);
+    if (!res || !res.content || !res.content.trim()) {
+      return { list: [], sha: res ? res.sha : null };
+    }
+    try {
+      const parsed = JSON.parse(res.content);
+      return {
+        list: Array.isArray(parsed) ? parsed : [],
+        sha: res.sha
+      };
+    } catch (err) {
+      throw new Error(`Gitee 云端生词文件 JSON 解析失败: ${err.message}`);
+    }
+  }
+
+  // 4. 拉取远端删除墓碑表
+  async downloadDeletions() {
+    try {
+      const res = await this.getFile(this.getDeletionsPath());
+      if (!res || !res.content || !res.content.trim()) {
+        return { deletions: {}, sha: res ? res.sha : null };
+      }
+      const parsed = JSON.parse(res.content);
+      return {
+        deletions: (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {},
+        sha: res.sha
+      };
+    } catch (e) {
+      console.warn("Gitee downloadDeletions warning:", e);
+      return { deletions: {}, sha: null };
+    }
+  }
+
+  // 5. 上传生词库
+  async uploadWords(wordsList, sha = null) {
+    const jsonStr = JSON.stringify(wordsList, null, 2);
+    const msg = `Antigravity Sync: ${wordsList.length} words [skip ci]`;
+    return await this.saveFile(this.filePath, jsonStr, sha, msg);
+  }
+
+  // 6. 上传删除墓碑表
+  async uploadDeletions(deletionsMap = {}, sha = null) {
+    const cleanMap = {};
+    const now = Date.now();
+    const SIXTY_DAYS = 60 * 24 * 60 * 60 * 1000;
+    for (const [k, ts] of Object.entries(deletionsMap || {})) {
+      if (typeof ts === 'number' && (now - ts < SIXTY_DAYS)) {
+        cleanMap[k] = ts;
+      }
+    }
+    const jsonStr = JSON.stringify(cleanMap, null, 2);
+    const msg = `Antigravity Tombstones: ${Object.keys(cleanMap).length} items [skip ci]`;
+    try {
+      const newSha = await this.saveFile(this.getDeletionsPath(), jsonStr, sha, msg);
+      return { cleanedDeletions: cleanMap, sha: newSha };
+    } catch (e) {
+      console.warn("Gitee uploadDeletions warning:", e);
+      return { cleanedDeletions: cleanMap, sha: sha };
+    }
+  }
+
+  // 7. 执行完整的遵从墓碑规则的双向增量同步
+  async performSync(localList = [], localDeletions = {}, lastSyncTime = 0) {
+    // 1. 获取远端数据
+    const remoteWordsRes = await this.downloadWords();
+    const remoteList = remoteWordsRes.list || [];
+    let wordsSha = remoteWordsRes.sha;
+
+    const remoteDeletionsRes = await this.downloadDeletions();
+    const remoteDeletions = remoteDeletionsRes.deletions || {};
+    let delSha = remoteDeletionsRes.sha;
+
+    // 2. 双向合并删除墓碑表
+    const mergedDeletions = Object.assign({}, remoteDeletions);
+    for (const [k, ts] of Object.entries(localDeletions || {})) {
+      mergedDeletions[k] = Math.max(mergedDeletions[k] || 0, ts || 0);
+    }
+
+    // 3. 遵从墓碑规则与时间线的双向字段级深度合并
+    const mergedList = mergeVocabLists(localList || [], remoteList || [], mergedDeletions, lastSyncTime);
+
+    // 4. Smart Dirty Check（智能脏检查，数据未变时绝不发起写入 commit）
+    const isWordsChanged = (mergedList.length !== remoteList.length) || mergedList.some((w, i) => {
+      const rw = remoteList[i];
+      if (!rw) return true;
+      return (w.text !== rw.text) || (w.trans !== rw.trans) || (w.updatedAt !== rw.updatedAt) || (w.date !== rw.date);
+    });
+
+    const isDeletionsChanged = Object.keys(mergedDeletions).length !== Object.keys(remoteDeletions).length ||
+      Object.entries(mergedDeletions).some(([k, ts]) => remoteDeletions[k] !== ts);
+
+    let cleanedDeletions = mergedDeletions;
+    if (isWordsChanged) {
+      wordsSha = await this.uploadWords(mergedList, wordsSha);
+    }
+    if (isDeletionsChanged) {
+      const delRes = await this.uploadDeletions(mergedDeletions, delSha);
+      cleanedDeletions = delRes.cleanedDeletions;
+    }
+
+    return {
+      mergedList,
+      mergedDeletions: cleanedDeletions,
+      syncTime: Date.now()
+    };
+  }
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { WebDAVClient, EudicSyncEngine };
+  module.exports = { WebDAVClient, EudicSyncEngine, GiteeSyncClient, mergeVocabLists, utf8ToBase64, base64ToUtf8 };
 }
