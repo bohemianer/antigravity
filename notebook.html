@@ -688,7 +688,10 @@
       }
       .logo-area {
         gap: 8px;
-        flex-shrink: 0;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
       }
       .logo-title {
         display: none !important;
@@ -712,11 +715,13 @@
         display: none !important;
       }
       .sync-status-badge {
+        margin-left: auto;
         padding: 0;
         width: 34px;
         height: 34px;
         justify-content: center;
         border-radius: 50%;
+        flex-shrink: 0;
       }
       .more-menu-btn {
         width: 34px;
@@ -2860,6 +2865,14 @@
         <button class="view-tab active" id="tabTableView">📋 笔记本</button>
         <button class="view-tab" id="tabFlashcardView">🎴 闪卡自测</button>
       </div>
+      <div class="sync-status-badge" id="btnSyncStatus" title="点击配置云同步 (点击图标立即刷新)">
+        <span class="sync-icon-dot" id="syncDot" title="点击立即同步">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </span>
+        <span id="syncText">未同步</span>
+      </div>
     </div>
 
     <div class="header-right">
@@ -2900,17 +2913,8 @@
         <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
       </div>
 
-      <!-- 顶部右侧系统动作区 (同步指示器 + 更多功能菜单) -->
+      <!-- 顶部右侧系统动作区 (更多功能菜单) -->
       <div class="header-actions">
-        <div class="sync-status-badge" id="btnSyncStatus" title="点击配置云同步 (点击图标立即刷新)">
-          <span class="sync-icon-dot" id="syncDot" title="点击立即同步">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-            </svg>
-          </span>
-          <span id="syncText">未同步</span>
-        </div>
-
         <div class="dropdown-container" id="moreMenuContainer">
           <button class="dropdown-btn more-menu-btn" id="btnMoreMenu" title="更多功能与设置" aria-label="更多功能与设置">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
@@ -3818,14 +3822,14 @@
     })();
   </script>
 
-  <script src="webdav.js?v=2.2"></script>
-  <script src="notebook.js?v=2.2"></script>
+  <script src="webdav.js?v=2.3"></script>
+  <script src="notebook.js?v=2.3"></script>
 
   <!-- PWA Service Worker 极速离线与缓存注册 (强制检查更新) -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.2').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=2.3').then(reg => {
           reg.update();
         }).catch(err => {
           console.warn('SW registration skipped:', err);
