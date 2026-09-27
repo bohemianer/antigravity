@@ -1402,34 +1402,32 @@ function renderList(list, query = "") {
   const searchInput = document.getElementById('searchInput');
   const q = typeof query === 'string' ? query.trim() : (searchInput ? searchInput.value.trim() : "");
   
+  const tableContainer = document.getElementById('tableContainer') || document.querySelector('.table-container');
+  const tableEmptyState = document.getElementById('tableEmptyState');
+  const tableHead = document.getElementById('tableHead') || document.querySelector('thead');
+
   if (list.length === 0) {
     if (q) {
+      if (tableContainer) tableContainer.style.display = 'block';
+      if (tableEmptyState) tableEmptyState.style.display = 'none';
+      if (tableHead) tableHead.style.display = '';
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
     } else {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" style="padding: 20px 0; border: none;">
-            <div style="text-align:center; padding:40px 20px; background:var(--bg-card); border-radius:20px; border:1px solid var(--border-glass); box-shadow:var(--glass-shadow); max-width: 440px; margin: 16px auto;">
-              <div style="font-size: 42px; margin-bottom: 12px; line-height: 1;">☁️</div>
-              <div style="font-size: 17px; font-weight: 700; color: var(--text-title); margin-bottom: 8px;">生词本暂无记录</div>
-              <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 22px;">
-                初次在手机端使用？点击下方按钮连接您的 Gitee 云端仓库，秒级同步全部词库与复习进度。
-              </div>
-              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <button type="button" class="btn btn-primary" id="btnEmptySync" style="padding: 0 18px; height: 38px; font-size: 13px; border-radius: 10px;">🌲 立即配置并同步 Gitee</button>
-                <button type="button" class="btn" id="btnEmptyAdd" style="padding: 0 16px; height: 38px; font-size: 13px; border-radius: 10px;">➕ 添加新词</button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      `;
-      const btnSync = document.getElementById('btnEmptySync');
-      if (btnSync) btnSync.onclick = () => openDavModal();
-      const btnAdd = document.getElementById('btnEmptyAdd');
-      if (btnAdd) btnAdd.onclick = () => openAddModal();
+      if (tableContainer) tableContainer.style.display = 'none';
+      if (tableEmptyState) {
+        tableEmptyState.style.display = 'block';
+        const syncBtn = document.getElementById('btnTableEmptySync');
+        if (syncBtn) syncBtn.onclick = () => openDavModal();
+        const addBtn = document.getElementById('btnTableEmptyAdd');
+        if (addBtn) addBtn.onclick = () => openAddModal();
+      }
     }
     return;
   }
+
+  if (tableEmptyState) tableEmptyState.style.display = 'none';
+  if (tableContainer) tableContainer.style.display = 'block';
+  if (tableHead) tableHead.style.display = '';
   
   list.forEach((item) => {
     const wordText = item.text || item.word || "";
