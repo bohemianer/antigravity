@@ -2183,9 +2183,22 @@ function renderFlashcard() {
   const barRevealed = document.getElementById('smartBarRevealed');
 
   if (cardList.length === 0) {
-    document.getElementById('fcWord').innerText = "当前筛选暂无自测词汇";
+    document.getElementById('fcWord').innerText = "暂无自测词汇";
     document.getElementById('fcPhonetic').innerText = "";
-    document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "生词本为空，快去外刊划词加入吧！" : "恭喜！所选分组下暂无待复习词汇。";
+    if (currentWords.length === 0) {
+      document.getElementById('fcContext').innerHTML = `
+        <div style="text-align: center; padding: 6px 0;">
+          <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px;">
+            生词本暂无记录，点击下方按钮一键同步 Gitee 词库
+          </div>
+          <button type="button" class="btn btn-primary" id="btnEmptyFcSync" style="margin: 0 auto; height: 36px; padding: 0 16px; font-size: 12.5px; border-radius: 9px;">🌲 立即配置并同步 Gitee</button>
+        </div>
+      `;
+      const btnSync = document.getElementById('btnEmptyFcSync');
+      if (btnSync) btnSync.onclick = () => openDavModal();
+    } else {
+      document.getElementById('fcContext').innerText = selectedSrsSet.has('all') ? "暂无待复习词汇。" : "恭喜！所选分组下暂无待复习词汇。";
+    }
     document.getElementById('fcAnswerBox').style.display = 'none';
     document.getElementById('cardCurrentIndex').innerText = "0";
     document.getElementById('cardTotalCount').innerText = "0";

@@ -847,8 +847,36 @@
         margin: 6px auto;
         padding: 0 4px;
       }
+      .btn-stealth-trigger {
+        display: none !important; /* 手机端完全移除摸鱼模式 */
+      }
+      .kbd-hint {
+        display: none !important;
+      }
+      .batch-label {
+        display: none !important;
+      }
       .flashcard-header-bar {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
         margin-bottom: 12px;
+        gap: 8px;
+        flex-wrap: nowrap;
+      }
+      .flashcard-batch-group {
+        justify-content: flex-start;
+      }
+      .flashcard-header-right {
+        justify-content: flex-end;
+        width: auto;
+      }
+      .flashcard-progress-box {
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
       .flashcard-card-box {
         padding: 24px 18px;
@@ -2984,10 +3012,9 @@
 
     <!-- 视图 2: 苹果美学级艾宾浩斯交互式闪卡自测模式 -->
     <div id="viewFlashcardContainer">
-      <!-- 闪卡顶栏：定量自测选择器 + 进度条 -->
+      <!-- 闪卡顶栏：定量自测选择器 + 进度条 (极简纯净无杂质) -->
       <div class="flashcard-header-bar">
         <div class="flashcard-batch-group">
-          <span class="batch-label">每组定量:</span>
           <div class="batch-tabs" id="batchSizeTabs">
             <button class="batch-tab" data-size="10">10 词</button>
             <button class="batch-tab active" data-size="20">20 词</button>
@@ -2998,7 +3025,7 @@
 
         <div class="flashcard-header-right">
           <div class="flashcard-progress-box">
-            <span class="flashcard-progress-text">当前进度：<b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
+            <span class="flashcard-progress-text"><b id="cardCurrentIndex" style="color: var(--claude-terracotta);">1</b> / <span id="cardTotalCount">20</span></span>
             <div class="flashcard-progress-bar">
               <div class="flashcard-progress-fill" id="cardProgressFill"></div>
             </div>
