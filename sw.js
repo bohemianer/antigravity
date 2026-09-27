@@ -1,5 +1,5 @@
-// Antigravity PWA Service Worker (极速离线与高命中缓存引擎)
-const CACHE_NAME = 'antigravity-pwa-v1';
+// Antigravity PWA Service Worker (极速离线与实时更新引擎)
+const CACHE_NAME = 'antigravity-pwa-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -14,10 +14,11 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -38,7 +39,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 外部 API 请求与非 GET 请求一律直连网络，绝不缓存
+  // 外部 API 与非 GET 请求直连网络
   if (
     url.hostname.includes('gitee.com') ||
     url.hostname.includes('jianguoyun.com') ||
@@ -51,15 +52,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 针对本地静态资源采用 Stale-While-Revalidate 策略
+  // 针对 HTML 与 JS 文件采用 Network-First 策略：优先拉取最新更新，离线时降级使用本地缓存
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // 针对图标、字体等静态图片采用 Stale-While-Revalidate 策略
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
       }).catch(() => cachedResponse);

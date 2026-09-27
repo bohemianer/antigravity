@@ -3767,14 +3767,16 @@
     })();
   </script>
 
-  <script src="webdav.js"></script>
-  <script src="notebook.js"></script>
+  <script src="webdav.js?v=2.1"></script>
+  <script src="notebook.js?v=2.1"></script>
 
-  <!-- PWA Service Worker 极速离线与缓存注册 -->
+  <!-- PWA Service Worker 极速离线与缓存注册 (强制检查更新) -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => {
+        navigator.serviceWorker.register('./sw.js?v=2.1').then(reg => {
+          reg.update();
+        }).catch(err => {
           console.warn('SW registration skipped:', err);
         });
       });
