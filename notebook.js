@@ -1404,9 +1404,29 @@ function renderList(list, query = "") {
   
   if (list.length === 0) {
     if (q) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:60px 20px; font-size:14px;">未检索到包含「<strong>${escapeHtml(q)}</strong>」的生词</td></tr>`;
     } else {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#8C827A; padding:60px 20px; font-size:14px;">生词本暂无词汇记录，在外刊划词或点击右上角「➕ 添加新词」开始积累吧！</td></tr>';
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="padding: 20px 0; border: none;">
+            <div style="text-align:center; padding:40px 20px; background:var(--bg-card); border-radius:20px; border:1px solid var(--border-glass); box-shadow:var(--glass-shadow); max-width: 440px; margin: 16px auto;">
+              <div style="font-size: 42px; margin-bottom: 12px; line-height: 1;">☁️</div>
+              <div style="font-size: 17px; font-weight: 700; color: var(--text-title); margin-bottom: 8px;">生词本暂无记录</div>
+              <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 22px;">
+                初次在手机端使用？点击下方按钮连接您的 Gitee 云端仓库，秒级同步全部词库与复习进度。
+              </div>
+              <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary" id="btnEmptySync" style="padding: 0 18px; height: 38px; font-size: 13px; border-radius: 10px;">🌲 立即配置并同步 Gitee</button>
+                <button type="button" class="btn" id="btnEmptyAdd" style="padding: 0 16px; height: 38px; font-size: 13px; border-radius: 10px;">➕ 添加新词</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+      const btnSync = document.getElementById('btnEmptySync');
+      if (btnSync) btnSync.onclick = () => openDavModal();
+      const btnAdd = document.getElementById('btnEmptyAdd');
+      if (btnAdd) btnAdd.onclick = () => openAddModal();
     }
     return;
   }
@@ -2068,6 +2088,9 @@ function renderStealthMailCard() {
 // 视图切换控制 (支持 table 与 flashcard 纯净双视图)
 function switchView(viewName, forceResetFlashcard = false) {
   currentView = viewName;
+  if (document.body) {
+    document.body.setAttribute('data-current-view', viewName);
+  }
   const tableContainer = document.getElementById('viewTableContainer');
   const flashcardContainer = document.getElementById('viewFlashcardContainer');
 
@@ -4372,11 +4395,16 @@ function initNotebookApp() {
     });
   }
 
-  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings)
+  // 支持 URL Hash 快捷路由 (如 #flashcard 或 #settings)，手机端默认优先呈现沉浸自测闪卡
+  const isMobileScreen = window.innerWidth <= 768;
   if (window.location.hash === '#flashcard') {
     switchView('flashcard');
   } else if (window.location.hash === '#settings') {
     openDavModal();
+  } else if (isMobileScreen) {
+    switchView('flashcard');
+  } else {
+    switchView('table');
   }
 
   // ---------------- 笔记本内嵌即时划词查词与双击查词引擎 ----------------
