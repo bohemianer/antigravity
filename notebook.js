@@ -1,5 +1,183 @@
 // Antigravity Vocab - notebook.js (艾宾浩斯 SM-2 记忆算法 + 交互闪卡 + WebDAV 增量云同步 + 智能查词补全 + 真人原声发音)
 
+// ==========================================
+// 跨平台存储与环境透明兼容垫片 (Universal Storage & Runtime Polyfill)
+// ==========================================
+(function() {
+  if (typeof window === 'undefined') return;
+  if (typeof window.chrome === 'undefined') window.chrome = {};
+  if (!window.chrome.storage) window.chrome.storage = {};
+  if (!window.chrome.runtime) window.chrome.runtime = {};
+
+  const changeListeners = [];
+  if (!window.chrome.storage.onChanged) {
+    window.chrome.storage.onChanged = {
+      addListener(fn) {
+        if (typeof fn === 'function' && !changeListeners.includes(fn)) changeListeners.push(fn);
+      },
+      removeListener(fn) {
+        const idx = changeListeners.indexOf(fn);
+        if (idx !== -1) changeListeners.splice(idx, 1);
+      }
+    };
+  }
+
+  function notifyChanges(changes, areaName) {
+    for (const fn of changeListeners) {
+      try { fn(changes, areaName); } catch (e) { console.error("Storage change listener error:", e); }
+    }
+  }
+
+  function createStorageArea(prefix, areaName) {
+    return {
+      get(keys, callback) {
+        return new Promise((resolve) => {
+          let result = {};
+          try {
+            if (keys === null || keys === undefined) {
+              for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith(prefix)) {
+                  const subKey = k.slice(prefix.length);
+                  try { result[subKey] = JSON.parse(localStorage.getItem(k)); } catch(e) { result[subKey] = localStorage.getItem(k); }
+                }
+              }
+            } else if (typeof keys === 'string') {
+              const raw = localStorage.getItem(prefix + keys);
+              if (raw !== null) {
+                try { result[keys] = JSON.parse(raw); } catch(e) { result[keys] = raw; }
+              }
+            } else if (Array.isArray(keys)) {
+              keys.forEach(k => {
+                const raw = localStorage.getItem(prefix + k);
+                if (raw !== null) {
+                  try { result[k] = JSON.parse(raw); } catch(e) { result[k] = raw; }
+                }
+              });
+            } else if (typeof keys === 'object') {
+              Object.keys(keys).forEach(k => {
+                const raw = localStorage.getItem(prefix + k);
+                if (raw !== null) {
+                  try { result[k] = JSON.parse(raw); } catch(e) { result[k] = raw; }
+                } else {
+                  result[k] = keys[k];
+                }
+              });
+            }
+          } catch(e) {
+            console.error("Storage get error:", e);
+          }
+          if (typeof callback === 'function') callback(result);
+          resolve(result);
+        });
+      },
+      set(items, callback) {
+        return new Promise((resolve) => {
+          const changes = {};
+          try {
+            if (items && typeof items === 'object') {
+              Object.keys(items).forEach(k => {
+                const oldValueRaw = localStorage.getItem(prefix + k);
+                let oldValue = undefined;
+                if (oldValueRaw !== null) {
+                  try { oldValue = JSON.parse(oldValueRaw); } catch(e) { oldValue = oldValueRaw; }
+                }
+                const newValue = items[k];
+                localStorage.setItem(prefix + k, JSON.stringify(newValue));
+                changes[k] = { oldValue, newValue };
+              });
+            }
+          } catch(e) {
+            console.error("Storage set error:", e);
+          }
+          if (Object.keys(changes).length > 0) notifyChanges(changes, areaName);
+          if (typeof callback === 'function') callback();
+          resolve();
+        });
+      },
+      remove(keys, callback) {
+        return new Promise((resolve) => {
+          const arr = Array.isArray(keys) ? keys : [keys];
+          const changes = {};
+          try {
+            arr.forEach(k => {
+              const oldValueRaw = localStorage.getItem(prefix + k);
+              let oldValue = undefined;
+              if (oldValueRaw !== null) {
+                try { oldValue = JSON.parse(oldValueRaw); } catch(e) { oldValue = oldValueRaw; }
+              }
+              localStorage.removeItem(prefix + k);
+              changes[k] = { oldValue, newValue: undefined };
+            });
+          } catch(e) {
+            console.error("Storage remove error:", e);
+          }
+          if (Object.keys(changes).length > 0) notifyChanges(changes, areaName);
+          if (typeof callback === 'function') callback();
+          resolve();
+        });
+      },
+      clear(callback) {
+        return new Promise((resolve) => {
+          try {
+            const toRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.startsWith(prefix)) toRemove.push(k);
+            }
+            toRemove.forEach(k => localStorage.removeItem(k));
+          } catch(e) {}
+          if (typeof callback === 'function') callback();
+          resolve();
+        });
+      }
+    };
+  }
+
+  if (!window.chrome.storage.local) {
+    window.chrome.storage.local = createStorageArea('agy_local_', 'local');
+  }
+  if (!window.chrome.storage.sync) {
+    window.chrome.storage.sync = createStorageArea('agy_sync_', 'sync');
+  }
+
+  if (!window.chrome.runtime.sendMessage) {
+    window.chrome.runtime.sendMessage = function(msg, callback) {
+      if (msg && msg.action === "LOOKUP_WORD") {
+        const text = (msg.word || "").trim();
+        if (!text) {
+          if (callback) callback(null);
+          return;
+        }
+        fetch(`https://dict.youdao.com/suggest?num=1&doctype=json&q=${encodeURIComponent(text)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.data && data.data.entries && data.data.entries[0]) {
+              const entry = data.data.entries[0];
+              if (callback) callback({ word: text, definition: entry.explain || "", phonetic: "" });
+            } else {
+              if (callback) callback({ word: text, definition: "", phonetic: "" });
+            }
+          })
+          .catch(() => {
+            if (callback) callback({ word: text, definition: "", phonetic: "" });
+          });
+        return true;
+      }
+      if (callback) callback(null);
+    };
+  }
+})();
+
+// 触觉震动反馈 (Haptic Vibration for Mobile Devices)
+function triggerHaptic(duration = 12) {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(duration);
+    }
+  } catch(e) {}
+}
+
 let currentWords = [];
 let filteredWords = [];
 let webdavConfig = null;
@@ -2111,6 +2289,7 @@ function toggleCardReveal() {
 
 // 艾宾浩斯记忆反馈处理 (1: 忘了, 2: 模糊, 3: 熟练)
 function handleSRSFeedback(rating) {
+  triggerHaptic(14);
   if (cardList.length === 0) return;
   const item = cardList[cardIndex];
   if (!item) return;
@@ -2954,8 +3133,63 @@ function initNotebookApp() {
     switchView('flashcard');
   };
 
-  // 闪卡自测事件
-  document.getElementById('flashcardBox').onclick = toggleCardReveal;
+  // 闪卡自测事件与移动端滑动手势支持 (Swipe Left/Right & Tap to Flip)
+  const fcBoxEl = document.getElementById('flashcardBox');
+  if (fcBoxEl) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let didSwipe = false;
+
+    fcBoxEl.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+        didSwipe = false;
+      }
+    }, { passive: true });
+
+    fcBoxEl.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        const deltaX = e.touches[0].clientX - touchStartX;
+        const deltaY = e.touches[0].clientY - touchStartY;
+        if (Math.abs(deltaX) > 28 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+          didSwipe = true;
+        }
+      }
+    }, { passive: true });
+
+    fcBoxEl.addEventListener('touchend', (e) => {
+      if (e.changedTouches && e.changedTouches.length === 1) {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        const deltaTime = Date.now() - touchStartTime;
+
+        if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2 && deltaTime < 550) {
+          didSwipe = true;
+          triggerHaptic(10);
+          if (deltaX < 0) {
+            // 左滑 -> 下一张卡片 (Next)
+            const nextBtn = document.getElementById('btnCardNext');
+            if (nextBtn) nextBtn.click();
+          } else {
+            // 右滑 -> 上一张卡片 (Prev)
+            const prevBtn = document.getElementById('btnCardPrev');
+            if (prevBtn) prevBtn.click();
+          }
+        }
+      }
+    }, { passive: true });
+
+    fcBoxEl.onclick = (e) => {
+      if (didSwipe) {
+        didSwipe = false;
+        return;
+      }
+      toggleCardReveal();
+    };
+  }
 
   // 闪卡实时编辑按钮 (点击打开编辑窗，保存即时重绘当前卡片)
   const btnFcEdit = document.getElementById('btnFcEdit');
@@ -3747,6 +3981,38 @@ function initNotebookApp() {
       a.download = 'antigravity.json';
       a.click();
       URL.revokeObjectURL(url);
+    };
+  }
+
+  // 📱 PWA 添加到手机主屏幕引导与原生安装触发
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
+  const installPwaBtn = document.getElementById('menuInstallPwa');
+  if (installPwaBtn) {
+    installPwaBtn.onclick = async (e) => {
+      if (e) e.stopPropagation();
+      const moreMenu = document.getElementById('moreDropdownMenu');
+      if (moreMenu) moreMenu.style.display = 'none';
+
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          showToast('🎉 已成功将 Antigravity 添加到主屏幕！', 'success');
+        }
+        deferredInstallPrompt = null;
+      } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          showToast('📱 iOS 全屏使用指引：\n点击 Safari 底部的「分享」图标 ➔ 向上滑动选择「添加到主屏幕」即可！', 'info', 4500);
+        } else {
+          showToast('📱 手机全屏使用指引：\n点击浏览器右上角「⋮」菜单 ➔ 选择「添加到主屏幕」或「安装应用」即可！', 'info', 4000);
+        }
+      }
     };
   }
 
