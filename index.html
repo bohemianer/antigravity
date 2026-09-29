@@ -3914,14 +3914,14 @@
     })();
   </script>
 
-  <script src="webdav.js?v=2.4"></script>
-  <script src="notebook.js?v=2.4"></script>
+  <script src="webdav.js?v=2.5"></script>
+  <script src="notebook.js?v=2.5"></script>
 
   <!-- PWA Service Worker 极速离线与缓存注册 (强制检查更新) -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.4').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=2.5').then(reg => {
           reg.update();
         }).catch(err => {
           console.warn('SW registration skipped:', err);

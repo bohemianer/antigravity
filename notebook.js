@@ -1456,7 +1456,7 @@ function renderList(list, query = "") {
       <td style="vertical-align: middle !important;" class="cell-word">
         <div class="word-cell-wrap">
           <span class="word-title">${wordTitleHtml}${dialectHtml}</span>
-          ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic} <span class="phonetic-audio-icon" style="font-size: 11px; opacity: 0.75; vertical-align: middle;">🔊</span></span>` : ''}
+          ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic}</span>` : ''}
         </div>
       </td>
       <td style="vertical-align: middle !important;" class="cell-context ${hasContext ? '' : 'is-empty'}">
