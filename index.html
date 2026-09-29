@@ -670,63 +670,73 @@
         overflow-x: hidden;
       }
       header {
-        height: 54px;
-        min-height: 54px;
-        max-height: 54px;
-        padding: 0 12px;
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        background: var(--bg-header);
+        height: auto !important;
+        min-height: 54px !important;
+        max-height: none !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 100 !important;
+        background: var(--bg-header) !important;
       }
       .logo-area {
-        gap: 8px;
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        align-items: center;
+        order: 1 !important;
+        height: 54px !important;
+        padding: 0 6px 0 12px !important;
+        gap: 8px !important;
+        flex: 1 !important;
+        min-width: 0 !important;
+        display: flex !important;
+        align-items: center !important;
       }
       .logo-title {
         display: none !important;
       }
       .view-switcher {
-        height: 34px;
-        padding: 2px;
+        height: 34px !important;
+        padding: 2px !important;
       }
       .view-tab {
-        height: 28px;
-        padding: 0 11px;
-        font-size: 12.5px;
+        height: 28px !important;
+        padding: 0 11px !important;
+        font-size: 12.5px !important;
       }
-      .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
+      .sync-status-badge {
+        margin-left: auto !important;
+        padding: 0 !important;
+        width: 34px !important;
+        height: 34px !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+        flex-shrink: 0 !important;
       }
       #syncText {
         display: none !important;
       }
-      .sync-status-badge {
-        margin-left: auto;
-        padding: 0;
-        width: 34px;
-        height: 34px;
-        justify-content: center;
-        border-radius: 50%;
-        flex-shrink: 0;
+
+      .header-right {
+        display: contents !important;
+      }
+
+      .header-actions {
+        order: 2 !important;
+        height: 54px !important;
+        padding-right: 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-shrink: 0 !important;
       }
       .more-menu-btn {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 50% !important;
       }
 
       /* 闪卡模式下：完全隐藏列表搜索栏与添加按键，还屏幕 100% 极简纯粹与空灵沉浸感！ */
@@ -737,121 +747,203 @@
       /* 笔记本模式下：控件化身贴合移动端的顶部搜索筛选工具条 */
       body[data-current-view="table"] .controls,
       .controls {
-        display: flex;
-        width: 100%;
-        padding: 10px 12px;
-        box-sizing: border-box;
-        background: var(--bg-warm);
-        border-bottom: 1px solid var(--border-light);
-        gap: 6px;
-        align-items: center;
+        order: 3 !important;
+        display: flex !important;
+        width: 100% !important;
+        padding: 8px 12px 10px 12px !important;
+        box-sizing: border-box !important;
+        background: var(--bg-header) !important;
+        border-top: 1px solid var(--border-light) !important;
+        gap: 8px !important;
+        align-items: center !important;
+        margin: 0 !important;
       }
       .search-box-wrap {
-        flex: 1;
-        min-width: 0;
+        flex: 1 !important;
+        min-width: 0 !important;
       }
       .search-input {
-        width: 100%;
-        max-width: none;
-        height: 36px;
-        font-size: 13px;
-        border-radius: 10px;
-        padding: 0 24px 0 11px;
+        width: 100% !important;
+        max-width: none !important;
+        height: 36px !important;
+        font-size: 13px !important;
+        border-radius: 10px !important;
+        padding: 0 24px 0 11px !important;
       }
       .dropdown-btn#srsDropdownBtn {
-        width: auto;
-        min-width: 80px;
-        height: 36px;
-        font-size: 11.5px;
-        padding: 0 8px;
-        border-radius: 10px;
+        width: auto !important;
+        min-width: 82px !important;
+        height: 36px !important;
+        font-size: 11.5px !important;
+        padding: 0 8px !important;
+        border-radius: 10px !important;
+        flex-shrink: 0 !important;
       }
       .btn-primary#btnAddWord {
-        height: 36px;
-        padding: 0 10px;
-        font-size: 12px;
-        white-space: nowrap;
-        border-radius: 10px;
+        height: 36px !important;
+        padding: 0 10px !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+        border-radius: 10px !important;
+        flex-shrink: 0 !important;
+      }
+
+      @media (max-width: 480px) {
+        .btn-primary#btnAddWord .btn-add-label {
+          display: none !important;
+        }
+        .btn-primary#btnAddWord {
+          padding: 0 11px !important;
+        }
       }
 
       main {
-        padding: 12px 10px;
-        width: 100%;
-        box-sizing: border-box;
+        padding: 12px 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
       }
 
-      /* 手机端列表卡片化：告别生硬横向滚动的表格，拥抱原生 iOS 卡片列表流 */
+      /* 手机端列表卡片化：原生 iOS 极简高质感词卡流 */
       .table-container {
-        background: transparent;
-        border: none;
-        box-shadow: none;
-        overflow: visible;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        margin-top: 2px !important;
       }
       table, thead, tbody, th, td, tr {
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
       }
       thead {
         display: none !important; /* 彻底移除移动端生硬表头 */
       }
       tbody tr {
-        background: var(--bg-card);
-        border: 1px solid var(--border-glass);
-        border-radius: 16px;
-        margin-bottom: 12px;
-        padding: 16px 14px;
-        box-shadow: var(--glass-shadow);
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
+        background: var(--bg-card) !important;
+        border: 1px solid var(--border-glass) !important;
+        border-radius: 16px !important;
+        margin-bottom: 12px !important;
+        padding: 14px 16px !important;
+        box-shadow: var(--glass-shadow) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
       }
       tbody tr:hover {
-        background: var(--bg-card);
+        background: var(--bg-card) !important;
       }
       tbody td {
         padding: 0 !important;
         border: none !important;
         text-align: left !important;
+        width: 100% !important;
+      }
+
+      /* 1. 词头栏 (Word Header) */
+      tbody td:nth-child(1) {
+        order: 1 !important;
       }
       .word-cell-wrap {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        margin-bottom: 2px;
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: baseline !important;
+        width: 100% !important;
+        margin-bottom: 2px !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
       }
       .word-title {
-        font-size: 19px;
-        font-weight: 700;
-        letter-spacing: -0.2px;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.2px !important;
+        color: var(--text-title) !important;
       }
       .word-phonetic {
-        font-size: 14px;
+        font-size: 13.5px !important;
+        color: var(--claude-terracotta) !important;
+        cursor: pointer !important;
       }
-      .salad-sentence {
-        font-size: 13.5px;
-        line-height: 1.6;
-        color: var(--text-body);
-        background: var(--bg-subtle);
-        padding: 8px 12px;
-        border-radius: 8px;
-        margin: 4px 0;
+
+      /* 2. 释义 (Translation) - 紧随词头之后 */
+      tbody td:nth-child(3) {
+        order: 2 !important;
       }
       .trans-text {
-        font-size: 14px;
-        line-height: 1.6;
-        color: var(--text-main);
+        font-size: 14px !important;
+        line-height: 1.55 !important;
+        color: var(--text-main) !important;
+        font-weight: 500 !important;
+      }
+      .trans-pos-tag {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        color: var(--claude-terracotta) !important;
+        margin-right: 4px !important;
+      }
+
+      /* 3. 语境例句 (Context Sentence) - 柔和引用样式 */
+      tbody td:nth-child(2) {
+        order: 3 !important;
+      }
+      .salad-context-box {
+        margin: 2px 0 0 0 !important;
+      }
+      .salad-sentence {
+        font-size: 13px !important;
+        line-height: 1.55 !important;
+        color: var(--text-body) !important;
+        background: var(--bg-subtle) !important;
+        padding: 8px 12px !important;
+        border-radius: 9px !important;
+        border-left: 3px solid var(--claude-terracotta) !important;
+        margin: 0 !important;
+      }
+      /* 无例句时不占任何高度 */
+      tbody td.cell-context.is-empty,
+      .salad-sentence.is-empty,
+      .salad-context-box.is-empty {
+        display: none !important;
+      }
+
+      /* 4. 笔记 (Notes) - 仅在有笔记时展示 */
+      tbody td:nth-child(4) {
+        order: 4 !important;
+      }
+      tbody td.cell-notes.is-empty,
+      .note-text.is-empty,
+      .note-text:empty {
+        display: none !important;
+      }
+      .note-text {
+        font-size: 12.5px !important;
+        color: var(--text-muted) !important;
+        background: rgba(0, 0, 0, 0.02) !important;
+        padding: 6px 10px !important;
+        border-radius: 6px !important;
+      }
+      [data-applied-theme="dark"] .note-text {
+        background: rgba(255, 255, 255, 0.04) !important;
+      }
+
+      /* 5. 底部操作栏 (Actions & Mastery Status) */
+      tbody td:nth-child(5) {
+        order: 5 !important;
       }
       .action-group {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 10px;
-        margin-top: 6px;
-        padding-top: 8px;
-        border-top: 1px solid var(--border-light);
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-top: 4px !important;
+        padding-top: 8px !important;
+        border-top: 1px solid var(--border-light) !important;
+        width: 100% !important;
+      }
+      .mastery-picker-popup {
+        left: -4px !important;
+        right: auto !important;
       }
 
       /* 闪卡自测手机端极简自适应 */
@@ -2910,7 +3002,7 @@
           <input type="text" id="searchInput" class="search-input" placeholder="搜索单词...">
           <button type="button" class="search-clear-btn" id="btnSearchClear" title="清除搜索内容" aria-label="清除搜索内容">✕</button>
         </div>
-        <button class="btn btn-primary" id="btnAddWord">➕ 添加新词</button>
+        <button class="btn btn-primary" id="btnAddWord"><span class="btn-add-icon">➕</span><span class="btn-add-label"> 添加新词</span></button>
       </div>
 
       <!-- 顶部右侧系统动作区 (更多功能菜单) -->
@@ -3822,14 +3914,14 @@
     })();
   </script>
 
-  <script src="webdav.js?v=2.3"></script>
-  <script src="notebook.js?v=2.3"></script>
+  <script src="webdav.js?v=2.4"></script>
+  <script src="notebook.js?v=2.4"></script>
 
   <!-- PWA Service Worker 极速离线与缓存注册 (强制检查更新) -->
   <script>
     if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2.3').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=2.4').then(reg => {
           reg.update();
         }).catch(err => {
           console.warn('SW registration skipped:', err);

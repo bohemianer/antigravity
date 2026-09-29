@@ -1434,7 +1434,9 @@ function renderList(list, query = "") {
     const phonetic = extractPhoneticFromItem(item);
     const transHtml = formatTransHtml(item.trans || item.definition || "");
     const notesText = cleanNotes(item.notes);
-    const contextSentence = highlightWordInSentence(item.context || item.sentence || "暂无上下文例句", wordText);
+    const rawContext = (item.context || item.sentence || "").trim();
+    const hasContext = Boolean(rawContext && rawContext !== "暂无上下文例句" && rawContext !== "来自欧路词典同步");
+    const contextSentence = hasContext ? highlightWordInSentence(rawContext, wordText) : "暂无上下文例句";
     const sourceTitle = item.title || "Web Article";
     const faviconUrl = getSourceFavicon(item);
     const masteryInfo = getMasteryInfo(item.srsLevel, item.srsReviews);
@@ -1451,24 +1453,24 @@ function renderList(list, query = "") {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="vertical-align: middle !important; text-align: center;">
+      <td style="vertical-align: middle !important;" class="cell-word">
         <div class="word-cell-wrap">
           <span class="word-title">${wordTitleHtml}${dialectHtml}</span>
-          ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic}</span>` : ''}
+          ${phonetic ? `<span class="word-phonetic audio-phonetic-trigger" data-word="${wordText}" title="点击朗读发音">${phonetic} <span class="phonetic-audio-icon" style="font-size: 11px; opacity: 0.75; vertical-align: middle;">🔊</span></span>` : ''}
         </div>
       </td>
-      <td style="vertical-align: middle !important;">
-        <div class="salad-context-box">
-          <div class="salad-sentence">${contextSentence}</div>
+      <td style="vertical-align: middle !important;" class="cell-context ${hasContext ? '' : 'is-empty'}">
+        <div class="salad-context-box ${hasContext ? '' : 'is-empty'}">
+          <div class="salad-sentence ${hasContext ? '' : 'is-empty'}">${contextSentence}</div>
         </div>
       </td>
-      <td style="vertical-align: middle !important;">
+      <td style="vertical-align: middle !important;" class="cell-trans">
         <div class="trans-text">${transHtml}</div>
       </td>
-      <td style="vertical-align: middle !important;">
-        <div class="note-text">${notesText || ''}</div>
+      <td style="vertical-align: middle !important;" class="cell-notes ${notesText ? '' : 'is-empty'}">
+        <div class="note-text ${notesText ? '' : 'is-empty'}">${notesText ? `📝 ${notesText}` : ''}</div>
       </td>
-      <td style="vertical-align: middle !important;">
+      <td style="vertical-align: middle !important;" class="cell-actions">
         <div class="action-group">
           <div class="mastery-wrap">
             <button class="mastery-dot-btn btn-mastery-toggle" data-uid="${uid}" data-word="${wordText}" title="${masteryInfo.title}">
@@ -1492,18 +1494,20 @@ function renderList(list, query = "") {
               </button>
             </div>
           </div>
-          <button class="apple-icon-btn btn-edit" data-uid="${uid}" data-word="${wordText}" title="编辑词条与笔记">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-          </button>
-          <button class="apple-icon-btn apple-icon-btn-del btn-del" data-uid="${uid}" data-word="${wordText}" title="删除词条">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+          <div class="card-action-btns" style="display: flex; align-items: center; gap: 8px;">
+            <button class="apple-icon-btn btn-edit" data-uid="${uid}" data-word="${wordText}" title="编辑词条与笔记">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </button>
+            <button class="apple-icon-btn apple-icon-btn-del btn-del" data-uid="${uid}" data-word="${wordText}" title="删除词条">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       </td>
     `;
