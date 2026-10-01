@@ -141,27 +141,215 @@
     window.chrome.storage.sync = createStorageArea('agy_sync_', 'sync');
   }
 
+  function universalLookupWord(rawWord, callback) {
+    const cleanWord = (rawWord || "").trim();
+    if (!cleanWord) {
+      if (callback) callback({ word: "", phonetic: "", definition: "", translation: "" });
+      return;
+    }
+
+    // 1. 本地已存词库极速查询 (0ms 离线体验)
+    try {
+      if (typeof currentWords !== 'undefined' && Array.isArray(currentWords)) {
+        const lower = cleanWord.toLowerCase();
+        const hit = currentWords.find(w => (w.text || w.word || "").toLowerCase().trim() === lower);
+        if (hit && (hit.trans || hit.definition)) {
+          const pho = (typeof extractPhoneticFromItem === 'function') ? extractPhoneticFromItem(hit) : (hit.phonetic || "");
+          if (callback) {
+            callback({
+              word: cleanWord,
+              phonetic: pho,
+              definition: hit.trans || hit.definition || "",
+              translation: hit.trans || hit.definition || ""
+            });
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+
+    let isResolved = false;
+    function safeCallback(res) {
+      if (isResolved) return;
+      isResolved = true;
+      if (callback) callback(res);
+    }
+
+    // 2. 通道 A: Google GTX (海外/VPN 环境 150ms 极速返回音标 + 翻译 + 词性释义，CORS 开放)
+    const fetchGoogle = async () => {
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(cleanWord)}`;
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 1500);
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(tid);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        
+        let mainTrans = "";
+        if (data[0] && data[0][0] && data[0][0][0]) {
+          mainTrans = data[0].map(item => item[0]).filter(Boolean).join("").trim();
+        }
+        let phonetic = "";
+        if (data[0] && data[0][1] && data[0][1][3]) {
+          phonetic = data[0][1][3];
+        }
+        let dictParts = [];
+        if (data[1] && Array.isArray(data[1])) {
+          data[1].forEach(item => {
+            const pos = item[0];
+            const terms = item[1];
+            if (pos && terms) {
+              dictParts.push(`${pos}. ${terms.slice(0, 3).join("，")}`);
+            }
+          });
+        }
+        const fullDef = dictParts.length > 0 ? dictParts.join("\n") : mainTrans;
+        if (mainTrans || phonetic) {
+          return {
+            word: cleanWord,
+            phonetic: phonetic,
+            definition: fullDef || mainTrans,
+            translation: mainTrans
+          };
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    // 3. 通道 B: 有道 AI 翻译 (国内直连无 VPN，CORS 开放，返回精准中文翻译)
+    const fetchYoudaoAidemo = async () => {
+      try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 2200);
+        const resp = await fetch("https://aidemo.youdao.com/trans", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `q=${encodeURIComponent(cleanWord)}&from=Auto&to=Auto`,
+          signal: controller.signal
+        });
+        clearTimeout(tid);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        if (data && data.translation && data.translation[0]) {
+          return {
+            word: cleanWord,
+            definition: data.translation[0],
+            translation: data.translation[0],
+            phonetic: ""
+          };
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    // 4. 通道 C: 有道 Suggest JSONP (国内直连无 VPN，通过 script 标签彻底绕过 CORS，返回词性与精简释义)
+    const fetchYoudaoJsonp = () => {
+      return new Promise((resolve) => {
+        const cbName = `__agy_yd_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        const tid = setTimeout(() => {
+          cleanup();
+          resolve(null);
+        }, 2200);
+
+        function cleanup() {
+          clearTimeout(tid);
+          try { delete window[cbName]; } catch (e) {}
+          const el = document.getElementById(cbName);
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        }
+
+        window[cbName] = function(data) {
+          cleanup();
+          try {
+            if (data && data.data && data.data.entries && data.data.entries[0]) {
+              const entry = data.data.entries[0];
+              resolve({
+                word: cleanWord,
+                definition: entry.explain || "",
+                translation: entry.explain || "",
+                phonetic: ""
+              });
+              return;
+            }
+          } catch (e) {}
+          resolve(null);
+        };
+
+        try {
+          const script = document.createElement('script');
+          script.id = cbName;
+          script.src = `https://dict.youdao.com/suggest?num=1&doctype=json&callback=${cbName}&q=${encodeURIComponent(cleanWord)}`;
+          script.onerror = () => { cleanup(); resolve(null); };
+          document.body.appendChild(script);
+        } catch (e) {
+          cleanup();
+          resolve(null);
+        }
+      });
+    };
+
+    // 5. 通道 D: Wiktionary API (支持 origin=* 跨域，全球直连提取纯正 IPA 音标)
+    const fetchWiktionaryIpa = async () => {
+      try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 2200);
+        const url = `https://en.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(cleanWord.toLowerCase())}&prop=wikitext&format=json&origin=*`;
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(tid);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const wt = (data.parse && data.parse.wikitext && data.parse.wikitext['*']) || "";
+        const m = wt.match(/\{\{IPA\|en\|([^}]+)\}\}/);
+        if (m && m[1]) {
+          const parts = m[1].split('|');
+          for (const p of parts) {
+            const trimmed = p.trim();
+            if ((trimmed.startsWith('/') || trimmed.startsWith('[')) && !trimmed.startsWith('a=') && !trimmed.startsWith('q=')) {
+              return trimmed.replace(/^[\/\[]+|[\/\]]+$/g, '');
+            }
+          }
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    // 竞速与智能融合：优先尝试 Google (兼具释义与音标)
+    fetchGoogle().then(gRes => {
+      if (gRes && (gRes.definition || gRes.translation) && gRes.phonetic) {
+        safeCallback(gRes);
+      } else {
+        // 国内无代理通道：并行请求有道 (获取释义) 与 Wiktionary (获取音标)
+        Promise.all([
+          Promise.any([fetchYoudaoJsonp(), fetchYoudaoAidemo()]).catch(() => null),
+          fetchWiktionaryIpa().catch(() => null)
+        ]).then(([transRes, ipaRes]) => {
+          const finalDef = (transRes && (transRes.definition || transRes.translation)) || (gRes && (gRes.definition || gRes.translation)) || "";
+          const finalPhonetic = ipaRes || (gRes && gRes.phonetic) || "";
+          safeCallback({
+            word: cleanWord,
+            definition: finalDef,
+            translation: finalDef,
+            phonetic: finalPhonetic
+          });
+        }).catch(() => {
+          safeCallback(gRes || { word: cleanWord, definition: "", phonetic: "" });
+        });
+      }
+    });
+
+    // 3.2 秒全局兜底防呆
+    setTimeout(() => {
+      safeCallback({ word: cleanWord, definition: "", phonetic: "" });
+    }, 3200);
+  }
+
+  window.universalLookupWord = window.universalLookupWord || universalLookupWord;
+
   if (!window.chrome.runtime.sendMessage) {
     window.chrome.runtime.sendMessage = function(msg, callback) {
       if (msg && msg.action === "LOOKUP_WORD") {
-        const text = (msg.word || "").trim();
-        if (!text) {
-          if (callback) callback(null);
-          return;
-        }
-        fetch(`https://dict.youdao.com/suggest?num=1&doctype=json&q=${encodeURIComponent(text)}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.data && data.data.entries && data.data.entries[0]) {
-              const entry = data.data.entries[0];
-              if (callback) callback({ word: text, definition: entry.explain || "", phonetic: "" });
-            } else {
-              if (callback) callback({ word: text, definition: "", phonetic: "" });
-            }
-          })
-          .catch(() => {
-            if (callback) callback({ word: text, definition: "", phonetic: "" });
-          });
+        universalLookupWord(msg.word, callback);
         return true;
       }
       if (callback) callback(null);
@@ -1062,15 +1250,17 @@ async function doFullSync(notifyUser = false) {
   isFullSyncing = true;
   updateSyncBadge('syncing', '正在同步中...');
 
-  // 看门狗超时保护：即使遇到极端断网或服务器假死，最多 15 秒后强制重置状态，绝不永久卡在「正在同步中」
+  // 看门狗超时保护：即使遇到极端断网或服务器假死，在 Web 端 8 秒（扩展端 15 秒）强制重置状态，绝不卡死
+  const isWebEnv = !window.chrome?.runtime?.id || (typeof window !== 'undefined' && window.location.protocol.startsWith('http'));
+  const timeoutLimit = isWebEnv ? 8000 : 15000;
   const watchdogTimer = setTimeout(() => {
     if (isFullSyncing) {
       console.warn("同步超时触发，重置状态");
       isFullSyncing = false;
       updateSyncBadge('disconnected', '同步超时');
-      if (notifyUser) showToast('⚠️ 网络请求超时，请检查网络或坚果云配置', 'warning', 4000);
+      if (notifyUser) showToast('⚠️ 网络请求超时，请检查网络或 Gitee/坚果云配置', 'warning', 4000);
     }
-  }, 15000);
+  }, timeoutLimit);
 
   let eudicNewCount = 0;
   let eudicTotalScanned = 0;
@@ -1152,49 +1342,62 @@ async function doFullSync(notifyUser = false) {
     }
 
     // 3. 坚果云 WebDAV 双向合并（直接在页面线程原生执行，彻底规避 MV3 Service Worker 30秒被杀导致的丢包卡死）
-    let hasWebDAV = false;
-    let webdavSuccessCount = 0;
     if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
       hasWebDAV = true;
-      try {
-        const localRes = await new Promise(resolve => {
-          chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
-        });
-        const list = localRes.savedWords || [];
-        const deletions = localRes.deletedWords || {};
-        const lastSync = localRes.lastWebDAVSyncTime || 0;
-
-        const client = new WebDAVClient(webdavConfig);
-        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
-
-        await new Promise(resolve => {
-          chrome.storage.local.set({
-            savedWords: mergedList,
-            deletedWords: mergedDeletions,
-            lastWebDAVSyncTime: syncTime || Date.now()
-          }, resolve);
-        });
-
-        currentWords = mergedList;
-        webdavSuccessCount = mergedList.length;
-        if (currentView !== 'flashcard') {
-          applyFilter();
-        }
-        updateStats();
-      } catch (err) {
-        console.error("WebDAV 同步异常:", err);
-        // 如果已经成功同步了 Gitee，WebDAV 失败时不中断流程
+      if (isWebEnv) {
+        // 手机/Web端由于浏览器严格的跨域同源策略 (CORS)，坚果云服务端未开放跨域，因此跳过直接请求
+        console.warn("手机/Web端因浏览器跨域安全限制(CORS)跳过 WebDAV 直接连接");
         if (!hasGitee) {
-          throw err;
+          updateSyncBadge('disconnected', '需Gitee同步');
+          if (notifyUser) {
+            showToast("💡 手机网页版因浏览器跨域限制(CORS)无法直连坚果云，请在「☁️ 同步」中配置 Gitee 码云（国内直连、完全支持手机端）！", 'warning', 6000);
+          }
+        }
+      } else {
+        try {
+          const localRes = await new Promise(resolve => {
+            chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
+          });
+          const list = localRes.savedWords || [];
+          const deletions = localRes.deletedWords || {};
+          const lastSync = localRes.lastWebDAVSyncTime || 0;
+
+          const client = new WebDAVClient(webdavConfig);
+          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+
+          await new Promise(resolve => {
+            chrome.storage.local.set({
+              savedWords: mergedList,
+              deletedWords: mergedDeletions,
+              lastWebDAVSyncTime: syncTime || Date.now()
+            }, resolve);
+          });
+
+          currentWords = mergedList;
+          webdavSuccessCount = mergedList.length;
+          if (currentView !== 'flashcard') {
+            applyFilter();
+          }
+          updateStats();
+        } catch (err) {
+          console.error("WebDAV 同步异常:", err);
+          // 如果已经成功同步了 Gitee，WebDAV 失败时不中断流程
+          if (!hasGitee) {
+            throw err;
+          }
         }
       }
     }
 
     // 综合同步结果反馈
     if (hasGitee && hasWebDAV) {
-      updateSyncBadge('connected', `多端已同步 (${currentWords.length} 词)`);
+      const badgeText = isWebEnv ? `Gitee已同步 (${giteeSuccessCount} 词)` : `多端已同步 (${currentWords.length} 词)`;
+      updateSyncBadge('connected', badgeText);
       if (notifyUser) {
-        showToast(`🎉 多端云同步完成！词库共 ${currentWords.length} 词（Gitee & WebDAV 均已同步）`, 'success', 3500);
+        const msg = isWebEnv 
+          ? `🎉 Gitee 码云同步完成！词库共 ${giteeSuccessCount} 词。`
+          : `🎉 多端云同步完成！词库共 ${currentWords.length} 词（Gitee & WebDAV 均已同步）`;
+        showToast(msg, 'success', 3500);
       }
     } else if (hasGitee) {
       updateSyncBadge('connected', `Gitee已同步 (${giteeSuccessCount} 词)`);
@@ -3123,6 +3326,11 @@ function initNotebookApp() {
       variantWarn.style.display = 'none';
     }
 
+    if (autoFillStatus) {
+      autoFillStatus.innerText = "🔍 正在联网查询音标与释义...";
+      autoFillStatus.style.display = 'block';
+    }
+
     chrome.runtime.sendMessage({ action: "LOOKUP_WORD", word: text }, (res) => {
       if (!res) {
         if (autoFillStatus) autoFillStatus.style.display = 'none';
@@ -3131,17 +3339,25 @@ function initNotebookApp() {
       const phoneticInp = document.getElementById('inputPhonetic');
       const transInp = document.getElementById('inputTrans');
       
+      let filledAny = false;
       if (res.phonetic && phoneticInp && (!phoneticInp.value.trim() || editIndexInput.value === "-1")) {
         phoneticInp.value = cleanIPA(res.phonetic);
+        filledAny = true;
       }
       if ((res.definition || res.translation) && transInp && (!transInp.value.trim() || editIndexInput.value === "-1")) {
         transInp.value = res.definition || res.translation || "";
+        filledAny = true;
       }
       if (autoFillStatus) {
-        autoFillStatus.innerText = "✓ 已自动补全音标与释义";
-        setTimeout(() => {
-          if (autoFillStatus) autoFillStatus.style.display = 'none';
-        }, 1800);
+        if (filledAny || res.phonetic || res.definition || res.translation) {
+          autoFillStatus.innerText = "✓ 已自动补全音标与释义";
+          autoFillStatus.style.display = 'block';
+          setTimeout(() => {
+            if (autoFillStatus) autoFillStatus.style.display = 'none';
+          }, 2200);
+        } else {
+          autoFillStatus.style.display = 'none';
+        }
       }
     });
   }
@@ -3543,12 +3759,9 @@ function initNotebookApp() {
   if (syncDotEl) {
     syncDotEl.onclick = (e) => {
       e.stopPropagation();
+      triggerHaptic(12);
       syncDotEl.classList.add('rotating');
-      doWebDAVSync(true).then(() => {
-        setTimeout(() => {
-          syncDotEl.classList.remove('rotating');
-        }, 800);
-      }).catch(() => {
+      doWebDAVSync(true).finally(() => {
         syncDotEl.classList.remove('rotating');
       });
     };
