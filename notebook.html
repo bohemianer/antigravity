@@ -1681,23 +1681,14 @@
     .flashcard-phonetic.playing,
     .word-phonetic.playing {
       color: var(--claude-terracotta) !important;
-      background: rgba(204, 120, 92, 0.22) !important;
-      animation: audioPulse 1s infinite alternate ease-in-out;
-      transform: none !important;
+      background: rgba(204, 120, 92, 0.2) !important;
+      animation: audioPulse 0.9s infinite alternate ease-in-out;
+      transform-origin: center center;
     }
     @keyframes audioPulse {
-      0% { 
-        background-color: rgba(204, 120, 92, 0.16);
-        box-shadow: 0 0 0 0 rgba(204, 120, 92, 0.2);
-      }
-      50% { 
-        background-color: rgba(204, 120, 92, 0.28);
-        box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
-      }
-      100% { 
-        background-color: rgba(204, 120, 92, 0.16);
-        box-shadow: 0 0 0 0 rgba(204, 120, 92, 0);
-      }
+      0% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+      100% { transform: scale(1); }
     }
     .flashcard-context {
       font-family: var(--font-serif);
