@@ -1671,7 +1671,7 @@ function renderList(list, query = "") {
         <div class="trans-text">${transHtml}</div>
       </td>
       <td style="vertical-align: middle !important;" class="cell-notes ${notesText ? '' : 'is-empty'}">
-        <div class="note-text ${notesText ? '' : 'is-empty'}">${notesText ? `📝 ${notesText}` : ''}</div>
+        <div class="note-text ${notesText ? '' : 'is-empty'}">${notesText || ''}</div>
       </td>
       <td style="vertical-align: middle !important;" class="cell-actions">
         <div class="action-group">
