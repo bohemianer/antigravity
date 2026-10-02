@@ -745,8 +745,21 @@ const PronunciationEngine = {
     const useAccent = customAccent || this.accent || 'us';
     const typeParam = useAccent === 'uk' ? 1 : 2; // 1: 英音, 2: 美音
 
+    // 1. 彻底清除上一次发音遗留的高亮与正在播放状态
+    if (this.currentActiveElements && this.currentActiveElements.size > 0) {
+      this.currentActiveElements.forEach(el => {
+        try { el.classList.remove('playing'); } catch (e) {}
+      });
+      this.currentActiveElements.clear();
+    } else {
+      this.currentActiveElements = new Set();
+    }
+    document.querySelectorAll('.playing').forEach(el => {
+      try { el.classList.remove('playing'); } catch (e) {}
+    });
+
     // 视觉声波波形联动
-    const activeElements = new Set();
+    const activeElements = this.currentActiveElements;
     if (triggerEl) activeElements.add(triggerEl);
     document.querySelectorAll(`.audio-phonetic-trigger[data-word="${clean}" i]`).forEach(el => activeElements.add(el));
     const fcPhoneticEl = document.getElementById('fcPhonetic');
@@ -760,19 +773,26 @@ const PronunciationEngine = {
     const stopWave = () => {
       if (stopped) return;
       stopped = true;
-      activeElements.forEach(el => el.classList.remove('playing'));
+      activeElements.forEach(el => {
+        try { el.classList.remove('playing'); } catch (e) {}
+      });
+      activeElements.clear();
     };
 
-    // 终止上一段正在播放的音频
+    // 终止上一段正在播放的音频及其回调，防止多音频异步竞争
     if (this.currentAudio) {
       try {
+        this.currentAudio.onended = null;
+        this.currentAudio.onerror = null;
         this.currentAudio.pause();
         this.currentAudio.currentTime = 0;
       } catch (e) {}
       this.currentAudio = null;
     }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
     }
 
     const cacheKey = `${useAccent}_${clean.toLowerCase()}`;
