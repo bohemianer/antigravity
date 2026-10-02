@@ -577,14 +577,15 @@ async function smartLookup(text) {
   }
 }
 
-async function autoSyncWebDAV(wordsList) {
+async function autoSyncWebDAV() {
   chrome.storage.sync.get({ webdavConfig: null }, async (res) => {
     const cfg = res.webdavConfig;
     if (cfg && cfg.enabled && cfg.username && cfg.password) {
       try {
-        chrome.storage.local.get({ deletedWords: {}, lastWebDAVSyncTime: 0 }, async (delRes) => {
+        chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, async (delRes) => {
+          const list = delRes.savedWords || [];
           const client = new WebDAVClient(cfg);
-          const { mergedList, mergedDeletions, syncTime } = await client.performSync(wordsList, delRes.deletedWords || {}, delRes.lastWebDAVSyncTime || 0);
+          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastWebDAVSyncTime || 0);
           chrome.storage.local.set({
             savedWords: mergedList,
             deletedWords: mergedDeletions,
@@ -599,20 +600,20 @@ async function autoSyncWebDAV(wordsList) {
 }
 
 let giteeSyncDebounceTimer = null;
-function scheduleGiteeSync(wordsList = null, delayMs = 20000) {
+function scheduleGiteeSync(delayMs = 20000) {
   if (giteeSyncDebounceTimer) clearTimeout(giteeSyncDebounceTimer);
   giteeSyncDebounceTimer = setTimeout(() => {
-    autoSyncGitee(wordsList);
+    autoSyncGitee();
   }, delayMs);
 }
 
-async function autoSyncGitee(wordsList = null) {
+async function autoSyncGitee() {
   chrome.storage.sync.get({ giteeConfig: null }, async (res) => {
     const cfg = res.giteeConfig;
     if (cfg && cfg.enabled && cfg.owner && cfg.repo && cfg.token) {
       try {
         chrome.storage.local.get({ deletedWords: {}, lastGiteeSyncTime: 0, savedWords: [] }, async (delRes) => {
-          const list = wordsList || delRes.savedWords || [];
+          const list = delRes.savedWords || [];
           const client = new GiteeSyncClient(cfg);
           const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastGiteeSyncTime || 0);
           chrome.storage.local.set({
@@ -628,22 +629,22 @@ async function autoSyncGitee(wordsList = null) {
   });
 }
 
-function autoSyncAll(wordsList, isDebounce = false) {
-  autoSyncWebDAV(wordsList);
+function autoSyncAll(isDebounce = false) {
+  autoSyncWebDAV();
   if (isDebounce) {
-    scheduleGiteeSync(wordsList, 20000);
+    scheduleGiteeSync(20000);
   } else {
-    autoSyncGitee(wordsList);
+    autoSyncGitee();
   }
 }
 
-async function autoSyncEudic(wordsList = null) {
+async function autoSyncEudic() {
   chrome.storage.sync.get({ eudicToken: '' }, async (r) => {
     const token = (r.eudicToken || '').trim();
     if (!token) return;
     try {
       chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
-        const currentList = wordsList || localRes.savedWords || [];
+        const currentList = localRes.savedWords || [];
         const deletions = Object.assign({}, localRes.deletedWords || {});
         const engine = new EudicSyncEngine(token);
         const eudicWords = await engine.fetchAllCategoriesAndWords();
@@ -652,7 +653,7 @@ async function autoSyncEudic(wordsList = null) {
         if (newAddedCount > 0) {
           chrome.storage.local.set({ savedWords: mergedList, deletedWords: deletionsMap || deletions }, () => {
             console.log(`[Eudic AutoSync] 成功从欧路同步新增 ${newAddedCount} 个生词，总计 ${mergedList.length} 词`);
-            autoSyncAll(mergedList, false);
+            autoSyncAll(false);
           });
         }
       });
@@ -729,7 +730,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (cleanWord) delMap[cleanWord] = Date.now();
       list = list.filter(x => (x.text || x.word || "").toLowerCase().trim() !== cleanWord);
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
-        autoSyncAll(list, false);
+        autoSyncAll(false);
         chrome.storage.sync.get({ eudicToken: '' }, (r) => {
           if (r.eudicToken) {
             const engine = new EudicSyncEngine(r.eudicToken);
@@ -806,7 +807,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (delMap[lowerClean]) delete delMap[lowerClean];
       
       chrome.storage.local.set({ savedWords: list, deletedWords: delMap }, () => {
-        autoSyncAll(list, true); // 划词启用 20 秒智能防抖
+        autoSyncAll(true); // 划词启用 20 秒智能防抖
         sendResponse({ success: true, count: list.length });
 
         // 若当前单词缺少音标，后台自动发起多源音标补充
@@ -819,7 +820,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 if (target && !target.phonetic) {
                   target.phonetic = cleanIPA(ydRes.phonetic);
                   chrome.storage.local.set({ savedWords: curList }, () => {
-                    autoSyncAll(curList, true);
+                    autoSyncAll(true);
                   });
                 }
               });
@@ -952,11 +953,8 @@ try {
     chrome.alarms.create('antigravity_auto_sync', { periodInMinutes: 30 });
     chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'antigravity_auto_sync') {
-        chrome.storage.local.get({ savedWords: [] }, (res) => {
-          const list = res.savedWords || [];
-          autoSyncAll(list, false);
-          autoSyncEudic(list);
-        });
+        autoSyncAll(false);
+        autoSyncEudic();
       }
     });
   }
@@ -964,19 +962,13 @@ try {
 
 // 浏览器启动 / 插件安装初始化时发起一次静默同步
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.get({ savedWords: [] }, (res) => {
-    const list = res.savedWords || [];
-    autoSyncAll(list, false);
-    autoSyncEudic(list);
-  });
+  autoSyncAll(false);
+  autoSyncEudic();
 });
 
 if (chrome.runtime.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
-    chrome.storage.local.get({ savedWords: [] }, (res) => {
-      const list = res.savedWords || [];
-      autoSyncAll(list, false);
-      autoSyncEudic(list);
-    });
+    autoSyncAll(false);
+    autoSyncEudic();
   });
 }

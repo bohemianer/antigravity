@@ -4155,13 +4155,24 @@ function initNotebookApp() {
         if (isWordRenamed) {
           // 单词本体被重命名：
           const cleanOld = (oldWordText || "").toLowerCase().trim();
+          const cleanNew = (word || "").toLowerCase().trim();
           chrome.storage.local.get({ deletedWords: {} }, (rDel) => {
             const delMap = Object.assign({}, rDel.deletedWords || {});
             if (cleanOld) delMap[cleanOld] = Date.now();
+            if (cleanNew && delMap[cleanNew]) delete delMap[cleanNew]; // 确保新重命名的单词绝不被历史墓碑误杀
 
             chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
-              // 关键：立即执行 WebDAV 覆盖同步与墓碑上传，彻底抹除云端的旧词，防止云端拉取时双份合并！
-              doWebDAVOverwrite();
+              // 关键：立即执行权威多端同步 (Gitee 与 WebDAV 均双向合并并上报墓碑)
+              doFullSync(false);
+
+              // 同步向欧路词典发送删除旧词指令
+              chrome.storage.sync.get({ eudicToken: '' }, (r) => {
+                if (r.eudicToken && cleanOld) {
+                  const engine = new EudicSyncEngine(r.eudicToken);
+                  engine.deleteWord(cleanOld).catch(e => console.warn(e));
+                }
+              });
+
               applyFilter();
               updateStats();
               try {

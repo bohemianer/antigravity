@@ -64,15 +64,8 @@ function mergeVocabLists(localList = [], remoteList = [], deletionsMap = {}, las
     const lUpdate = typeof lItem.updatedAt === 'number' ? lItem.updatedAt : (typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : 0));
 
     if (!map.has(k)) {
-      // 云端没有该词：
-      // 关键智能判定：该词是离线期间本地新增的？还是在其他设备上已被删除？
-      // 如果此设备曾经成功同步过 (lastSyncTime > 0)，且此词的创建/修改时间早于上次同步时间，
-      // 说明此词在上次同步时就已存在，但在云端却消失了 -> 这表明该词已被其他设备在云端删除！
-      // 此时绝不能将其当成新词传回云端复活，而应当从本地顺应删除！
-      const isOfflineNewAddition = (!lastSyncTime || lastSyncTime <= 0) ? true : (lUpdate > lastSyncTime);
-      if (isOfflineNewAddition) {
-        map.set(k, Object.assign({}, lItem));
-      }
+      // 云端没有该词：只要未在删除墓碑中显式标记删除，绝对保留本地词条并同步上传（彻底杜绝时间戳偏差导致的静默丢词）
+      map.set(k, Object.assign({}, lItem));
     } else {
       // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
       const rItem = map.get(k);
