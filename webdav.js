@@ -634,12 +634,38 @@ class GiteeSyncClient {
       throw new Error("请先完整填写 Gitee 仓库所有者、仓库名与私人令牌 (Token)");
     }
     const url = `https://gitee.com/api/v5/repos/${encodeURIComponent(this.owner)}/${encodeURIComponent(this.repo)}/contents/${encodeURI(path)}?access_token=${encodeURIComponent(this.token)}`;
-    const resp = await fetchWithTimeout(url, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json"
+
+    let resp = null;
+    let lastErr = null;
+    // 增加针对 Gitee 偶发性 502/503/504 网关波动的自愈重试机制 (最多重试 2 次)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        resp = await fetchWithTimeout(url, {
+          method: "GET",
+          headers: {
+            "Accept": "application/json"
+          }
+        }, 12000);
+
+        // 如果是 502 Bad Gateway / 503 / 504，可能是 Gitee 服务器临时波动，休眠 800ms 后重试
+        if (resp && [502, 503, 504].includes(resp.status) && attempt < 3) {
+          await new Promise(r => setTimeout(r, attempt * 800));
+          continue;
+        }
+        break;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, attempt * 800));
+          continue;
+        }
+        throw err;
       }
-    }, 12000);
+    }
+
+    if (!resp) {
+      throw lastErr || new Error("Gitee 网络请求失败");
+    }
 
     if (resp.status === 404) {
       return null; // 文件不存在
@@ -649,6 +675,9 @@ class GiteeSyncClient {
     }
     if (resp.status === 403) {
       throw new Error("Gitee 访问受限 (403): 请确认私人令牌勾选了 projects 读写权限");
+    }
+    if ([502, 503, 504].includes(resp.status)) {
+      throw new Error(`Gitee 官方服务器暂时繁忙或维护中 (${resp.status} ${resp.statusText})，请稍候重试`);
     }
     if (!resp.ok) {
       const text = await resp.text().catch(() => "");
@@ -712,8 +741,27 @@ class GiteeSyncClient {
       }
     }
 
+    // 智能处理 502/503/504 服务器波动重试
+    if (!resp.ok && [502, 503, 504].includes(resp.status)) {
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        resp = await fetchWithTimeout(url, {
+          method: method,
+          headers: {
+            "Content-Type": "application/json;charset=UTF-8"
+          },
+          body: JSON.stringify(payload)
+        }, 15000);
+      } catch (retryErr) {
+        console.warn("Gitee retry saveFile error:", retryErr);
+      }
+    }
+
     if (resp.status === 401) {
       throw new Error("Gitee 私人令牌 (Token) 无效或无写入权限，请确认勾选了 projects 权限");
+    }
+    if ([502, 503, 504].includes(resp.status)) {
+      throw new Error(`Gitee 官方服务器暂时繁忙或维护中 (${resp.status} ${resp.statusText})，请稍候重试`);
     }
     if (!resp.ok) {
       let errBody = "";
