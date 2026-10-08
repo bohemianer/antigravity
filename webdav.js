@@ -67,6 +67,13 @@ function mergeVocabLists(localList = [], remoteList = [], deletionsMap = {}, las
       // 云端没有该词：只要未在删除墓碑中显式标记删除，绝对保留本地词条并同步上传（彻底杜绝时间戳偏差导致的静默丢词）
       map.set(k, Object.assign({}, lItem));
     } else {
+      const rItem = map.get(k);
+      const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
+      const isLocalNewer = lUpdate >= rUpdate;
+
+      const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
+      const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
+
       // 判断上下文例句是否为有价值的真实例句（排除空或默认占位语）
       const isMeaningfulContext = (c) => {
         if (!c || typeof c !== 'string') return false;
