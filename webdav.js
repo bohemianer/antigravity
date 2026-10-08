@@ -67,32 +67,64 @@ function mergeVocabLists(localList = [], remoteList = [], deletionsMap = {}, las
       // 云端没有该词：只要未在删除墓碑中显式标记删除，绝对保留本地词条并同步上传（彻底杜绝时间戳偏差导致的静默丢词）
       map.set(k, Object.assign({}, lItem));
     } else {
-      // 两端都有同一个词，进行字段级智能互补与更新时间戳决胜
-      const rItem = map.get(k);
-      const rUpdate = typeof rItem.updatedAt === 'number' ? rItem.updatedAt : (typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : 0));
+      // 判断上下文例句是否为有价值的真实例句（排除空或默认占位语）
+      const isMeaningfulContext = (c) => {
+        if (!c || typeof c !== 'string') return false;
+        const s = c.trim();
+        return s.length > 0 && s !== "暂无上下文例句" && s !== "来自欧路词典同步";
+      };
 
-      const isLocalNewer = lUpdate >= rUpdate;
+      // 决胜例句：优先保留包含真实语境例句的一方，两者都有或都没有时以更新时间为准
+      let finalContext = "";
+      const lHasCtx = isMeaningfulContext(lItem.context);
+      const rHasCtx = isMeaningfulContext(rItem.context);
+      if (lHasCtx && !rHasCtx) {
+        finalContext = lItem.context;
+      } else if (!lHasCtx && rHasCtx) {
+        finalContext = rItem.context;
+      } else {
+        finalContext = (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "";
+      }
 
-      const lCreate = typeof lItem.date === 'number' ? lItem.date : (lItem.date ? new Date(lItem.date).getTime() : lUpdate);
-      const rCreate = typeof rItem.date === 'number' ? rItem.date : (rItem.date ? new Date(rItem.date).getTime() : rUpdate);
-      const targetDate = isLocalNewer ? lCreate : rCreate;
+      // 决胜释义：若一方有真实释义而另一方为默认占位，保留真实释义
+      const isPlaceholderTrans = (t) => !t || t.trim() === "" || t.trim() === "暂无中文释义" || t.trim() === "暂无释义";
+      let finalTrans = "";
+      if (!isPlaceholderTrans(lItem.trans) && isPlaceholderTrans(rItem.trans)) {
+        finalTrans = lItem.trans;
+      } else if (isPlaceholderTrans(lItem.trans) && !isPlaceholderTrans(rItem.trans)) {
+        finalTrans = rItem.trans;
+      } else {
+        finalTrans = (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "";
+      }
 
-      // 若本地版本较新，以本地设定的 date 为准（新添加词置顶，已修改词保持原位）
+      // 决胜笔记：优先保留有笔记的一方
+      let finalNotes = "";
+      if (lItem.notes && lItem.notes.trim() && (!rItem.notes || !rItem.notes.trim())) {
+        finalNotes = lItem.notes;
+      } else if (rItem.notes && rItem.notes.trim() && (!lItem.notes || !lItem.notes.trim())) {
+        finalNotes = rItem.notes;
+      } else {
+        finalNotes = (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "";
+      }
+
+      // 创建时间保护：取真实最早的创建时间，确保老词无论在哪个设备被合并都不会被意外置顶
+      const finalDate = (lCreate > 0 && rCreate > 0) ? Math.min(lCreate, rCreate) : (lCreate || rCreate || Date.now());
+
       const rawMergedText = (isLocalNewer ? (lItem.text || rItem.text || lItem.word || rItem.word) : (rItem.text || lItem.text || rItem.word || lItem.word)) || "";
       const mergedWord = {
         text: rawMergedText.toLowerCase().trim(),
-        trans: (isLocalNewer ? (lItem.trans || rItem.trans) : (rItem.trans || lItem.trans)) || "",
+        trans: finalTrans,
         phonetic: lItem.phonetic || rItem.phonetic || "",
-        context: (isLocalNewer ? (lItem.context || rItem.context) : (rItem.context || lItem.context)) || "",
+        context: finalContext,
         title: (isLocalNewer ? (lItem.title || rItem.title) : (rItem.title || lItem.title)) || "Web Article",
         url: (isLocalNewer ? (lItem.url || rItem.url) : (rItem.url || lItem.url)) || "",
-        date: targetDate, // 保持最新添加的词在最前，编辑修改的词保持原创建位置
+        date: finalDate, // 稳固老词原始位置，绝不因同步被冲顶
         updatedAt: Math.max(lUpdate, rUpdate) || Date.now(),
-        notes: (isLocalNewer ? (lItem.notes !== undefined ? lItem.notes : rItem.notes) : (rItem.notes !== undefined ? rItem.notes : lItem.notes)) || "",
+        notes: finalNotes,
         srsLevel: Math.max(parseInt(lItem.srsLevel) || 0, parseInt(rItem.srsLevel) || 0),
         srsNextReview: Math.max(lItem.srsNextReview || 0, rItem.srsNextReview || 0),
         srsReviews: Math.max(lItem.srsReviews || 0, rItem.srsReviews || 0),
-        _uid: lItem._uid || rItem._uid || ('w_' + targetDate + '_' + Math.random().toString(36).slice(2, 9))
+        _uid: lItem._uid || rItem._uid || ('w_' + finalDate + '_' + Math.random().toString(36).slice(2, 9))
       };
 
       map.set(k, mergedWord);
@@ -455,16 +487,16 @@ class EudicSyncEngine {
         if (!isReAdded) return;
       }
 
+      // 欧路官方 API 字段: phon, exp, context_line
+      let p = (item.phon || item.phonetic || item.symbol || "").trim();
+      if (p && !p.startsWith('/')) p = `/${p}/`;
+
+      let exp = (item.exp || item.trans || item.explanation || item.definition || "").trim();
+      exp = exp.replace(/<[^>]+>/g, '').replace(/[\r\n]+/g, '； ').trim();
+
+      let ctx = (item.context_line || item.context || item.sentence || "").replace(/<[^>]+>/g, '').trim();
+
       if (!existingMap.has(k)) {
-        // 欧路官方 API 字段: phon, exp, context_line
-        let p = (item.phon || item.phonetic || item.symbol || "").trim();
-        if (p && !p.startsWith('/')) p = `/${p}/`;
-
-        let exp = (item.exp || item.trans || item.explanation || item.definition || "").trim();
-        exp = exp.replace(/<[^>]+>/g, '').replace(/[\r\n]+/g, '； ').trim();
-
-        let ctx = (item.context_line || item.context || item.sentence || "").replace(/<[^>]+>/g, '').trim();
-
         const newItem = {
           text: wText.toLowerCase().trim(),
           trans: exp || "暂无中文释义",
@@ -483,6 +515,22 @@ class EudicSyncEngine {
         };
         newItems.push(newItem);
         existingMap.set(k, newItem);
+      } else {
+        // 核心保护：若库中已有该词，仅安全补充缺失字段，绝对不覆盖用户修改过的释义、例句与原有创建时间
+        const oldItem = existingMap.get(k);
+        if (oldItem) {
+          if (!oldItem.phonetic && p) {
+            oldItem.phonetic = cleanIPA(p);
+          }
+          const hasOldCtx = oldItem.context && oldItem.context.trim() && oldItem.context !== "来自欧路词典同步" && oldItem.context !== "暂无上下文例句";
+          if (!hasOldCtx && ctx) {
+            oldItem.context = ctx;
+          }
+          const hasOldTrans = oldItem.trans && oldItem.trans.trim() && oldItem.trans !== "暂无中文释义" && oldItem.trans !== "暂无释义";
+          if (!hasOldTrans && exp) {
+            oldItem.trans = exp;
+          }
+        }
       }
     });
 

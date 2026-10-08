@@ -578,24 +578,29 @@ async function smartLookup(text) {
 }
 
 async function autoSyncWebDAV() {
-  chrome.storage.sync.get({ webdavConfig: null }, async (res) => {
-    const cfg = res.webdavConfig;
-    if (cfg && cfg.enabled && cfg.username && cfg.password) {
-      try {
-        chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, async (delRes) => {
-          const list = delRes.savedWords || [];
-          const client = new WebDAVClient(cfg);
-          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastWebDAVSyncTime || 0);
-          chrome.storage.local.set({
-            savedWords: mergedList,
-            deletedWords: mergedDeletions,
-            lastWebDAVSyncTime: syncTime || Date.now()
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ webdavConfig: null }, async (res) => {
+      const cfg = res.webdavConfig;
+      if (cfg && cfg.enabled && cfg.username && cfg.password) {
+        try {
+          chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, async (delRes) => {
+            const list = delRes.savedWords || [];
+            const client = new WebDAVClient(cfg);
+            const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastWebDAVSyncTime || 0);
+            chrome.storage.local.set({
+              savedWords: mergedList,
+              deletedWords: mergedDeletions,
+              lastWebDAVSyncTime: syncTime || Date.now()
+            }, () => resolve(true));
           });
-        });
-      } catch (err) {
-        console.warn("WebDAV Auto Sync warning:", err);
+        } catch (err) {
+          console.warn("WebDAV Auto Sync warning:", err);
+          resolve(false);
+        }
+      } else {
+        resolve(false);
       }
-    }
+    });
   });
 }
 
@@ -608,33 +613,41 @@ function scheduleGiteeSync(delayMs = 20000) {
 }
 
 async function autoSyncGitee() {
-  chrome.storage.sync.get({ giteeConfig: null }, async (res) => {
-    const cfg = res.giteeConfig;
-    if (cfg && cfg.enabled && cfg.owner && cfg.repo && cfg.token) {
-      try {
-        chrome.storage.local.get({ deletedWords: {}, lastGiteeSyncTime: 0, savedWords: [] }, async (delRes) => {
-          const list = delRes.savedWords || [];
-          const client = new GiteeSyncClient(cfg);
-          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastGiteeSyncTime || 0);
-          chrome.storage.local.set({
-            savedWords: mergedList,
-            deletedWords: mergedDeletions,
-            lastGiteeSyncTime: syncTime || Date.now()
+  return new Promise((resolve) => {
+    chrome.storage.sync.get({ giteeConfig: null }, async (res) => {
+      const cfg = res.giteeConfig;
+      if (cfg && cfg.enabled && cfg.owner && cfg.repo && cfg.token) {
+        try {
+          chrome.storage.local.get({ deletedWords: {}, lastGiteeSyncTime: 0, savedWords: [] }, async (delRes) => {
+            const list = delRes.savedWords || [];
+            const client = new GiteeSyncClient(cfg);
+            const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, delRes.deletedWords || {}, delRes.lastGiteeSyncTime || 0);
+            chrome.storage.local.set({
+              savedWords: mergedList,
+              deletedWords: mergedDeletions,
+              lastGiteeSyncTime: syncTime || Date.now()
+            }, () => resolve(true));
           });
-        });
-      } catch (err) {
-        console.warn("Gitee Auto Sync warning:", err);
+        } catch (err) {
+          console.warn("Gitee Auto Sync warning:", err);
+          resolve(false);
+        }
+      } else {
+        resolve(false);
       }
-    }
+    });
   });
 }
 
-function autoSyncAll(isDebounce = false) {
-  autoSyncWebDAV();
+// 核心【云端优先】主控流程：必须等待云端全量合并完成后，再运行欧路补全
+async function autoSyncAll(isDebounce = false) {
   if (isDebounce) {
     scheduleGiteeSync(20000);
+    autoSyncWebDAV();
   } else {
-    autoSyncGitee();
+    try {
+      await Promise.allSettled([autoSyncWebDAV(), autoSyncGitee()]);
+    } catch (e) {}
   }
 }
 
@@ -643,6 +656,9 @@ async function autoSyncEudic() {
     const token = (r.eudicToken || '').trim();
     if (!token) return;
     try {
+      // 1. 先确保拉取云端（Gitee / WebDAV）最新词库，彻底杜绝落后电脑拿着空/旧本地库误判欧路词为“新词”
+      await autoSyncAll(false);
+
       chrome.storage.local.get({ savedWords: [], deletedWords: {} }, async (localRes) => {
         const currentList = localRes.savedWords || [];
         const deletions = Object.assign({}, localRes.deletedWords || {});
@@ -653,6 +669,7 @@ async function autoSyncEudic() {
         if (newAddedCount > 0) {
           chrome.storage.local.set({ savedWords: mergedList, deletedWords: deletionsMap || deletions }, () => {
             console.log(`[Eudic AutoSync] 成功从欧路同步新增 ${newAddedCount} 个生词，总计 ${mergedList.length} 词`);
+            // 新词入库后，立即推送到云端（Gitee / 坚果云）
             autoSyncAll(false);
           });
         }

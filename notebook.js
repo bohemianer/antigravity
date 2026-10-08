@@ -1295,39 +1295,10 @@ async function doFullSync(notifyUser = false) {
     });
     const deletions = localDelRes.deletedWords || {};
 
-    // 1. 若配置了欧路 Token，自动拉取欧路全部分类生词（传入 currentWords 开启极速早停加速）
-    const storageData = await new Promise(resolve => {
-      chrome.storage.sync.get({ eudicToken: '' }, resolve);
-    });
-
-    const token = (storageData.eudicToken || "").trim();
-    if (token) {
-      try {
-        const engine = new EudicSyncEngine(token);
-        const eudicWords = await engine.fetchAllCategoriesAndWords();
-        eudicTotalScanned = eudicWords.length;
-        
-        const { mergedList, newAddedCount, deletionsMap } = engine.mergeEudicWords(currentWords, eudicWords, deletions);
-        eudicNewCount = newAddedCount;
-        if (newAddedCount > 0) {
-          currentWords = mergedList;
-          await new Promise(resolve => {
-            chrome.storage.local.set({ savedWords: currentWords, deletedWords: deletionsMap || deletions }, resolve);
-          });
-          if (currentView !== 'flashcard') {
-            applyFilter();
-            updateStats();
-          }
-        }
-      } catch (err) {
-        console.warn("欧路词典自动拉取失败:", err);
-        eudicError = err.message;
-      }
-    }
-
-    // 2. Gitee (码云) 私有仓库双向合并 (国内 100% 直连、无月流量限制、自带 Git 历史时光机)
+    // 1. 【云端优先】：先执行 Gitee (码云) 私有仓库双向合并，确保从云端拉取最新的全库单词与例句
     let hasGitee = false;
     let giteeSuccessCount = 0;
+    let giteeClient = null;
     if (giteeConfig && giteeConfig.enabled && giteeConfig.owner && giteeConfig.repo && giteeConfig.token) {
       hasGitee = true;
       try {
@@ -1335,11 +1306,11 @@ async function doFullSync(notifyUser = false) {
           chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastGiteeSyncTime: 0 }, resolve);
         });
         const list = localRes.savedWords || [];
-        const deletions = localRes.deletedWords || {};
+        const delMap = localRes.deletedWords || {};
         const lastSync = localRes.lastGiteeSyncTime || 0;
 
-        const client = new GiteeSyncClient(giteeConfig);
-        const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+        giteeClient = new GiteeSyncClient(giteeConfig);
+        const { mergedList, mergedDeletions, syncTime } = await giteeClient.performSync(list, delMap, lastSync);
 
         await new Promise(resolve => {
           chrome.storage.local.set({
@@ -1361,11 +1332,11 @@ async function doFullSync(notifyUser = false) {
       }
     }
 
-    // 3. 坚果云 WebDAV 双向合并（直接在页面线程原生执行，彻底规避 MV3 Service Worker 30秒被杀导致的丢包卡死）
+    // 2. 【云端优先】：坚果云 WebDAV 双向合并
+    let webdavClient = null;
     if (webdavConfig && webdavConfig.enabled && webdavConfig.username && webdavConfig.password) {
       hasWebDAV = true;
       if (isWebEnv) {
-        // 手机/Web端由于浏览器严格的跨域同源策略 (CORS)，坚果云服务端未开放跨域，因此跳过直接请求
         console.warn("手机/Web端因浏览器跨域安全限制(CORS)跳过 WebDAV 直接连接");
         if (!hasGitee) {
           updateSyncBadge('disconnected', '需Gitee同步');
@@ -1379,11 +1350,11 @@ async function doFullSync(notifyUser = false) {
             chrome.storage.local.get({ savedWords: [], deletedWords: {}, lastWebDAVSyncTime: 0 }, resolve);
           });
           const list = localRes.savedWords || [];
-          const deletions = localRes.deletedWords || {};
+          const delMap = localRes.deletedWords || {};
           const lastSync = localRes.lastWebDAVSyncTime || 0;
 
-          const client = new WebDAVClient(webdavConfig);
-          const { mergedList, mergedDeletions, syncTime } = await client.performSync(list, deletions, lastSync);
+          webdavClient = new WebDAVClient(webdavConfig);
+          const { mergedList, mergedDeletions, syncTime } = await webdavClient.performSync(list, delMap, lastSync);
 
           await new Promise(resolve => {
             chrome.storage.local.set({
@@ -1401,11 +1372,61 @@ async function doFullSync(notifyUser = false) {
           updateStats();
         } catch (err) {
           console.error("WebDAV 同步异常:", err);
-          // 如果已经成功同步了 Gitee，WebDAV 失败时不中断流程
           if (!hasGitee) {
             throw err;
           }
         }
+      }
+    }
+
+    // 3. 【欧路增量补全】：在云端最新词库的基础上，比对拉取欧路生词本的新词
+    const storageData = await new Promise(resolve => {
+      chrome.storage.sync.get({ eudicToken: '' }, resolve);
+    });
+
+    const token = (storageData.eudicToken || "").trim();
+    if (token) {
+      try {
+        const latestDelRes = await new Promise(resolve => {
+          chrome.storage.local.get({ deletedWords: {} }, resolve);
+        });
+        const activeDeletions = latestDelRes.deletedWords || {};
+
+        const engine = new EudicSyncEngine(token);
+        const eudicWords = await engine.fetchAllCategoriesAndWords();
+        eudicTotalScanned = eudicWords.length;
+        
+        const { mergedList, newAddedCount, deletionsMap } = engine.mergeEudicWords(currentWords, eudicWords, activeDeletions);
+        eudicNewCount = newAddedCount;
+        if (newAddedCount > 0) {
+          currentWords = mergedList;
+          await new Promise(resolve => {
+            chrome.storage.local.set({ savedWords: currentWords, deletedWords: deletionsMap || activeDeletions }, resolve);
+          });
+          if (currentView !== 'flashcard') {
+            applyFilter();
+            updateStats();
+          }
+
+          // 将欧路新入库的词立即推送到云端（Gitee / WebDAV），让其他设备无缝同步
+          if (giteeClient) {
+            try {
+              await giteeClient.uploadWords(currentWords);
+            } catch (e) {
+              console.warn("欧路新词同步上传 Gitee 告警:", e);
+            }
+          }
+          if (webdavClient && !isWebEnv) {
+            try {
+              await webdavClient.uploadWords(currentWords);
+            } catch (e) {
+              console.warn("欧路新词同步上传 WebDAV 告警:", e);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("欧路词典自动拉取失败:", err);
+        eudicError = err.message;
       }
     }
 
