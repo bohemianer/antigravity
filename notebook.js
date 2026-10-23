@@ -1513,6 +1513,7 @@ async function doFullSync(notifyUser = false) {
   } finally {
     clearTimeout(watchdogTimer);
     isFullSyncing = false;
+    window.__lastSyncAttemptTime = Date.now();
   }
 }
 
@@ -3277,6 +3278,35 @@ function initNotebookApp() {
         applyFilter();
       }
     }
+  });
+
+  // 手机端/Web 端核心自愈：前台唤醒、页面聚焦与网络恢复时自动静默核对同步
+  function checkAndAutoSyncOnResume(source = 'resume') {
+    const now = Date.now();
+    const lastAttempt = window.__lastSyncAttemptTime || 0;
+    // 距离上次同步超过 8 秒，切回前台或网络重连时自动发起一次静默全量同步
+    if (now - lastAttempt > 8000 && !isFullSyncing) {
+      console.log(`[AutoSync] 触发前台唤醒/网络重连自动同步 (${source})`);
+      doFullSync(false);
+    }
+  }
+
+  // 1. 监听手机息屏/应用切回前台
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkAndAutoSyncOnResume('visibilitychange');
+    }
+  });
+
+  // 2. 监听窗口/标签页获得焦点
+  window.addEventListener('focus', () => {
+    checkAndAutoSyncOnResume('focus');
+  });
+
+  // 3. 监听网络断网恢复连接
+  window.addEventListener('online', () => {
+    console.log('[AutoSync] 检测到网络已恢复连接，立即同步');
+    checkAndAutoSyncOnResume('online');
   });
 
   // 添加新词输入框防抖智能联想与失焦查词补全
