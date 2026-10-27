@@ -170,12 +170,64 @@ function deriveInflectedPhonetic(basePhonetic, originalWord, baseForm) {
   return `/${p}/`;
 }
 
+// 词性规范化映射引擎：将 Google / 各大接口返回的中英文全称（动词、名词、形容词等）统一转换为国际规范缩写 (v./n./adj./adv.)
+function normalizePos(pos) {
+  if (!pos) return "";
+  const p = String(pos).trim().toLowerCase().replace(/[\.．:：\[\]【】\(\)（）]/g, "");
+  const map = {
+    "动词": "v.",
+    "动": "v.",
+    "verb": "v.",
+    "及物动词": "vt.",
+    "及物": "vt.",
+    "transitive verb": "vt.",
+    "不及物动词": "vi.",
+    "不及物": "vi.",
+    "intransitive verb": "vi.",
+    "名词": "n.",
+    "名": "n.",
+    "noun": "n.",
+    "形容词": "adj.",
+    "形": "adj.",
+    "adjective": "adj.",
+    "副词": "adv.",
+    "副": "adv.",
+    "adverb": "adv.",
+    "代词": "pron.",
+    "代": "pron.",
+    "pronoun": "pron.",
+    "介词": "prep.",
+    "介": "prep.",
+    "preposition": "prep.",
+    "连词": "conj.",
+    "连": "conj.",
+    "conjunction": "conj.",
+    "感叹词": "int.",
+    "叹": "int.",
+    "interjection": "int.",
+    "数词": "num.",
+    "数": "num.",
+    "numeral": "num.",
+    "冠词": "art.",
+    "冠": "art.",
+    "article": "art."
+  };
+  if (map[p]) return map[p];
+  if (map[String(pos).trim()]) return map[String(pos).trim()];
+  return p.endsWith(".") ? p : p + ".";
+}
+
 // 划词查词与词典精简引擎：过滤人名/冗余释义、多词性自动分行排版、保留核心前 3 条释义（仅在划词查词/入库时执行）
 function cleanAndStreamlineDictDefinition(s) {
   if (!s) return "";
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
   // 统一全角点号 ． 为半角英文句点 .
   str = str.replace(/\uFF0E/g, ".");
+
+  // 0. 自动规范化中文词性全称（动词./名词./形容词./副词. 等）为标准英文词性缩写 (v./n./adj./adv.)
+  str = str.replace(/(?<![a-zA-Z\u4e00-\u9fa5])(及物动词|不及物动词|动词|名词|形容词|副词|代词|介词|连词|感叹词|数词|冠词)[\.．:：\s]+/g, (match, p1) => {
+    return normalizePos(p1) + " ";
+  });
 
   // 1. 标准化分号与逗号
   str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
@@ -505,7 +557,8 @@ async function queryGoogleTranslate(text) {
         const pos = item[0];
         const terms = item[1];
         if (pos && terms) {
-          dictList.push(`${pos}. ${terms.slice(0, 3).join("，")}`);
+          const stdPos = normalizePos(pos);
+          dictList.push(`${stdPos} ${terms.slice(0, 3).join("，")}`);
         }
       });
     }

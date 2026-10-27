@@ -141,6 +141,53 @@
     window.chrome.storage.sync = createStorageArea('agy_sync_', 'sync');
   }
 
+  // 词性规范化映射引擎：将 Google / 各大接口返回的中英文全称（动词、名词、形容词等）统一转换为国际规范缩写 (v./n./adj./adv.)
+  function normalizePos(pos) {
+    if (!pos) return "";
+    const p = String(pos).trim().toLowerCase().replace(/[\.．:：\[\]【】\(\)（）]/g, "");
+    const map = {
+      "动词": "v.",
+      "动": "v.",
+      "verb": "v.",
+      "及物动词": "vt.",
+      "及物": "vt.",
+      "transitive verb": "vt.",
+      "不及物动词": "vi.",
+      "不及物": "vi.",
+      "intransitive verb": "vi.",
+      "名词": "n.",
+      "名": "n.",
+      "noun": "n.",
+      "形容词": "adj.",
+      "形": "adj.",
+      "adjective": "adj.",
+      "副词": "adv.",
+      "副": "adv.",
+      "adverb": "adv.",
+      "代词": "pron.",
+      "代": "pron.",
+      "pronoun": "pron.",
+      "介词": "prep.",
+      "介": "prep.",
+      "preposition": "prep.",
+      "连词": "conj.",
+      "连": "conj.",
+      "conjunction": "conj.",
+      "感叹词": "int.",
+      "叹": "int.",
+      "interjection": "int.",
+      "数词": "num.",
+      "数": "num.",
+      "numeral": "num.",
+      "冠词": "art.",
+      "冠": "art.",
+      "article": "art."
+    };
+    if (map[p]) return map[p];
+    if (map[String(pos).trim()]) return map[String(pos).trim()];
+    return p.endsWith(".") ? p : p + ".";
+  }
+
   function universalLookupWord(rawWord, callback) {
     const cleanWord = (rawWord || "").trim();
     if (!cleanWord) {
@@ -200,7 +247,8 @@
             const pos = item[0];
             const terms = item[1];
             if (pos && terms) {
-              dictParts.push(`${pos}. ${terms.slice(0, 3).join("，")}`);
+              const stdPos = normalizePos(pos);
+              dictParts.push(`${stdPos} ${terms.slice(0, 3).join("，")}`);
             }
           });
         }
@@ -1324,6 +1372,8 @@ async function doFullSync(notifyUser = false) {
         giteeSuccessCount = mergedList.length;
         if (currentView !== 'flashcard') {
           applyFilter();
+        } else {
+          syncFlashcardsWithLatestWords(false);
         }
         updateStats();
       } catch (err) {
@@ -1368,6 +1418,8 @@ async function doFullSync(notifyUser = false) {
           webdavSuccessCount = mergedList.length;
           if (currentView !== 'flashcard') {
             applyFilter();
+          } else {
+            syncFlashcardsWithLatestWords(false);
           }
           updateStats();
         } catch (err) {
@@ -1405,6 +1457,9 @@ async function doFullSync(notifyUser = false) {
           });
           if (currentView !== 'flashcard') {
             applyFilter();
+            updateStats();
+          } else {
+            syncFlashcardsWithLatestWords(false);
             updateStats();
           }
 
@@ -1867,6 +1922,11 @@ function formatTrans(s) {
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
   str = str.replace(/\uFF0E/g, ".");
 
+  // 0. 自动规范化中文词性全称（动词./名词./形容词./副词. 等）为标准英文词性缩写 (v./n./adj./adv.)
+  str = str.replace(/(?<![a-zA-Z\u4e00-\u9fa5])(及物动词|不及物动词|动词|名词|形容词|副词|代词|介词|连词|感叹词|数词|冠词)[\.．:：\s]+/g, (match, p1) => {
+    return (typeof normalizePos === 'function' ? normalizePos(p1) : p1) + " ";
+  });
+
   // 1. 标准化分号与逗号
   str = str.replace(/;/g, "；").replace(/；\s*/g, "；").replace(/,/g, "，").replace(/，\s*/g, "，");
 
@@ -2068,6 +2128,39 @@ function updateFlashcardList(resetIndex = false) {
     cardIndex = 0;
   }
   renderFlashcard();
+}
+
+// 核心自愈：将闪卡自测池与最新云端/本地数据库实时同步
+function syncFlashcardsWithLatestWords(isForceReset = false) {
+  if (!Array.isArray(currentWords) || currentWords.length === 0) return;
+
+  // 1. 若当前批次尚未开始答题（完成计数为 0 或卡片池为空），直接用最新词库无缝重组卡片
+  if (isForceReset || cardList.length === 0 || (cardIndex === 0 && batchStats.completedCount === 0)) {
+    updateFlashcardList(false);
+    return;
+  }
+
+  // 2. 若用户已在答题过程中（completedCount > 0），绝不暴力跳题重置进度，而是无缝热修补（Hot-Patch）当前卡片内容
+  const wordMap = new Map();
+  for (const w of currentWords) {
+    const k = (w.text || w.word || '').toLowerCase().trim();
+    if (k) wordMap.set(k, w);
+  }
+
+  let hasChanged = false;
+  for (let i = 0; i < cardList.length; i++) {
+    const card = cardList[i];
+    const k = (card.text || card.word || '').toLowerCase().trim();
+    const fresh = wordMap.get(k);
+    if (fresh) {
+      cardList[i] = Object.assign({}, card, fresh);
+      hasChanged = true;
+    }
+  }
+
+  if (hasChanged && currentView === 'flashcard') {
+    renderFlashcard();
+  }
 }
 
 // ---------------- 摸鱼模式 (VS Code 深度代码伪装 + 企业邮件伪装双模式) ----------------
@@ -2353,16 +2446,14 @@ function switchView(viewName, forceResetFlashcard = false) {
   if (viewName === 'table') {
     applyFilter();
   } else if (viewName === 'flashcard') {
-    // 核心保障：若已有进行中的自测任务且未显式要求强制重置，保留当前词组、进度与统计，无缝恢复现场！
-    if (forceResetFlashcard || cardList.length === 0) {
+    // 核心保障：若尚未答题、已完成整组或显式要求强制重置，自动拉取最新词库出题；若正在答题中，无缝热修补卡片数据保持进度！
+    const summaryCard = document.getElementById('flashcardSummaryCard');
+    const isBatchFinished = summaryCard && batchStats.completedCount >= batchTotalTarget && batchTotalTarget > 0;
+    if (forceResetFlashcard || cardList.length === 0 || (cardIndex === 0 && batchStats.completedCount === 0) || isBatchFinished) {
       updateFlashcardList(true);
     } else {
-      const summaryCard = document.getElementById('flashcardSummaryCard');
-      if (summaryCard && batchStats.completedCount >= batchTotalTarget && batchTotalTarget > 0) {
-        showBatchSummary();
-      } else {
-        renderFlashcard();
-      }
+      syncFlashcardsWithLatestWords(false);
+      renderFlashcard();
     }
   }
 }
@@ -3274,8 +3365,12 @@ function initNotebookApp() {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes.savedWords) {
       currentWords = changes.savedWords.newValue || [];
-      if (!isInternalSrsUpdate && currentView !== 'flashcard') {
-        applyFilter();
+      if (!isInternalSrsUpdate) {
+        if (currentView !== 'flashcard') {
+          applyFilter();
+        } else {
+          syncFlashcardsWithLatestWords(false);
+        }
       }
     }
   });

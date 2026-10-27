@@ -3891,6 +3891,18 @@
         window.chrome.storage.sync = createStorageArea('agy_sync_', 'sync');
       }
 
+      function normalizePos(pos) {
+        if (!pos) return "";
+        const p = String(pos).trim().toLowerCase().replace(/[\.．:：\[\]【】\(\)（）]/g, "");
+        const map = {
+          "动词": "v.", "动": "v.", "verb": "v.", "及物动词": "vt.", "及物": "vt.", "不及物动词": "vi.", "不及物": "vi.",
+          "名词": "n.", "名": "n.", "noun": "n.", "形容词": "adj.", "形": "adj.", "adjective": "adj.",
+          "副词": "adv.", "副": "adv.", "adverb": "adv.", "代词": "pron.", "代": "pron.", "介词": "prep.", "介": "prep.",
+          "连词": "conj.", "连": "conj.", "感叹词": "int.", "叹": "int.", "数词": "num.", "数": "num.", "冠词": "art."
+        };
+        return map[p] || (p.endsWith(".") ? p : p + ".");
+      }
+
       function universalLookupWord(rawWord, callback) {
         const cleanWord = (rawWord || "").trim();
         if (!cleanWord) {
@@ -3950,7 +3962,8 @@
                 const pos = item[0];
                 const terms = item[1];
                 if (pos && terms) {
-                  dictParts.push(`${pos}. ${terms.slice(0, 3).join("，")}`);
+                  const stdPos = normalizePos(pos);
+                  dictParts.push(`${stdPos} ${terms.slice(0, 3).join("，")}`);
                 }
               });
             }
