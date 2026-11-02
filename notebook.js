@@ -426,6 +426,8 @@ let cardRevealed = false;
 let currentView = 'table';
 let viewBeforeSearch = null; // 记录临时搜索前的视图（如 flashcard）
 let isInternalSrsUpdate = false; // 防止 handleSRSFeedback 触发 storage.onChanged 时重置 cardIndex
+let isInternalWordEdit = false; // 防止编辑保存单词触发 storage.onChanged 时扰动闪卡
+let activeFlashcardEditIndex = -1; // 锁定当前正在编辑的闪卡卡片下标
 
 // 全局 Apple 风格优雅悬浮 Toast 消息组件
 let agyToastTimer = null;
@@ -2134,15 +2136,17 @@ function updateFlashcardList(resetIndex = false) {
 function syncFlashcardsWithLatestWords(isForceReset = false) {
   if (!Array.isArray(currentWords) || currentWords.length === 0) return;
 
-  // 1. 若当前批次尚未开始答题（完成计数为 0 或卡片池为空），直接用最新词库无缝重组卡片
-  if (isForceReset || cardList.length === 0 || (cardIndex === 0 && batchStats.completedCount === 0)) {
+  // 1. 只有在强制重置或卡片池为空时，才重新组卷
+  if (isForceReset || cardList.length === 0) {
     updateFlashcardList(false);
     return;
   }
 
-  // 2. 若用户已在答题过程中（completedCount > 0），绝不暴力跳题重置进度，而是无缝热修补（Hot-Patch）当前卡片内容
+  // 2. 词库双向同步或外部数据变更时，绝不重新生成卡片池打乱顺序，而是无缝热修补（Hot-Patch）当前卡片内容
+  const uidMap = new Map();
   const wordMap = new Map();
   for (const w of currentWords) {
+    if (w._uid) uidMap.set(w._uid, w);
     const k = (w.text || w.word || '').toLowerCase().trim();
     if (k) wordMap.set(k, w);
   }
@@ -2150,16 +2154,38 @@ function syncFlashcardsWithLatestWords(isForceReset = false) {
   let hasChanged = false;
   for (let i = 0; i < cardList.length; i++) {
     const card = cardList[i];
-    const k = (card.text || card.word || '').toLowerCase().trim();
-    const fresh = wordMap.get(k);
+    let fresh = null;
+    if (card._uid && uidMap.has(card._uid)) {
+      fresh = uidMap.get(card._uid);
+    } else {
+      const k = (card.text || card.word || '').toLowerCase().trim();
+      fresh = wordMap.get(k);
+    }
     if (fresh) {
-      cardList[i] = Object.assign({}, card, fresh);
-      hasChanged = true;
+      const isDiff =
+        (card.text || card.word) !== (fresh.text || fresh.word) ||
+        (card.trans || card.definition) !== (fresh.trans || fresh.definition) ||
+        (card.context || card.sentence) !== (fresh.context || fresh.sentence) ||
+        card.notes !== fresh.notes ||
+        card.phonetic !== fresh.phonetic ||
+        card.srsLevel !== fresh.srsLevel;
+      if (isDiff) {
+        cardList[i] = Object.assign({}, card, fresh);
+        hasChanged = true;
+      }
     }
   }
 
+  if (cardIndex >= cardList.length) {
+    cardIndex = Math.max(0, cardList.length - 1);
+  }
+
   if (hasChanged && currentView === 'flashcard') {
-    renderFlashcard();
+    if (isStealthMode) {
+      renderStealthCard();
+    } else {
+      renderFlashcard(true); // 严格保留翻转展开状态
+    }
   }
 }
 
@@ -2446,10 +2472,10 @@ function switchView(viewName, forceResetFlashcard = false) {
   if (viewName === 'table') {
     applyFilter();
   } else if (viewName === 'flashcard') {
-    // 核心保障：若尚未答题、已完成整组或显式要求强制重置，自动拉取最新词库出题；若正在答题中，无缝热修补卡片数据保持进度！
+    // 核心保障：若已完成整组、卡片池为空或显式要求强制重置，自动拉取最新词库出题；若正在自测中，无缝热修补卡片数据保持进度！
     const summaryCard = document.getElementById('flashcardSummaryCard');
     const isBatchFinished = summaryCard && batchStats.completedCount >= batchTotalTarget && batchTotalTarget > 0;
-    if (forceResetFlashcard || cardList.length === 0 || (cardIndex === 0 && batchStats.completedCount === 0) || isBatchFinished) {
+    if (forceResetFlashcard || cardList.length === 0 || isBatchFinished) {
       updateFlashcardList(true);
     } else {
       syncFlashcardsWithLatestWords(false);
@@ -2516,9 +2542,11 @@ function triggerConfetti() {
   requestAnimationFrame(render);
 }
 
-function renderFlashcard() {
+function renderFlashcard(keepRevealState = false) {
   const barUnrevealed = document.getElementById('smartBarUnrevealed');
   const barRevealed = document.getElementById('smartBarRevealed');
+
+  const shouldStayRevealed = keepRevealState && cardRevealed;
 
   if (cardList.length === 0) {
     document.getElementById('fcWord').innerText = "暂无自测词汇";
@@ -2546,13 +2574,19 @@ function renderFlashcard() {
     return;
   }
 
-  if (barUnrevealed) barUnrevealed.style.display = 'flex';
-  if (barRevealed) barRevealed.style.display = 'none';
+  if (shouldStayRevealed) {
+    if (barUnrevealed) barUnrevealed.style.display = 'none';
+    if (barRevealed) barRevealed.style.display = 'flex';
+  } else {
+    if (barUnrevealed) barUnrevealed.style.display = 'flex';
+    if (barRevealed) barRevealed.style.display = 'none';
+  }
 
   if (cardIndex >= cardList.length) cardIndex = 0;
   if (cardIndex < 0) cardIndex = cardList.length - 1;
 
   const item = cardList[cardIndex];
+  if (!item) return;
   const word = item.text || item.word || "";
   const phonetic = extractPhoneticFromItem(item);
   const trans = formatTrans(item.trans || item.definition || "");
@@ -2595,10 +2629,20 @@ function renderFlashcard() {
     notesEl.style.display = 'none';
   }
 
-  // 重置揭晓状态
-  cardRevealed = false;
-  document.getElementById('fcAnswerBox').style.display = 'none';
-  document.getElementById('cardHintText').innerText = "点击卡片翻转揭晓释义";
+  if (shouldStayRevealed) {
+    cardRevealed = true;
+    const ansBox = document.getElementById('fcAnswerBox');
+    if (ansBox) ansBox.style.display = 'block';
+    const hint = document.getElementById('cardHintText');
+    if (hint) hint.innerText = "请根据记忆情况进行反馈";
+  } else {
+    // 重置揭晓状态
+    cardRevealed = false;
+    const ansBox = document.getElementById('fcAnswerBox');
+    if (ansBox) ansBox.style.display = 'none';
+    const hint = document.getElementById('cardHintText');
+    if (hint) hint.innerText = "点击卡片翻转揭晓释义";
+  }
 
   // 进度指示
   document.getElementById('cardCurrentIndex').innerText = (cardIndex + 1).toString();
@@ -3106,6 +3150,7 @@ function openEditModal(idx) {
 
 function closeModal() {
   modal.style.display = "none";
+  activeFlashcardEditIndex = -1;
 }
 
 function switchSyncTab(tabName) {
@@ -3365,7 +3410,7 @@ function initNotebookApp() {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'local' && changes.savedWords) {
       currentWords = changes.savedWords.newValue || [];
-      if (!isInternalSrsUpdate) {
+      if (!isInternalSrsUpdate && !isInternalWordEdit) {
         if (currentView !== 'flashcard') {
           applyFilter();
         } else {
@@ -3618,6 +3663,7 @@ function initNotebookApp() {
       e.stopPropagation(); // 绝对阻止卡片翻转
       SoundFx.playClick();
       if (cardList.length === 0) return;
+      activeFlashcardEditIndex = cardIndex; // 锁死当前编辑的闪卡卡片下标
       const item = cardList[cardIndex];
       if (!item) return;
       const targetWord = item.text || item.word;
@@ -4316,7 +4362,27 @@ function initNotebookApp() {
         };
 
         currentWords[idx] = updatedItem;
+
+        // 闪卡场景防御性锁定：锁定当前卡片下标并原地更新卡片数据
+        const lockedCardIdx = (activeFlashcardEditIndex >= 0 && activeFlashcardEditIndex < cardList.length)
+          ? activeFlashcardEditIndex
+          : cardIndex;
+
         closeModal();
+
+        // 仅在闪卡界面下编辑当前卡片时，即时热更新当前卡片并保持展示与翻转状态
+        if (currentView === 'flashcard' && cardList.length > 0 && lockedCardIdx >= 0 && lockedCardIdx < cardList.length) {
+          cardList[lockedCardIdx] = Object.assign({}, cardList[lockedCardIdx], updatedItem);
+          cardIndex = lockedCardIdx; // 锁死下标，绝不跳题
+          if (isStealthMode) {
+            renderStealthCard();
+          } else {
+            renderFlashcard(true); // 保持翻转与答案状态
+          }
+        }
+
+        // 屏蔽由当前编辑保存触发的 storage.onChanged 扰动
+        isInternalWordEdit = true;
 
         if (isWordRenamed) {
           // 单词本体被重命名：
@@ -4328,6 +4394,7 @@ function initNotebookApp() {
             if (cleanNew && delMap[cleanNew]) delete delMap[cleanNew]; // 确保新重命名的单词绝不被历史墓碑误杀
 
             chrome.storage.local.set({ savedWords: currentWords, deletedWords: delMap }, () => {
+              setTimeout(() => { isInternalWordEdit = false; }, 300);
               // 关键：立即执行权威多端同步 (Gitee 与 WebDAV 均双向合并并上报墓碑)
               doFullSync(false);
 
@@ -4351,38 +4418,17 @@ function initNotebookApp() {
             });
           });
         } else {
-          saveAndRefresh();
+          chrome.storage.local.set({ savedWords: currentWords }, () => {
+            setTimeout(() => { isInternalWordEdit = false; }, 300);
+            doFullSync(false);
+            applyFilter();
+          });
           try {
             if (typeof showToast === 'function') {
               showToast(`✨ 词条「${word}」修改已保存！`, 'success');
             }
           } catch (tErr) {
             console.warn(tErr);
-          }
-        }
-      }
-
-      // 只有在【显式编辑当前闪卡单词】(idx >= 0) 时，才即时更新并重绘当前卡片；
-      // 若是在闪卡界面点击右上角「➕ 添加新词」(idx === -1)，只存入生词库，绝不覆盖当前正在测试的闪卡词条！
-      if (idx >= 0 && currentView === 'flashcard' && cardList.length > 0) {
-        const wasRevealed = cardRevealed;
-        const currentTarget = cardList[cardIndex];
-        if (currentTarget) {
-          const found = currentWords[idx] || currentWords.find(w => (w._uid && currentTarget._uid && w._uid === currentTarget._uid) || (w.text || w.word || '').toLowerCase().trim() === word.toLowerCase().trim());
-          if (found) {
-            cardList[cardIndex] = Object.assign({}, cardList[cardIndex], found);
-            renderFlashcard();
-            if (wasRevealed) {
-              cardRevealed = true;
-              const ansBox = document.getElementById('fcAnswerBox');
-              const hint = document.getElementById('cardHintText');
-              const barUnrevealed = document.getElementById('smartBarUnrevealed');
-              const barRevealed = document.getElementById('smartBarRevealed');
-              if (ansBox) ansBox.style.display = 'block';
-              if (hint) hint.innerText = "请根据记忆情况进行反馈";
-              if (barUnrevealed) barUnrevealed.style.display = 'none';
-              if (barRevealed) barRevealed.style.display = 'flex';
-            }
           }
         }
       }
