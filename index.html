@@ -2019,12 +2019,19 @@
       border-radius: 22px;
       box-shadow: var(--glass-shadow);
       padding: 36px;
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
       animation: fadeIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    /* 当展示完成小结卡片时，绝对强制隐藏未揭晓与已揭晓评分底栏 */
+    #viewFlashcardContainer:has(#flashcardSummaryCard[style*="display: flex"]) #smartBarRevealed,
+    #viewFlashcardContainer:has(#flashcardSummaryCard[style*="display: flex"]) #smartBarUnrevealed,
+    #viewFlashcardContainer:has(#flashcardSummaryCard:not([style*="display: none"])) #smartBarRevealed,
+    #viewFlashcardContainer:has(#flashcardSummaryCard:not([style*="display: none"])) #smartBarUnrevealed {
+      display: none !important;
     }
     .summary-trophy {
       font-size: 40px;
@@ -3247,7 +3254,7 @@
       </div>
 
       <!-- 闪卡完成小结卡片 -->
-      <div class="flashcard-summary-card" id="flashcardSummaryCard">
+      <div class="flashcard-summary-card" id="flashcardSummaryCard" style="display: none;">
         <div class="summary-trophy">🎉</div>
         <div class="summary-title">太棒了！已完成本组自测</div>
         <div class="summary-subtitle" id="summarySubtitle">您已完成本组 20 个单词的艾宾浩斯强化复习</div>

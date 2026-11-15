@@ -2181,7 +2181,12 @@ function syncFlashcardsWithLatestWords(isForceReset = false) {
   }
 
   if (hasChanged && currentView === 'flashcard') {
-    if (isStealthMode) {
+    const summaryCard = document.getElementById('flashcardSummaryCard');
+    const isBatchFinished = (summaryCard && summaryCard.style.display === 'flex') ||
+                            (batchTotalTarget > 0 && batchStats.completedCount >= batchTotalTarget);
+    if (isBatchFinished) {
+      showBatchSummary();
+    } else if (isStealthMode) {
       renderStealthCard();
     } else {
       renderFlashcard(true); // 严格保留翻转展开状态
@@ -2543,8 +2548,24 @@ function triggerConfetti() {
 }
 
 function renderFlashcard(keepRevealState = false) {
+  const summaryCard = document.getElementById('flashcardSummaryCard');
+  const cardBox = document.getElementById('flashcardBox');
   const barUnrevealed = document.getElementById('smartBarUnrevealed');
   const barRevealed = document.getElementById('smartBarRevealed');
+
+  // 若当前已处于完成小结状态，严禁重绘普通卡片或显示任何评分底栏
+  const isBatchFinished = (summaryCard && summaryCard.style.display === 'flex') ||
+                          (batchTotalTarget > 0 && batchStats.completedCount >= batchTotalTarget);
+  if (isBatchFinished) {
+    if (barUnrevealed) barUnrevealed.style.display = 'none';
+    if (barRevealed) barRevealed.style.display = 'none';
+    if (cardBox) cardBox.style.display = 'none';
+    if (summaryCard) summaryCard.style.display = 'flex';
+    return;
+  }
+
+  if (summaryCard) summaryCard.style.display = 'none';
+  if (cardBox) cardBox.style.display = 'flex';
 
   const shouldStayRevealed = keepRevealState && cardRevealed;
 
@@ -2652,6 +2673,7 @@ function renderFlashcard(keepRevealState = false) {
 }
 
 function showBatchSummary() {
+  cardRevealed = false; // 严防任何异步渲染逻辑误判为翻转揭晓状态
   const summaryCard = document.getElementById('flashcardSummaryCard');
   const cardBox = document.getElementById('flashcardBox');
   const barUnrevealed = document.getElementById('smartBarUnrevealed');
@@ -2745,7 +2767,7 @@ function handleSRSFeedback(rating) {
     currentWords[realIdx] = Object.assign(currentWords[realIdx], item);
     isInternalSrsUpdate = true;
     chrome.storage.local.set({ savedWords: currentWords }, () => {
-      isInternalSrsUpdate = false;
+      setTimeout(() => { isInternalSrsUpdate = false; }, 300);
       doWebDAVSync(false);
     });
   }
