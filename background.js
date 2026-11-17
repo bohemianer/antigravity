@@ -523,27 +523,49 @@ function getLangPair(text) {
   return /[\u4e00-\u9fa5]/.test(text) ? "zh-CN|en" : "en|zh-CN";
 }
 
-function extractGoogleTranslateResult(data) {
+function sanitizeTranslationText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+  let text = rawText.trim();
+  // 消除末尾由 Google Translate 源语言回传（如 [..., "en"]）污染导致的拼接尾巴
+  text = text.replace(/([。！？\.\!\?\u4e00-\u9fa5\u201c\u201d\u2018\u2019"'\)）\]】])\s*(?:en|zh|ja|ko|fr|de|es|ru|it|pt)\s*$/i, "$1").trim();
+  return text;
+}
+
+function parseGoogleTranslateData(data) {
   if (!data) return "";
-  if (typeof data === "string") return data.trim();
-  // 结构 1: { sentences: [{ trans: "..." }, { trans: "..." }] }
+  if (typeof data === "string") return sanitizeTranslationText(data);
+
+  // 格式 1: { sentences: [{ trans: "..." }, ...] }
   if (data.sentences && Array.isArray(data.sentences)) {
-    return data.sentences.map(s => s && s.trans ? s.trans : "").filter(Boolean).join("").trim();
+    const combined = data.sentences.map(s => s && s.trans ? s.trans : "").filter(Boolean).join("");
+    return sanitizeTranslationText(combined);
   }
-  // 结构 2: Google dict-chrome-ex 格式：[ 翻译文本(字符串或分片数组), 识别源语言(如 "en"), ... ]
+
+  // 格式 2: 数组结构
   if (Array.isArray(data) && data.length > 0) {
-    const mainContent = data[0];
-    if (typeof mainContent === "string") {
-      return mainContent.trim();
+    const first = data[0];
+
+    // 情况 2a: data[0] 是字符串 -> data = [ "翻译文本", "en" ]
+    if (typeof first === "string") {
+      return sanitizeTranslationText(first);
     }
-    if (Array.isArray(mainContent)) {
-      return mainContent.map(item => {
-        if (Array.isArray(item)) return item[0];
-        if (item && typeof item === "object" && item.trans) return item.trans;
-        return typeof item === "string" ? item : "";
-      }).filter(Boolean).join("").trim();
+
+    // 情况 2b: data[0] 是数组
+    if (Array.isArray(first)) {
+      // 嵌套单句格式: data = [[ "翻译文本", "en" ]]
+      if (first.length >= 1 && typeof first[0] === "string" && (first.length === 1 || (first.length === 2 && /^[a-zA-Z\-]{2,5}$/.test(first[1])))) {
+        return sanitizeTranslationText(first[0]);
+      }
+      // gtx 分句分片数组: data[0] = [ [ "分句1", "orig1" ], [ "分句2", "orig2" ] ]
+      const pieces = first.map(item => {
+        if (Array.isArray(item) && typeof item[0] === "string") return item[0];
+        if (typeof item === "string" && !/^[a-zA-Z\-]{2,5}$/.test(item)) return item;
+        return "";
+      }).filter(Boolean);
+      return sanitizeTranslationText(pieces.join(""));
     }
   }
+
   return "";
 }
 
@@ -553,7 +575,7 @@ async function queryGoogleDictChromeEx(text) {
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-    const result = extractGoogleTranslateResult(data);
+    const result = parseGoogleTranslateData(data);
     return result || null;
   } catch (e) {}
   return null;
@@ -565,7 +587,7 @@ async function queryGoogleClients5(text) {
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-    const result = extractGoogleTranslateResult(data);
+    const result = parseGoogleTranslateData(data);
     return result || null;
   } catch (e) {}
   return null;
@@ -593,15 +615,17 @@ async function translateSentenceMultiTier(text) {
     queryGoogleTranslate(text).then(res => (res && res.translation) ? res.translation : null),
     queryMyMemoryTranslate(text)
   ].map(p => p.then(res => {
-    if (res && typeof res === 'string' && res.trim().length > 0) return res.trim();
+    const cleaned = sanitizeTranslationText(res);
+    if (cleaned && cleaned.length > 0) return cleaned;
     throw new Error("Empty translation");
   }));
 
   try {
-    return await Promise.any(promises);
+    const winner = await Promise.any(promises);
+    return sanitizeTranslationText(winner);
   } catch (e) {
     const fallback = await queryMyMemoryTranslate(text);
-    return fallback || "翻译加载失败";
+    return sanitizeTranslationText(fallback) || "翻译加载失败";
   }
 }
 

@@ -261,6 +261,13 @@ function getDialectLabel(word) {
   return "";
 }
 
+function sanitizeTranslationText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+  let text = rawText.trim();
+  text = text.replace(/([。！？\.\!\?\u4e00-\u9fa5\u201c\u201d\u2018\u2019"'\)）\]】])\s*(?:en|zh|ja|ko|fr|de|es|ru|it|pt)\s*$/i, "$1").trim();
+  return text;
+}
+
 function streamlineClauseMeaning(clause) {
   if (!clause) return "";
   // 1. 如果包含句子标点或长度为长句，严禁误判为词典并列近义词
@@ -616,7 +623,7 @@ function showCard(rect, text, sentence) {
       if (speakPill) speakPill.style.display = 'inline-flex';
     }
     
-    const rawResult = res.definition || res.translation || "暂无释义";
+    const rawResult = sanitizeTranslationText(res.definition || res.translation || "暂无释义");
     if (isWordMode) {
       defEl.innerHTML = formatDefinition(rawResult);
     } else {

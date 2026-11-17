@@ -1918,6 +1918,13 @@ let currentBatchSize = '20'; // 10, 20, 50, all
 let batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
 let batchTotalTarget = 20;
 
+function sanitizeTranslationText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+  let text = rawText.trim();
+  text = text.replace(/([。！？\.\!\?\u4e00-\u9fa5\u201c\u201d\u2018\u2019"'\)）\]】])\s*(?:en|zh|ja|ko|fr|de|es|ru|it|pt)\s*$/i, "$1").trim();
+  return text;
+}
+
 function streamlineClauseMeaning(clause) {
   if (!clause) return "";
   // 1. 如果包含句子标点或长度为长句，严禁误判为词典并列近义词
@@ -1961,7 +1968,7 @@ function streamlineClauseMeaning(clause) {
 // 智能释义显示排版引擎：多词性 (n./v./adj./adv.)、序号列表与形态衍生 (时态/名词/复数) 自动分行排版 + 纯净释义精炼
 function formatTrans(s) {
   if (!s) return "";
-  let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  let str = sanitizeTranslationText(String(s)).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
   str = str.replace(/\uFF0E/g, ".");
 
   // 0. 自动规范化中文词性全称（动词./名词./形容词./副词. 等）为标准英文词性缩写 (v./n./adj./adv.)
