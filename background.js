@@ -593,6 +593,20 @@ async function queryGoogleClients5(text) {
   return null;
 }
 
+async function queryYoudaoSentence(text) {
+  try {
+    const url = `https://aidemo.youdao.com/trans?q=${encodeURIComponent(text)}&from=Auto&to=Auto`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data && Array.isArray(data.translation) && data.translation.length > 0) {
+      const trans = data.translation.filter(Boolean).join(" ").trim();
+      return sanitizeTranslationText(trans);
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function queryMyMemoryTranslate(text) {
   try {
     const lp = getLangPair(text);
@@ -610,6 +624,7 @@ async function queryMyMemoryTranslate(text) {
 
 async function translateSentenceMultiTier(text) {
   const promises = [
+    queryYoudaoSentence(text),
     queryGoogleDictChromeEx(text),
     queryGoogleClients5(text),
     queryGoogleTranslate(text).then(res => (res && res.translation) ? res.translation : null),
