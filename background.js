@@ -331,10 +331,13 @@ function cleanAndStreamlineDictDefinition(s) {
       c = c.replace(/^[\s；，,;、]+|[\s；，,;]+$/g, "").trim();
       if (!c) continue;
 
-      const key = c.replace(/[\s，、\(\)（）]/g, "");
+      const streamlined = streamlineClauseMeaning(c);
+      if (!streamlined) continue;
+
+      const key = streamlined.replace(/[\s，、\(\)（）]/g, "");
       if (seenMeanings.has(key)) continue;
       seenMeanings.add(key);
-      filteredClauses.push(c);
+      filteredClauses.push(streamlined);
     }
 
     if (filteredClauses.length > 3) {
@@ -353,6 +356,36 @@ function cleanAndStreamlineDictDefinition(s) {
   }
 
   return resultLines.join("\n");
+}
+
+function streamlineClauseMeaning(clause) {
+  if (!clause) return "";
+  // 1. 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
+  // 但严格保留时态和屈折变化说明 (如 curb 的过去式)
+  let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  
+  // 2. 将顿号与逗号统一为半角逗号便于分词
+  const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
+  if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  const uniqueTerms = [];
+  for (const term of rawTerms) {
+    if (!term) continue;
+    const isRedundant = uniqueTerms.some(existing => {
+      if (existing === term) return true;
+      if (existing.includes(term) || term.includes(existing)) return true;
+      // 消除“重新唤起 / 重新激起”、“再点火 / 重新点燃”等叠词同义堆砌
+      if (existing.startsWith("重新") && (term.startsWith("重新") || term.startsWith("再") || term.includes("复燃"))) return true;
+      if (existing.startsWith("再") && (term.startsWith("再") || term.startsWith("重新"))) return true;
+      if (existing.startsWith("使") && term.startsWith("使")) return true;
+      return false;
+    });
+    if (!isRedundant) {
+      uniqueTerms.push(term);
+    }
+  }
+  // 每个分号义项内最多保留 2 个精简近义词，避免无限堆砌
+  return uniqueTerms.slice(0, 2).join("，");
 }
 
 function streamlineSubClause(text) {

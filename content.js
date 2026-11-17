@@ -261,6 +261,30 @@ function getDialectLabel(word) {
   return "";
 }
 
+function streamlineClauseMeaning(clause) {
+  if (!clause) return "";
+  let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
+  if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  const uniqueTerms = [];
+  for (const term of rawTerms) {
+    if (!term) continue;
+    const isRedundant = uniqueTerms.some(existing => {
+      if (existing === term) return true;
+      if (existing.includes(term) || term.includes(existing)) return true;
+      if (existing.startsWith("重新") && (term.startsWith("重新") || term.startsWith("再") || term.includes("复燃"))) return true;
+      if (existing.startsWith("再") && (term.startsWith("再") || term.startsWith("重新"))) return true;
+      if (existing.startsWith("使") && term.startsWith("使")) return true;
+      return false;
+    });
+    if (!isRedundant) {
+      uniqueTerms.push(term);
+    }
+  }
+  return uniqueTerms.slice(0, 2).join("，");
+}
+
 function formatDefinition(def) {
   if (!def) return "";
   let str = String(def).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
@@ -304,9 +328,10 @@ function formatDefinition(def) {
 
   return groups.map(group => {
     let content = group.contentParts.map(p => {
-      return p.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
-              .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
-              .trim();
+      const rawClause = p.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
+                         .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
+                         .trim();
+      return streamlineClauseMeaning(rawClause);
     }).filter(Boolean).join("； ");
 
     if (group.pos && content) {

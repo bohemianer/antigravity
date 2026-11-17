@@ -1918,7 +1918,37 @@ let currentBatchSize = '20'; // 10, 20, 50, all
 let batchStats = { forgot: 0, hard: 0, good: 0, completedCount: 0 };
 let batchTotalTarget = 20;
 
-// 智能释义显示排版引擎：多词性 (n./v./adj./adv.)、序号列表与形态衍生 (时态/名词/复数) 自动分行排版（纯净展示，不破坏/不截断人工编辑与输入内容）
+function streamlineClauseMeaning(clause) {
+  if (!clause) return "";
+  // 1. 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
+  // 但严格保留时态和屈折变化说明 (如 curb 的过去式)
+  let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  
+  // 2. 将顿号与逗号统一为半角逗号便于分词
+  const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
+  if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  const uniqueTerms = [];
+  for (const term of rawTerms) {
+    if (!term) continue;
+    const isRedundant = uniqueTerms.some(existing => {
+      if (existing === term) return true;
+      if (existing.includes(term) || term.includes(existing)) return true;
+      // 消除“重新唤起 / 重新激起”、“再点火 / 重新点燃”等叠词同义堆砌
+      if (existing.startsWith("重新") && (term.startsWith("重新") || term.startsWith("再") || term.includes("复燃"))) return true;
+      if (existing.startsWith("再") && (term.startsWith("再") || term.startsWith("重新"))) return true;
+      if (existing.startsWith("使") && term.startsWith("使")) return true;
+      return false;
+    });
+    if (!isRedundant) {
+      uniqueTerms.push(term);
+    }
+  }
+  // 每个分号义项内最多保留 2 个精简近义词，避免无限堆砌
+  return uniqueTerms.slice(0, 2).join("，");
+}
+
+// 智能释义显示排版引擎：多词性 (n./v./adj./adv.)、序号列表与形态衍生 (时态/名词/复数) 自动分行排版 + 纯净释义精炼
 function formatTrans(s) {
   if (!s) return "";
   let str = String(s).replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
@@ -1944,15 +1974,45 @@ function formatTrans(s) {
   const numRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473]))\s*/g;
   str = str.replace(numRegex, "\n$1 ");
 
-  // 4. 识别中文词性与时态衍生标签并自动换行 (如 [名] [动] 【形】 或 时态: 名词: 过去式: 等，必须带冒号或方括号，避免误伤像“（curb 的过去式和过去分词）”这样的括号内正常文字)
+  // 4. 识别中文词性与时态衍生标签并自动换行
   const metaRegex = /(?<!^)(?<!\n)\s*(?:[；，,;\s]*)((?:\[(?:名|动|形|副|代|介|连|叹|时态|名词|形容词|副词|复数|比较级|最高级|过去式|过去分词|现在分词)\]|【(?:名|动|形|副|代|介|连|叹|时态|名词|形容词|副词|复数|比较级|最高级|过去式|过去分词|现在分词)】|(?:时\s*态|名\s*词|形\s*容\s*词|副\s*词|复\s*数|比较级|最高级|过去式|过去分词|现在分词|第三人称单数)\s*[:：]))\s*/gi;
   str = str.replace(metaRegex, "\n$1 ");
 
-  // 5. 清理每行首尾多余标点与空格，完整保留全部释义内容
-  return str.split("\n")
-    .map(line => line.replace(/^[\s；，,;]+|[\s；，,;]+$/g, "").trim())
-    .filter(Boolean)
-    .join("\n");
+  const POS_LINE_RE = /^([a-zA-Z\-]+\.|\([a-zA-Z\-]+\)|\[(?:名|动|形|副|代|介|连|叹)\]|【(?:名|动|形|副|代|介|连|叹)】)\s*(.*)$/;
+  const rawLines = str.split("\n").map(l => l.trim()).filter(Boolean);
+
+  const refinedLines = [];
+  for (const line of rawLines) {
+    const pm = line.match(POS_LINE_RE);
+    const prefix = pm ? (pm[1] + " ") : "";
+    const content = pm ? pm[2] : line;
+
+    // 分号切分义项
+    const clauses = content.split(/[；;]/).map(c => c.trim()).filter(Boolean);
+    const cleanedClauses = [];
+    const seen = new Set();
+
+    for (const rawClause of clauses) {
+      const streamlined = streamlineClauseMeaning(rawClause);
+      if (!streamlined) continue;
+      const key = streamlined.replace(/[\s，、]/g, "");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      cleanedClauses.push(streamlined);
+    }
+
+    if (cleanedClauses.length > 3) {
+      cleanedClauses.length = 3;
+    }
+
+    if (cleanedClauses.length > 0) {
+      refinedLines.push(prefix + cleanedClauses.join("； "));
+    } else if (line) {
+      refinedLines.push(line);
+    }
+  }
+
+  return refinedLines.join("\n");
 }
 
 function formatTransHtml(s) {
