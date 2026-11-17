@@ -360,13 +360,23 @@ function cleanAndStreamlineDictDefinition(s) {
 
 function streamlineClauseMeaning(clause) {
   if (!clause) return "";
-  // 1. 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
+  // 1. 如果包含句子标点或长度为长句，严禁误判为词典并列近义词
+  if (/[。！？!?]/.test(clause) || clause.length > 35) {
+    return clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  }
+
+  // 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
   // 但严格保留时态和屈折变化说明 (如 curb 的过去式)
   let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
   
   // 2. 将顿号与逗号统一为半角逗号便于分词
   const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
   if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  // 若切分出的成分包含超过 8 个字的分句，说明这是语法逗号连接的长从句而非词典并列近义词，原样拼接保留
+  if (rawTerms.some(t => t.length > 8)) {
+    return rawTerms.join("，");
+  }
 
   const uniqueTerms = [];
   for (const term of rawTerms) {
@@ -513,15 +523,33 @@ function getLangPair(text) {
   return /[\u4e00-\u9fa5]/.test(text) ? "zh-CN|en" : "en|zh-CN";
 }
 
+function extractGoogleTranslateResult(data) {
+  if (!data) return "";
+  if (typeof data === "string") return data.trim();
+  if (data.sentences && Array.isArray(data.sentences)) {
+    return data.sentences.map(s => s && s.trans ? s.trans : "").filter(Boolean).join("").trim();
+  }
+  if (Array.isArray(data)) {
+    if (data.length > 0 && Array.isArray(data[0])) {
+      return data[0].map(item => {
+        if (Array.isArray(item)) return item[0];
+        if (item && typeof item === "object" && item.trans) return item.trans;
+        return typeof item === "string" ? item : "";
+      }).filter(Boolean).join("").trim();
+    }
+    return data.filter(x => typeof x === "string").join("").trim();
+  }
+  return "";
+}
+
 async function queryGoogleDictChromeEx(text) {
   try {
     const url = `https://translate.googleapis.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=zh-CN&q=${encodeURIComponent(text)}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-    if (Array.isArray(data) && data[0]) {
-      return Array.isArray(data[0]) ? data[0][0] : data[0];
-    }
+    const result = extractGoogleTranslateResult(data);
+    return result || null;
   } catch (e) {}
   return null;
 }
@@ -532,9 +560,8 @@ async function queryGoogleClients5(text) {
     const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-    if (Array.isArray(data) && data[0]) {
-      return Array.isArray(data[0]) ? data[0][0] : data[0];
-    }
+    const result = extractGoogleTranslateResult(data);
+    return result || null;
   } catch (e) {}
   return null;
 }
@@ -558,6 +585,7 @@ async function translateSentenceMultiTier(text) {
   const promises = [
     queryGoogleDictChromeEx(text),
     queryGoogleClients5(text),
+    queryGoogleTranslate(text).then(res => (res && res.translation) ? res.translation : null),
     queryMyMemoryTranslate(text)
   ].map(p => p.then(res => {
     if (res && typeof res === 'string' && res.trim().length > 0) return res.trim();

@@ -1920,13 +1920,23 @@ let batchTotalTarget = 20;
 
 function streamlineClauseMeaning(clause) {
   if (!clause) return "";
-  // 1. 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
+  // 1. 如果包含句子标点或长度为长句，严禁误判为词典并列近义词
+  if (/[。！？!?]/.test(clause) || clause.length > 35) {
+    return clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  }
+
+  // 彻底清除干扰记忆与阅读的语境举例括号 (如 （火等）、（感情、兴趣、记忆等）、（责任）、（孩子）、（使）等)
   // 但严格保留时态和屈折变化说明 (如 curb 的过去式)
   let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
   
   // 2. 将顿号与逗号统一为半角逗号便于分词
   const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
   if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  // 若切分出的成分包含超过 8 个字的分句，说明这是语法逗号连接的长从句而非词典并列近义词，原样拼接保留
+  if (rawTerms.some(t => t.length > 8)) {
+    return rawTerms.join("，");
+  }
 
   const uniqueTerms = [];
   for (const term of rawTerms) {
@@ -1986,6 +1996,12 @@ function formatTrans(s) {
     const pm = line.match(POS_LINE_RE);
     const prefix = pm ? (pm[1] + " ") : "";
     const content = pm ? pm[2] : line;
+
+    if (!pm) {
+      // 无词性标签的行（整句、短语或整段释义），原样保留，严禁切分
+      refinedLines.push(line);
+      continue;
+    }
 
     // 分号切分义项
     const clauses = content.split(/[；;]/).map(c => c.trim()).filter(Boolean);

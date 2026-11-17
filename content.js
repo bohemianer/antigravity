@@ -263,9 +263,19 @@ function getDialectLabel(word) {
 
 function streamlineClauseMeaning(clause) {
   if (!clause) return "";
+  // 1. 如果包含句子标点或长度为长句，严禁误判为词典并列近义词
+  if (/[。！？!?]/.test(clause) || clause.length > 35) {
+    return clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
+  }
+
   let c = clause.replace(/[（\(](?![^）\)]*(?:形式|原型|过去式|过去分词|现在分词|第三人称单数|复数|比较级|最高级))[^）\)]*[）\)]/g, "").trim();
   const rawTerms = c.replace(/，/g, ",").replace(/、/g, ",").split(",").map(t => t.trim()).filter(Boolean);
   if (rawTerms.length <= 1) return rawTerms[0] || "";
+
+  // 若切分出的成分包含超过 8 个字的分句，说明这是语法逗号连接的长从句而非词典并列近义词，原样拼接保留
+  if (rawTerms.some(t => t.length > 8)) {
+    return rawTerms.join("，");
+  }
 
   const uniqueTerms = [];
   for (const term of rawTerms) {
@@ -327,12 +337,18 @@ function formatDefinition(def) {
   }
 
   return groups.map(group => {
-    let content = group.contentParts.map(p => {
-      const rawClause = p.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
-                         .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
-                         .trim();
-      return streamlineClauseMeaning(rawClause);
-    }).filter(Boolean).join("； ");
+    let content;
+    if (!group.pos) {
+      // 无词性前缀的内容（短语、整句或纯释义），原样保留，严禁误伤截断
+      content = group.contentParts.join(" ");
+    } else {
+      content = group.contentParts.map(p => {
+        const rawClause = p.replace(/^[\s；，,;、]+|[\s；，,;、]+$/g, "")
+                           .replace(/^(\d+[\.、]|\(\d+\)|\[\d+\]|[\u2460-\u2473])\s*/, "")
+                           .trim();
+        return streamlineClauseMeaning(rawClause);
+      }).filter(Boolean).join("； ");
+    }
 
     if (group.pos && content) {
       return `<div style="margin-bottom: 3px;"><span class="agy-pos-tag">${escapeHtml(group.pos)}</span> ${escapeHtml(content)}</div>`;
@@ -601,7 +617,11 @@ function showCard(rect, text, sentence) {
     }
     
     const rawResult = res.definition || res.translation || "暂无释义";
-    defEl.innerHTML = formatDefinition(rawResult);
+    if (isWordMode) {
+      defEl.innerHTML = formatDefinition(rawResult);
+    } else {
+      defEl.innerHTML = escapeHtml(rawResult).replace(/\n/g, "<br>");
+    }
     defEl.style.display = 'block';
 
     // 智能英式/美式拼写感知标签
