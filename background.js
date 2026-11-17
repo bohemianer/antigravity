@@ -340,8 +340,8 @@ function cleanAndStreamlineDictDefinition(s) {
       filteredClauses.push(streamlined);
     }
 
-    if (filteredClauses.length > 3) {
-      filteredClauses.length = 3;
+    if (filteredClauses.length > 4) {
+      filteredClauses.length = 4;
     }
 
     if (filteredClauses.length > 0) {

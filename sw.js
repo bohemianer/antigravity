@@ -1,5 +1,5 @@
 // Antigravity PWA Service Worker (极速离线与实时更新引擎)
-const CACHE_NAME = 'antigravity-pwa-v21';
+const CACHE_NAME = 'antigravity-pwa-v22';
 const STATIC_ASSETS = [
   './',
   './index.html',

@@ -2001,10 +2001,7 @@ function formatTrans(s) {
       cleanedClauses.push(streamlined);
     }
 
-    if (cleanedClauses.length > 3) {
-      cleanedClauses.length = 3;
-    }
-
+    // 保留所有去噪去重后的有效义项，避免列表展示时截断用户已保存的义项（如第四个义项被切掉）
     if (cleanedClauses.length > 0) {
       refinedLines.push(prefix + cleanedClauses.join("； "));
     } else if (line) {
