@@ -526,18 +526,23 @@ function getLangPair(text) {
 function extractGoogleTranslateResult(data) {
   if (!data) return "";
   if (typeof data === "string") return data.trim();
+  // 结构 1: { sentences: [{ trans: "..." }, { trans: "..." }] }
   if (data.sentences && Array.isArray(data.sentences)) {
     return data.sentences.map(s => s && s.trans ? s.trans : "").filter(Boolean).join("").trim();
   }
-  if (Array.isArray(data)) {
-    if (data.length > 0 && Array.isArray(data[0])) {
-      return data[0].map(item => {
+  // 结构 2: Google dict-chrome-ex 格式：[ 翻译文本(字符串或分片数组), 识别源语言(如 "en"), ... ]
+  if (Array.isArray(data) && data.length > 0) {
+    const mainContent = data[0];
+    if (typeof mainContent === "string") {
+      return mainContent.trim();
+    }
+    if (Array.isArray(mainContent)) {
+      return mainContent.map(item => {
         if (Array.isArray(item)) return item[0];
         if (item && typeof item === "object" && item.trans) return item.trans;
         return typeof item === "string" ? item : "";
       }).filter(Boolean).join("").trim();
     }
-    return data.filter(x => typeof x === "string").join("").trim();
   }
   return "";
 }
